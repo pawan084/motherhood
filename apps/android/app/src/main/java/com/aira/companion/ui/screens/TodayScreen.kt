@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -61,13 +60,18 @@ fun TodayScreen(
 ) {
     // Journey-aware fields, falling back to the static demo copy when offline.
     val weeks = today?.weeks
-    val name = today?.name?.ifBlank { null } ?: "Maya"
+    // No invented name. Onboarding never asks for one, so the fallback greeted
+    // every user as "Maya" — a stranger's name on a private health app.
+    val name = today?.name?.ifBlank { null }
+    val priorities = today?.priorities.orEmpty()
     val headerText = if (weeks != null) "Week $weeks" else journeyLabel(today?.journey)
     val contextLine = today?.contextLine?.ifBlank { null } ?: "Second trimester"
     val action = today?.nextAction
     val actionTitle = action?.title?.ifBlank { null } ?: "Prepare for tomorrow’s appointment"
+    // Generic fallback only — the real copy comes from /v1/today. It used to
+    // reference "Week 24" and a fatigue note that belonged to nobody.
     val actionDetail = action?.detail?.ifBlank { null }
-        ?: "Review three questions based on Week 24 and your recent fatigue note."
+        ?: "A small step Aira can help you take today."
     val actionMinutes = action?.minutes ?: 3
     val actionTool = toolKeyToTool(action?.tool) ?: AiraTool.Appointment
     Column(
@@ -104,7 +108,7 @@ fun TodayScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Good morning, $name",
+            text = if (name != null) "Good morning, $name" else "Good morning",
             style = MaterialTheme.typography.bodyLarge,
             color = InkMuted,
         )
@@ -172,11 +176,22 @@ fun TodayScreen(
                         tint = Plum,
                     )
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    MetricPill(value = "6h", label = "sleep", modifier = Modifier.weight(1f))
-                    MetricPill(value = "Steady", label = "mood", modifier = Modifier.weight(1.3f))
-                    MetricPill(value = "None", label = "new concern", modifier = Modifier.weight(1.4f))
+                // The "6h sleep / Steady mood / None new concern" pills that used
+                // to sit here were invented readings — nothing in the app had
+                // measured any of them. They come back when check-ins are
+                // aggregated server-side; until then the user's own priorities
+                // are real and worth showing.
+                if (priorities.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        priorities.take(3).forEach { priority ->
+                            MetricPill(
+                                value = priority,
+                                label = "focus",
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
                 }
             }
         }

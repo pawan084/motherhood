@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -143,7 +142,7 @@ fun AiraChatScreen(
                             color = Ink,
                         )
                         Text(
-                            text = "Three questions based on Week 24 and your fatigue note.",
+                            text = "Questions worth asking, prepared from what you've told Aira.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = InkMuted,
                         )

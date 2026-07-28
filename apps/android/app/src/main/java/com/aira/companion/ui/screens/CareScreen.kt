@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,10 +24,12 @@ import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.aira.companion.data.CareData
 import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
@@ -48,7 +49,17 @@ fun CareScreen(
     onOpenTool: (AiraTool) -> Unit,
     onUrgentHelp: () -> Unit,
     modifier: Modifier = Modifier,
+    // Real data from GET /v1/care. This screen previously rendered a fixed
+    // "Dr. Meera Shah · Tomorrow 10:30 AM · Prenatal vitamin" for everyone,
+    // inventing an appointment with a named doctor for users who had entered
+    // nothing — worse than showing an empty state in a health app.
+    care: CareData? = null,
+    loading: Boolean = false,
+    onMarkTaken: (String) -> Unit = {},
 ) {
+    val nextAppointment = care?.appointments?.firstOrNull()
+    val medicinesDue = care?.medicinesDue.orEmpty()
+    val reminders = care?.reminders.orEmpty()
     Column(
         modifier =
             modifier
@@ -88,14 +99,19 @@ fun CareScreen(
                 }
                 Spacer(modifier = Modifier.width(13.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    SectionLabel("Next appointment")
+                    SectionLabel(if (nextAppointment != null) "Next appointment" else "Appointments")
                     Text(
-                        text = "Tomorrow · 10:30 AM",
+                        text = when {
+                            loading && care == null -> "Loading…"
+                            nextAppointment != null -> nextAppointment.title
+                            else -> "Nothing booked yet"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         color = Ink,
                     )
                     Text(
-                        text = "Dr. Meera Shah · City Care",
+                        text = nextAppointment?.subtitle?.ifBlank { "Details not set" }
+                            ?: "Add a visit and Aira will help you prepare questions.",
                         style = MaterialTheme.typography.bodySmall,
                         color = InkMuted,
                     )
@@ -103,10 +119,41 @@ fun CareScreen(
             }
             Spacer(modifier = Modifier.height(16.dp))
             PrimaryButton(
-                label = "Prepare questions",
+                label = if (nextAppointment != null) "Prepare questions" else "Add an appointment",
                 onClick = { onOpenTool(AiraTool.Appointment) },
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+
+        if (medicinesDue.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(20.dp))
+            SectionLabel("Due now")
+            medicinesDue.forEach { med ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Medication,
+                        contentDescription = null,
+                        tint = SageDeep,
+                    )
+                    Spacer(modifier = Modifier.width(11.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(med.title, style = MaterialTheme.typography.titleSmall, color = Ink)
+                        if (med.subtitle.isNotBlank()) {
+                            Text(
+                                med.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                    }
+                    TextButton(onClick = { onMarkTaken(med.id) }) { Text("Taken", color = Plum) }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(22.dp))
@@ -115,20 +162,31 @@ fun CareScreen(
         ToolListRow(
             icon = Icons.Outlined.Medication,
             title = "Medicines",
-            subtitle = "Prenatal vitamin · 8:00 PM",
+            subtitle = medicinesDue.firstOrNull()
+                ?.let { m -> listOf(m.title, m.subtitle).filter { it.isNotBlank() }.joinToString(" · ") }
+                ?: "None due — add a routine you were given",
             onClick = { onOpenTool(AiraTool.Medicines) },
             accent = SageDeep,
         )
         ToolListRow(
             icon = Icons.Outlined.FolderOpen,
             title = "Care Vault",
-            subtitle = "Prescriptions, reports and scans",
+            subtitle = (care?.documentsCount ?: 0).let { n ->
+                if (n > 0) "$n document${if (n == 1) "" else "s"} stored privately"
+                else "Prescriptions, reports and scans"
+            },
             onClick = { onOpenTool(AiraTool.CareVault) },
         )
         ToolListRow(
             icon = Icons.Outlined.Description,
             title = "Care plan",
-            subtitle = "Week 24 priorities",
+            subtitle = if ((care?.planTotal ?: 0) > 0) {
+                "${care?.planOnTrack ?: 0} of ${care?.planTotal ?: 0} reminders on track"
+            } else if (reminders.isEmpty()) {
+                "No reminders yet"
+            } else {
+                "Your priorities this week"
+            },
             onClick = { onOpenTool(AiraTool.CarePlan) },
         )
         ToolListRow(

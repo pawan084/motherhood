@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -25,6 +27,15 @@ android {
         val airaApiBase = (project.findProperty("airaApiBase") as String?)
             ?: "http://10.0.2.2:8000"
         buildConfigField("String", "AIRA_API_BASE", "\"$airaApiBase\"")
+
+        // The backend's coarse edge gate (security.APP_SHARED_SECRET). When the
+        // server has one configured — which app.py REQUIRES in production —
+        // every request must carry it as `X-App-Token` or it 401s before auth.
+        // Blank by default so a zero-config dev backend still works; set it with
+        // `-PairaAppToken=...` or in gradle.properties (which is gitignored for
+        // release use — never commit a production token).
+        val airaAppToken = (project.findProperty("airaAppToken") as String?) ?: ""
+        buildConfigField("String", "AIRA_APP_TOKEN", "\"$airaAppToken\"")
     }
 
     buildTypes {
@@ -43,10 +54,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
     buildFeatures {
         compose = true
         buildConfig = true
@@ -54,6 +61,15 @@ android {
 
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
+
+// Kotlin 2.2 removed assigning `jvmTarget` as a String inside `kotlinOptions`
+// (it is a hard error on the 2.3.21 pinned in the root build file, so the module
+// did not configure at all). The compilerOptions DSL is the replacement.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -77,6 +93,12 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     testImplementation("junit:junit:4.13.2")
+    // android.jar's org.json is stubbed in unit tests, so JSONObject would throw
+    // "not mocked". This puts a real implementation on the unit-test classpath.
+    // Note it is the reference implementation, which is NOT byte-identical to
+    // Android's on edge cases (optString over a JSON null differs) — the
+    // definitive check for that one is on-device.
+    testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")

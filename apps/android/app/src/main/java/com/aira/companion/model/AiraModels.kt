@@ -1,6 +1,13 @@
 package com.aira.companion.model
 
+import com.aira.companion.data.CareData
+import com.aira.companion.data.ConsentFeature
+import com.aira.companion.data.MemoryItem
+
 enum class AppStage {
+    /** Resolving the cached session against the backend before showing anything,
+     *  so a returning user is not flashed the Welcome screen they already passed. */
+    Starting,
     Welcome,
     Onboarding,
     Main,
@@ -34,12 +41,14 @@ enum class AiraTool(
     CheckIn("How are you?", "Daily check-in"),
     Reminder("Create a reminder", "Aira tool"),
     Medicines("Medicines", "Care routine"),
-    Appointment("Visit copilot", "Tomorrow · 10:30 AM"),
+    // Eyebrows are static labels, so they must not claim a specific time or week
+    // — "Tomorrow · 10:30 AM" and "Week 24 priorities" were shown to every user.
+    Appointment("Visit copilot", "Appointments"),
     CareVault("Add to Care Vault", "Private document upload"),
     Reset("A two-minute reset", "Guided wellness"),
     Symptom("Log a symptom", "Track, don’t diagnose"),
     Companion("Companion mode", "Avatar & connection"),
-    CarePlan("Your care plan", "Week 24 priorities"),
+    CarePlan("Your care plan", "Built from your reminders"),
     Privacy("Privacy centre", "Your data, your control"),
     Memory("What Aira remembers", "Care context"),
     Voice("Voice & language", "Conversation settings"),
@@ -117,24 +126,36 @@ fun toolKeyToTool(key: String?): AiraTool? =
     }
 
 data class AiraUiState(
-    val stage: AppStage = AppStage.Welcome,
+    val stage: AppStage = AppStage.Starting,
     val destination: MainDestination = MainDestination.Aira,
     val onboardingStep: Int = 0,
     val onboardingAnswers: List<OnboardingAnswer> = emptyList(),
     val journey: JourneyType? = null,
+    // Collected during onboarding and sent to POST /v1/onboarding. Both used to
+    // be hardcoded to null on the way out.
+    val name: String = "",
+    val weeks: Int? = null,
     val language: String = "English",
     val priority: String = "",
     val companionPreference: String = "Text & voice",
     val activeTool: AiraTool? = null,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
-    val notificationCount: Int = 3,
+    // Starts at zero. This defaulted to 3, so every fresh install showed a red
+    // "3 unread" badge over a notification list nothing had ever written to.
+    val notificationCount: Int = 0,
     val chatDraft: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val sending: Boolean = false,
     // Journey-aware content loaded from the backend for the Today/Journey screens.
     val todayData: TodayData? = null,
     val journeyData: JourneyData? = null,
+    // The Care hub, memory and consent — all read from the backend rather than
+    // the fixed sample data these screens used to render.
+    val careData: CareData? = null,
+    val careLoading: Boolean = false,
+    val memory: List<MemoryItem> = emptyList(),
+    val consent: List<ConsentFeature> = emptyList(),
     // Populated from the backend's urgent handoff / emergency profile so the
     // urgent dialer calls a REAL number instead of a hardcoded one.
     val careTeamPhone: String? = null,
@@ -142,38 +163,92 @@ data class AiraUiState(
     val snackbarMessage: String? = null,
 )
 
+/** Which piece of the care context a prompt collects. */
+enum class OnboardingField { Journey, Name, Weeks, Language, Priority, Companion }
+
 data class OnboardingPrompt(
+    val field: OnboardingField,
     val question: String,
     val helper: String,
-    val options: List<String>,
+    /** Empty means a free-text answer rather than a list of choices. */
+    val options: List<String> = emptyList(),
+    val inputHint: String = "",
+    val numeric: Boolean = false,
+    val skippable: Boolean = false,
 )
 
-val onboardingPrompts =
-    listOf(
-        OnboardingPrompt(
-            question = "Where are you in your journey?",
-            helper = "This helps Aira shape a private care context.",
-            options = JourneyType.entries.map { it.label },
-        ),
-        OnboardingPrompt(
-            question = "How should we speak with you?",
-            helper = "You can change language or use voice at any time.",
-            options = listOf("English", "Hindi", "Hinglish"),
-        ),
-        OnboardingPrompt(
-            question = "What would feel most helpful first?",
-            helper = "Aira will keep Today focused on one meaningful action.",
-            options =
-                listOf(
-                    "Understand changes",
-                    "Prepare for a visit",
-                    "Feel calmer",
-                    "Plan my care",
+/**
+ * The onboarding questions for a given journey.
+ *
+ * Dynamic because the pregnancy-week question only makes sense for someone who
+ * is pregnant — asking a postpartum user "how many weeks are you?" is the same
+ * category of error as the old hardcoded "Week 24".
+ *
+ * Name and weeks were previously never asked at all, so the app sent
+ * `name = null, weeks = null` on every signup: Today could not greet anyone,
+ * and the backend's week-banded pregnancy content was unreachable from Android.
+ */
+fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
+    buildList {
+        add(
+            OnboardingPrompt(
+                field = OnboardingField.Journey,
+                question = "Where are you in your journey?",
+                helper = "This helps Aira shape a private care context.",
+                options = JourneyType.entries.map { it.label },
+            ),
+        )
+        add(
+            OnboardingPrompt(
+                field = OnboardingField.Name,
+                question = "What should Aira call you?",
+                helper = "Only used to greet you. Skip it and Aira simply won't use a name.",
+                inputHint = "Your name",
+                skippable = true,
+            ),
+        )
+        if (journey == JourneyType.Pregnant) {
+            add(
+                OnboardingPrompt(
+                    field = OnboardingField.Weeks,
+                    question = "How many weeks are you?",
+                    helper = "This is what makes your Journey content match where you actually are.",
+                    inputHint = "e.g. 24",
+                    numeric = true,
+                    skippable = true,
                 ),
-        ),
-        OnboardingPrompt(
-            question = "How would you like Aira to be present?",
-            helper = "Choose a calm interface now; this stays under your control.",
-            options = listOf("Text & voice", "Talking avatar", "Chat only"),
-        ),
-    )
+            )
+        }
+        add(
+            OnboardingPrompt(
+                field = OnboardingField.Language,
+                question = "How should we speak with you?",
+                helper = "You can change language or use voice at any time.",
+                options = listOf("English", "Hindi", "Hinglish"),
+            ),
+        )
+        add(
+            OnboardingPrompt(
+                field = OnboardingField.Priority,
+                question = "What would feel most helpful first?",
+                helper = "Aira will keep Today focused on one meaningful action.",
+                options =
+                    // "Understand changes" used to be subtitled "Week-by-week body
+                    // and baby context", which reads as pregnancy copy to everyone.
+                    listOf(
+                        "Understand changes",
+                        "Prepare for a visit",
+                        "Feel calmer",
+                        "Plan my care",
+                    ),
+            ),
+        )
+        add(
+            OnboardingPrompt(
+                field = OnboardingField.Companion,
+                question = "How would you like Aira to be present?",
+                helper = "Choose a calm interface now; this stays under your control.",
+                options = listOf("Text & voice", "Talking avatar", "Chat only"),
+            ),
+        )
+    }

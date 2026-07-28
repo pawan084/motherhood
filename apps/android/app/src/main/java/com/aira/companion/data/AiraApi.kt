@@ -32,6 +32,11 @@ object AiraApi {
     private const val KEY_TOKEN = "session_token"
     private val base = BuildConfig.AIRA_API_BASE.trimEnd('/')
 
+    // The backend's coarse edge gate (`X-App-Token`). Blank against a zero-config
+    // dev server; REQUIRED in production, where app.py refuses to boot without
+    // APP_SHARED_SECRET and every route 401s before identity is even checked.
+    private val appToken = BuildConfig.AIRA_APP_TOKEN
+
     // ── identity ────────────────────────────────────────────────────────────
     private fun cachedToken(ctx: Context): String? =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_TOKEN, null)
@@ -118,6 +123,159 @@ object AiraApi {
         )
     }
 
+    /** The signed-in user. Used at launch to decide whether onboarding is needed. */
+    suspend fun me(ctx: Context): UserProfile {
+        val o = request("GET", "/account/me", null, ensureToken(ctx))
+            .optJSONObject("user") ?: JSONObject()
+        return UserProfile(
+            id = o.optString("id"),
+            name = o.optStringOrNull("name").orEmpty(),
+            journey = o.optStringOrNull("journey").orEmpty(),
+            language = o.optStringOrNull("language") ?: "English",
+            onboarded = o.optBoolean("onboarded", false),
+        )
+    }
+
+    // ── care ─────────────────────────────────────────────────────────────────
+
+    suspend fun care(ctx: Context): CareData {
+        val o = request("GET", "/v1/care", null, ensureToken(ctx))
+        val plan = o.optJSONObject("care_plan") ?: JSONObject()
+        return CareData(
+            appointments = o.optJSONArray("appointments").toCareItems(),
+            medicinesDue = o.optJSONArray("medicines_due").toCareItems(),
+            reminders = o.optJSONArray("reminders").toCareItems(),
+            documentsCount = o.optInt("documents_count", 0),
+            planTotal = plan.optInt("total", 0),
+            planOnTrack = plan.optInt("on_track", 0),
+        )
+    }
+
+    suspend fun addReminder(ctx: Context, title: String, time: String?, repeat: String?) {
+        request(
+            "POST", "/v1/care/reminders",
+            JSONObject().put("title", title)
+                .put("time", time ?: JSONObject.NULL)
+                .put("repeat", repeat ?: "Daily"),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun addMedicine(ctx: Context, name: String, dose: String?, time: String?) {
+        request(
+            "POST", "/v1/care/medicines",
+            JSONObject().put("name", name)
+                .put("dose", dose ?: JSONObject.NULL)
+                .put("time", time ?: JSONObject.NULL)
+                .put("schedule", "Daily"),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun markMedicineTaken(ctx: Context, id: String) {
+        request("POST", "/v1/care/medicines/$id/taken", null, ensureToken(ctx))
+    }
+
+    suspend fun addAppointment(ctx: Context, doctor: String, place: String?, whenText: String?) {
+        request(
+            "POST", "/v1/care/appointments",
+            JSONObject().put("doctor", doctor)
+                .put("place", place ?: JSONObject.NULL)
+                .put("when", whenText ?: JSONObject.NULL),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun addCheckIn(ctx: Context, feeling: String?, sleepHours: Double?, note: String?) {
+        request(
+            "POST", "/v1/care/checkin",
+            JSONObject().put("feeling", feeling ?: JSONObject.NULL)
+                .put("sleep_hours", sleepHours ?: JSONObject.NULL)
+                .put("note", note ?: JSONObject.NULL),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun addSymptom(ctx: Context, what: String, severity: String?, started: String?) {
+        request(
+            "POST", "/v1/care/symptom",
+            JSONObject().put("what", what)
+                .put("severity", severity ?: JSONObject.NULL)
+                .put("started", started ?: JSONObject.NULL),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun documents(ctx: Context): List<CareItem> =
+        request("GET", "/v1/care/documents", null, ensureToken(ctx))
+            .optJSONArray("items").toCareItems()
+
+    // ── memory / consent / emergency / feedback ──────────────────────────────
+
+    suspend fun memory(ctx: Context): List<MemoryItem> {
+        val arr = request("GET", "/v1/memory", null, ensureToken(ctx)).optJSONArray("items")
+        val out = mutableListOf<MemoryItem>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            val o = arr?.optJSONObject(i) ?: continue
+            out.add(
+                MemoryItem(
+                    id = o.optString("id"),
+                    label = o.optString("label"),
+                    value = o.optString("value"),
+                    approved = o.optBoolean("approved", true),
+                ),
+            )
+        }
+        return out
+    }
+
+    suspend fun setMemoryApproved(ctx: Context, id: String, approved: Boolean) {
+        request("PATCH", "/v1/memory/$id", JSONObject().put("approved", approved), ensureToken(ctx))
+    }
+
+    suspend fun forgetMemory(ctx: Context, id: String) {
+        request("DELETE", "/v1/memory/$id", null, ensureToken(ctx))
+    }
+
+    suspend fun consent(ctx: Context): List<ConsentFeature> {
+        val arr = request("GET", "/v1/consent", null, ensureToken(ctx)).optJSONArray("features")
+        val out = mutableListOf<ConsentFeature>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            val o = arr?.optJSONObject(i) ?: continue
+            out.add(
+                ConsentFeature(
+                    key = o.optString("key"),
+                    label = o.optString("label"),
+                    granted = o.optBoolean("granted", false),
+                    locked = o.optBoolean("locked", false),
+                ),
+            )
+        }
+        return out
+    }
+
+    suspend fun setConsent(ctx: Context, feature: String, granted: Boolean) {
+        request(
+            "POST", "/v1/consent",
+            JSONObject().put("feature", feature).put("granted", granted),
+            ensureToken(ctx),
+        )
+    }
+
+    suspend fun putEmergencyProfile(ctx: Context, fields: Map<String, String>) {
+        val body = JSONObject()
+        fields.forEach { (k, v) -> body.put(k, v.ifBlank { JSONObject.NULL }) }
+        request("PUT", "/v1/emergency-profile", body, ensureToken(ctx))
+    }
+
+    suspend fun reportAnswer(ctx: Context, kind: String, message: String) {
+        request(
+            "POST", "/v1/feedback/report",
+            JSONObject().put("kind", kind).put("message", message),
+            ensureToken(ctx),
+        )
+    }
+
     // ── transport ─────────────────────────────────────────────────────────────
     private suspend fun request(method: String, path: String, body: JSONObject?,
                                 token: String?): JSONObject = withContext(Dispatchers.IO) {
@@ -126,6 +284,7 @@ object AiraApi {
             connectTimeout = 15000
             readTimeout = 20000
             setRequestProperty("Content-Type", "application/json")
+            if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)
             token?.let { setRequestProperty("Authorization", "Bearer $it") }
             doInput = true
             if (body != null) {
@@ -172,9 +331,9 @@ data class TurnResult(
                 UrgentHelp(
                     headline = it.optString("headline"),
                     message = it.optString("message"),
-                    careTeamName = ct.optString("name").ifBlank { null },
-                    careTeamPhone = ct.optString("phone").ifBlank { null },
-                    emergencyContactPhone = ec.optString("phone").ifBlank { null },
+                    careTeamName = ct.optStringOrNull("name"),
+                    careTeamPhone = ct.optStringOrNull("phone"),
+                    emergencyContactPhone = ec.optStringOrNull("phone"),
                 )
             }
             return TurnResult(
@@ -200,9 +359,101 @@ data class UrgentHelp(
     val emergencyContactPhone: String?,
 )
 
+/** The signed-in user, enough to decide whether onboarding still needs to run. */
+data class UserProfile(
+    val id: String,
+    val name: String,
+    val journey: String,
+    val language: String,
+    val onboarded: Boolean,
+)
+
+/**
+ * One care row. The backend stores each item's payload as free-form JSON keyed
+ * by kind, so the label and detail are flattened here rather than modelling six
+ * near-identical shapes.
+ */
+data class CareItem(
+    val id: String,
+    val kind: String,
+    val done: Boolean,
+    val title: String,
+    val subtitle: String,
+)
+
+data class CareData(
+    val appointments: List<CareItem> = emptyList(),
+    val medicinesDue: List<CareItem> = emptyList(),
+    val reminders: List<CareItem> = emptyList(),
+    val documentsCount: Int = 0,
+    val planTotal: Int = 0,
+    val planOnTrack: Int = 0,
+)
+
+data class MemoryItem(
+    val id: String,
+    val label: String,
+    val value: String,
+    val approved: Boolean,
+)
+
+data class ConsentFeature(
+    val key: String,
+    val label: String,
+    val granted: Boolean,
+    val locked: Boolean,
+)
+
+/** Flatten `{id, kind, done, ...payload}` into a display row. */
+private fun JSONArray?.toCareItems(): List<CareItem> {
+    if (this == null) return emptyList()
+    val out = ArrayList<CareItem>(length())
+    for (i in 0 until length()) {
+        val o = optJSONObject(i) ?: continue
+        // Primary label, in the order the different kinds name their subject.
+        val title = o.optStringOrNull("title")
+            ?: o.optStringOrNull("name")
+            ?: o.optStringOrNull("doctor")
+            ?: o.optStringOrNull("what")
+            ?: o.optString("kind").replaceFirstChar { it.uppercase() }
+        val subtitle = listOfNotNull(
+            o.optStringOrNull("dose"),
+            o.optStringOrNull("place"),
+            o.optStringOrNull("when"),
+            o.optStringOrNull("schedule"),
+            o.optStringOrNull("time"),
+            o.optStringOrNull("repeat"),
+            o.optStringOrNull("severity"),
+        ).joinToString(" · ")
+        out.add(
+            CareItem(
+                id = o.optString("id"),
+                kind = o.optString("kind"),
+                done = o.optBoolean("done", false),
+                title = title,
+                subtitle = subtitle,
+            ),
+        )
+    }
+    return out
+}
+
 // JSON helpers: treat a missing/null field as absent rather than 0/"".
 private fun JSONObject.optIntOrNull(key: String): Int? =
     if (has(key) && !isNull(key)) optInt(key) else null
+
+/**
+ * A string field, or null when the key is missing, JSON-null, or empty.
+ *
+ * Do NOT use bare `optString(key).ifBlank { null }` on a nullable field:
+ * org.json coerces a JSON null to the four-character string "null", which is
+ * not blank. That bug made the urgent-help screen believe a care-team number
+ * existed when the backend had explicitly sent `"phone": null`, so it offered
+ * "Call care team" and would have dialled `tel:null` — the exact inert-button
+ * failure the server-side handoff was built to eliminate.
+ */
+internal fun JSONObject.optStringOrNull(key: String): String? =
+    if (has(key) && !isNull(key)) optString(key).ifBlank { null } else null
 
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()
