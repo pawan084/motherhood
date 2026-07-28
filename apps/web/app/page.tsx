@@ -209,24 +209,28 @@ function Landing({ enterApp }: { enterApp: () => void }) {
               </div>
               <div className="preview-content">
                 <div className="preview-trust"><ShieldCheck size={13} /> Safety checked</div>
-                <BrandOrb />
-                <div className="preview-message">
-                  <span className="mini-avatar">A</span>
-                  <p>Good morning, Maya.<br />How are you feeling today?</p>
+                <div className="preview-today">
+                  <span className="preview-eyebrow">Tuesday · Week 24</span>
+                  <h3>Good evening, Maya</h3>
+                  <p>Your plan for today</p>
                 </div>
-                <section className="preview-action">
-                  <div className="preview-card-label"><Sparkles size={13} /> Next best action</div>
-                  <div className="preview-card-main">
-                    <span className="preview-icon"><CalendarDays size={20} /></span>
-                    <div><strong>Prepare for tomorrow’s appointment</strong><small>Three questions are ready.</small></div>
-                  </div>
-                  <button onClick={enterApp}>Prepare questions <ChevronRight size={15} /></button>
-                </section>
+                <div className="preview-plan">
+                  <span className="preview-icon"><Pill size={20} /></span>
+                  <div className="preview-plan-text"><strong>Prenatal vitamin</strong><small>8 PM · with food</small></div>
+                  <button onClick={enterApp} className="preview-done"><Check size={12} /> Mark as done</button>
+                </div>
+                <button className="preview-chat" onClick={enterApp}>
+                  <BrandOrb compact />
+                  <span><strong>Chat with Aira</strong><small>Ask anything, by text or voice</small></span>
+                  <ChevronRight size={16} />
+                </button>
               </div>
-              <div className="preview-composer">
-                <button aria-label="Start voice"><Mic size={17} /></button>
-                <span>Ask Aira anything…</span>
-                <button className="send" aria-label="Send"><ArrowRight size={17} /></button>
+              <div className="preview-nav" aria-hidden="true">
+                <span className="active"><House size={15} /><i>Today</i></span>
+                <span><Sparkles size={15} /><i>Aira</i></span>
+                <span><BookOpen size={15} /><i>Journey</i></span>
+                <span><BriefcaseMedical size={15} /><i>Care</i></span>
+                <span><UserRound size={15} /><i>You</i></span>
               </div>
               <div className="home-indicator" />
             </div>
