@@ -54,6 +54,12 @@ export default function ContentPage() {
   return (
     <Shell title="Content">
       {error && <p className="mb-4 text-urgent">{error}</p>}
+      <p className="mb-6 text-sm text-ink-muted">
+        Published title and body are served to users on the Journey screen. Leave a
+        field blank to fall back to the reviewed in-code copy, and set an entry to
+        <b> Draft</b> to take an edit out of the app without deleting it. The weekly
+        pregnancy headline is derived from the user&apos;s week and is not editable here.
+      </p>
       {!items ? (
         <p className="text-ink-muted">Loading…</p>
       ) : (
@@ -84,8 +90,14 @@ export default function ContentPage() {
                   className="input min-h-[8rem]"
                   value={d.body}
                   onChange={(ev) => patchDraft(e.key, "body", ev.target.value)}
-                  placeholder="Body"
+                  placeholder="Body — blank falls back to the in-code default"
                 />
+                {e.journey === "pregnant" && (
+                  <p className="text-xs text-ink-muted">
+                    A body set here replaces the week-band copy for every pregnant
+                    user. Clear it to restore week-by-week text.
+                  </p>
+                )}
                 <div className="flex items-center gap-3">
                   <select
                     className="input max-w-[10rem]"

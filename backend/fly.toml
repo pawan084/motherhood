@@ -10,6 +10,10 @@ primary_region = "sin"
 [env]
   ENV = "production"
   TRUST_FORWARDED_FOR = "1"   # Fly sets X-Forwarded-For; safe to trust behind it
+  # Put the SQLite file on the mounted volume below. Without this db.py defaults
+  # to /app/aira.db — inside the image layer, which is REPLACED on every deploy,
+  # silently losing all data while the volume sits mounted and unused.
+  SQLITE_PATH = "/data/aira.db"
 
 [http_service]
   internal_port = 8000
@@ -25,8 +29,11 @@ primary_region = "sin"
       interval = "30s"
       timeout = "5s"
 
-# A persistent volume keeps the SQLite file across deploys. Prefer Postgres
-# (set DATABASE_URL as a secret) for real production; then the volume is optional.
+# A persistent volume keeps the SQLite file across deploys — paired with the
+# SQLITE_PATH above, which is what actually puts the file here. Note a volume is
+# attached to ONE machine, so this only holds while you run a single instance
+# (auto_stop/auto_start of the same machine is fine). Prefer Postgres (set
+# DATABASE_URL as a secret) for real production; then the volume is optional.
 [mounts]
   source = "aira_data"
   destination = "/data"

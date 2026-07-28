@@ -7,11 +7,22 @@ services:
     runtime: docker
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
+    # Persistent storage for the default SQLite backend. Render's container
+    # filesystem is ephemeral, so without this disk the database is wiped on
+    # every deploy and restart. A disk pins the service to a single instance and
+    # disables zero-downtime deploys — the trade-off for running on SQLite. Drop
+    # both the disk and SQLITE_PATH once you attach a Postgres DATABASE_URL.
+    disk:
+      name: aira-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: ENV
         value: production
       - key: TRUST_FORWARDED_FOR
         value: "1"
+      - key: SQLITE_PATH
+        value: /data/aira.db   # must point at the mounted disk above
       - key: ADMIN_ORIGINS
         sync: false        # e.g. https://admin.aira.app
       - key: GEMINI_API_KEY

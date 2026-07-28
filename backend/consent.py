@@ -40,7 +40,7 @@ def init() -> None:
         return
     c = db.connect()
     c.execute("CREATE TABLE IF NOT EXISTS consent_ledger ("
-              " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+              f" id {db.AUTOINC_PK},"
               " user_id TEXT, feature TEXT, granted INTEGER, ts REAL, note TEXT DEFAULT '')")
     c.execute("CREATE INDEX IF NOT EXISTS consent_user ON consent_ledger(user_id, feature)")
     c.commit()
@@ -83,6 +83,26 @@ def require_consent(feature: str):
             raise HTTPException(status_code=403, detail=f"consent required: {feature}")
         return uid
     return _dep
+
+
+def export_user(uid: str) -> dict:
+    init()
+    rows = _conn.execute("SELECT feature, granted, ts, note FROM consent_ledger "
+                         "WHERE user_id=? ORDER BY id", (uid,)).fetchall()
+    return {"current": _current(uid),
+            "history": [{"feature": r[0], "granted": bool(r[1]), "ts": r[2], "note": r[3]}
+                        for r in rows]}
+
+
+def delete_user(uid: str) -> int:
+    """Erase this user's consent history. The ledger is append-only *during* an
+    account's life so grants/revokes stay auditable — but it is still the user's
+    own record, so an account deletion removes it rather than keeping a
+    permanent trace of someone who asked to be forgotten."""
+    init()
+    cur = _conn.execute("DELETE FROM consent_ledger WHERE user_id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
 
 
 @router.get("/consent")

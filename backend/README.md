@@ -31,7 +31,7 @@ to enable the classifier and real replies.
 ## Test
 
 ```bash
-pytest -q          # 18 tests, fully offline (no API key needed)
+pytest -q          # 39 tests, fully offline (no API key needed)
 ```
 
 ## Architecture
@@ -46,11 +46,12 @@ pytest -q          # 18 tests, fully offline (no API key needed)
 | `prompts.py` | Admin-editable prompt registry (system + safety classifier), in-code defaults |
 | `accounts.py` | Device tokens, Google Sign-In, app sessions, `current_user` |
 | `care.py` | Onboarding, journey-aware Today/Journey/Care, tools, emergency profile |
-| `content.py` | Journey content with version + review metadata (no more "everyone is week 24") |
-| `memory.py` | Reviewable care memory; only approved items shape replies |
-| `consent.py` | Append-only consent ledger + `require_consent` enforcement |
+| `content.py` | Journey content with version + review metadata; published rows override the in-code seed |
+| `memory.py` | Reviewable care memory; gated by the `personalization` consent **and** per-item approval |
+| `consent.py` | Append-only consent ledger + the `require_consent` dependency |
 | `chat.py` | The safety-gated turn + `/safety/screen` + history |
 | `feedback.py` | Feedback + "report an AI answer" (clinical/safety) |
+| `privacy.py` | Data export + account deletion, fanned out over each module's `export_user`/`delete_user` |
 | `analytics_store.py` | Events + dashboard rollups |
 | `legal.py` | Public privacy/terms/faq pages |
 | `admin.py` | RBAC auth (PBKDF2/HMAC/CSRF) + dashboard/users/safety/feedback/content/prompts/system |
@@ -66,6 +67,8 @@ Mobile/web (Bearer app-session token; coarse `X-App-Token` gate optional):
 - `POST /v1/safety/screen` → standalone screen
 - `GET/POST /v1/memory` · `GET/POST /v1/consent` · `GET/PUT /v1/emergency-profile`
 - `POST /v1/feedback` · `POST /v1/feedback/report`
+- `GET /v1/account/export` → everything held for this user, as JSON
+- `POST /v1/account/delete` → irreversible erase (body: `{"confirm": "DELETE MY DATA"}`)
 
 Admin (httpOnly cookie session + CSRF), all under `/admin/*`:
 `login`, `overview`, `users`, `safety/flags`, `feedback`, `content`, `prompts`,

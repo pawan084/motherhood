@@ -7,6 +7,12 @@ postpartum user never sees fetal-week cards. Each entry carries `version`,
 `status` (draft/published) and `reviewed_by/reviewed_at`, so clinical review is
 first-class rather than an afterthought — the app only ever serves `published`
 entries, falling back to the in-code seed.
+
+`journey_content` resolves each field through `_published()` before the seed, so
+a console edit reaches users. (It previously read `_SEED` alone, which made the
+whole editor cosmetic: an admin could publish a new version and no user would
+ever see it.) A blank field or a `draft` status falls back to the reviewed
+in-code copy, so an edit can be reverted by clearing it.
 """
 import logging
 import time
@@ -96,27 +102,63 @@ def init() -> None:
 
 
 def _band(weeks: int) -> tuple[str, str]:
+    """The (headline, body) for a pregnancy week — the last band whose start is
+    at or below `weeks`, falling back to the earliest band."""
     chosen = _PREGNANCY_WEEKS[0]
-    for start, title, body in _PREGNANCY_WEEKS:
-        if weeks >= start:
-            chosen = (title, body)  # type: ignore[assignment]
-    return chosen if isinstance(chosen, tuple) and len(chosen) == 2 else (chosen[1], chosen[2])
+    for band in _PREGNANCY_WEEKS:
+        if weeks >= band[0]:
+            chosen = band
+    return chosen[1], chosen[2]
+
+
+def _published(journey: str) -> tuple[str, str]:
+    """The admin-published (title, body) for a journey, or ('', '') when there is
+    no row, the row is blank, or it is still a `draft`.
+
+    Mirrors `prompts.resolve`: a blank field means "use the reviewed in-code
+    default", so clearing a field in the console restores the seed rather than
+    shipping an empty screen. Reads live, so an edit applies with no restart, and
+    a registry error degrades to the seed instead of breaking the screen."""
+    if _conn is None:
+        return "", ""
+    try:
+        row = _conn.execute("SELECT title, body, status FROM content_entries WHERE key=?",
+                            (f"journey.{journey}",)).fetchone()
+    except Exception as e:  # noqa: BLE001 — never let a content lookup break a screen
+        log.warning("content lookup for %s failed: %s", journey, e)
+        return "", ""
+    if not row or (row[2] or "") != "published":
+        return "", ""          # drafts are never served to users
+    return (row[0] or "").strip(), (row[1] or "").strip()
 
 
 def journey_content(journey: str, weeks: int | None = None) -> dict:
     """The Journey-screen payload for a user. Journey-aware; pregnancy is
-    week-banded. Never returns pregnancy content for a non-pregnant journey."""
+    week-banded. Never returns pregnancy content for a non-pregnant journey.
+
+    Copy resolution, per field:
+      `title`, `body` — the published `content_entries` row wins, else the
+        in-code seed (or, for a known pregnancy week, the week band). This is
+        what makes the admin content editor real: before, this function read
+        only `_SEED`, so console edits bumped a version number and changed
+        nothing a user ever saw.
+      `this_week`, `sections` — in-code only. They are structural (the week
+        headline is derived from `weeks`), and the console does not expose them,
+        so pretending they were editable would be the same bug in reverse."""
     journey = (journey or "exploring").strip().lower()
     if journey not in _SEED:
         journey = "exploring"
+    title_override, body_override = _published(journey)
     if journey == "pregnant":
         w = int(weeks or 0)
-        title, body = _band(w) if w > 0 else ("Your pregnancy", _SEED["pregnant"].get("body",
-                                              "Week-by-week guidance, only what's useful now."))
+        if w > 0:
+            this_week, band_body = _band(w)
+        else:
+            this_week, band_body = "Your pregnancy", "Week-by-week guidance, only what's useful now."
         return {
-            "journey": "pregnant", "title": "Your pregnancy",
+            "journey": "pregnant", "title": title_override or "Your pregnancy",
             "weeks": w or None,
-            "this_week": title, "body": body,
+            "this_week": this_week, "body": body_override or band_body,
             "sections": [
                 {"title": "Your body", "text": "Energy, sleep and changes worth knowing"},
                 {"title": "Your baby", "text": "Growth explained without overload"},
@@ -124,8 +166,9 @@ def journey_content(journey: str, weeks: int | None = None) -> dict:
             ],
         }
     data = _SEED[journey]
-    return {"journey": journey, "title": data["title"], "weeks": None,
-            "this_week": data.get("this_week", ""), "body": data.get("body", ""),
+    return {"journey": journey, "title": title_override or data["title"], "weeks": None,
+            "this_week": data.get("this_week", ""),
+            "body": body_override or data.get("body", ""),
             "sections": data.get("sections", [])}
 
 

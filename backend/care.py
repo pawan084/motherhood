@@ -75,6 +75,26 @@ def _list_items(uid: str, kind: str) -> list[dict]:
     return out
 
 
+# ── per-user data (privacy.py: export / delete) ──────────────────────────────
+
+def export_user(uid: str) -> dict:
+    init()
+    row = _conn.execute("SELECT data FROM emergency_profiles WHERE user_id=?", (uid,)).fetchone()
+    return {"context": _context(uid),
+            "items": {kind: _list_items(uid, kind) for kind in sorted(_ITEM_KINDS)},
+            "emergency_profile": json.loads(row[0]) if row else {}}
+
+
+def delete_user(uid: str) -> int:
+    init()
+    n = 0
+    for table in ("care_items", "care_context", "emergency_profiles"):
+        cur = _conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
+        n += getattr(cur, "rowcount", 0) or 0
+    _conn.commit()
+    return n
+
+
 # ── onboarding ───────────────────────────────────────────────────────────────
 
 class OnboardingIn(BaseModel):

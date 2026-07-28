@@ -146,6 +146,22 @@ def _create_device_user() -> str:
     return uid
 
 
+def export_user(uid: str) -> dict | None:
+    """The user's own profile row, for their data export (privacy.py)."""
+    return get_user(uid)
+
+
+def delete_user(uid: str) -> int:
+    """Delete the account row. Must run LAST in a deletion sequence: removing it
+    also invalidates every outstanding token (`_verify_token` finds no row), so
+    a failure earlier in the sequence leaves the user able to retry rather than
+    locked out of data that still exists."""
+    init()
+    cur = _conn.execute("DELETE FROM users WHERE id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
+
+
 def bump_token_version(uid: str) -> None:
     """Invalidate every existing token for a user (log-out-everywhere / on a
     security event)."""

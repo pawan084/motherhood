@@ -13,6 +13,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+import consent
 import db
 import security
 from accounts import current_user
@@ -45,13 +46,35 @@ def _list(uid: str) -> list[dict]:
 
 
 def context_summary(uid: str) -> str:
-    """Approved memory as a compact string for the reply prompt. Empty when the
-    user has approved nothing — so personalisation genuinely off means off."""
+    """Approved memory as a compact string for the reply prompt.
+
+    Two independent gates, both of which must be open:
+      1. the `personalization` consent — the "AI personalisation" switch, and
+      2. the per-item `approved` flag — "what Aira remembers".
+
+    The consent check lives HERE rather than at the call site so the switch
+    cannot be bypassed by a future caller that forgets to ask. Revoking consent
+    stops memory shaping replies immediately; it deliberately does not delete
+    anything, so the user can still review and forget items themselves (or turn
+    personalisation back on without having lost their context)."""
+    if not consent.is_granted(uid, "personalization"):
+        return ""
     init()
     rows = _conn.execute("SELECT label, value FROM memory_items "
                          "WHERE user_id=? AND approved=1 ORDER BY created DESC LIMIT 20",
                          (uid,)).fetchall()
     return "; ".join(f"{lbl}: {val}" for lbl, val in rows if val)
+
+
+def export_user(uid: str) -> list[dict]:
+    return _list(uid)
+
+
+def delete_user(uid: str) -> int:
+    init()
+    cur = _conn.execute("DELETE FROM memory_items WHERE user_id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
 
 
 @router.get("/memory")
