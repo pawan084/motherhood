@@ -3,15 +3,28 @@
   "version": "0.1.0",
   "private": true,
   "description": "Aira — AI maternal-wellness companion. Monorepo: web + admin + android + backend.",
-  "workspaces": [
-    "apps/web",
-    "apps/admin"
+  "comment": [
+    "Deliberately NOT an npm workspace, and this package has no dependencies of",
+    "its own — it is a task runner.",
+    "apps/web ships a self-contained Sites toolchain (scripts/sites-env.sh,",
+    "install-ci.sh, build-verified.sh) that pins its own npm cache under",
+    ".sites-runtime, runs `npm ci` against its OWN package-lock.json, and resolves",
+    "node_modules/.bin/vinext relative to the app directory. Declaring workspaces",
+    "here hoisted every dependency to the repo root, so that binary was never",
+    "where the build script looked and `npm run build` failed with 'vinext is",
+    "unavailable'. Each app installs independently instead, which is also what",
+    "apps/admin's plain Next build expects."
   ],
   "scripts": {
-    "dev:web": "npm --workspace apps/web run dev",
-    "dev:admin": "npm --workspace apps/admin run dev",
-    "build:web": "npm --workspace apps/web run build",
-    "build:admin": "npm --workspace apps/admin run build",
+    "install:web": "cd apps/web && npm install",
+    "install:admin": "cd apps/admin && npm install",
+    "install:all": "npm run install:web && npm run install:admin",
+    "dev:web": "cd apps/web && npm run dev",
+    "dev:admin": "cd apps/admin && npm run dev",
+    "build:web": "cd apps/web && npm run build",
+    "build:admin": "cd apps/admin && npm run build",
+    "test:web": "cd apps/web && npm test",
+    "lint:web": "cd apps/web && npm run lint",
     "backend": "cd backend && uvicorn app:app --reload",
     "backend:test": "cd backend && pytest -q"
   }

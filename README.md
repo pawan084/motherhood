@@ -68,12 +68,22 @@ in the backend env before first run.
 cd apps/web
 npm install
 cp .env.example .env               # VITE_API_URL=http://127.0.0.1:8000
-npm run dev
+npm run dev                        # http://127.0.0.1:5173
 ```
+
+> **Install each app on its own.** This repo is deliberately *not* an npm
+> workspace: `apps/web` carries a self-contained Sites toolchain that installs
+> into its own `node_modules` and npm cache. Adding `workspaces` to the root
+> `package.json` hoists everything to the repo root and breaks `npm run build`
+> with "vinext is unavailable". From the root, `npm run install:all` runs both
+> app installs in the right places.
 
 **Android:** open `apps/android` in Android Studio. The backend URL is
 `BuildConfig.AIRA_API_BASE` (defaults to `http://10.0.2.2:8000`, the host as seen
-from the emulator); override with `-PairaApiBase=` or `gradle.properties`.
+from the emulator); override with `-PairaApiBase=` or `gradle.properties`. Debug
+builds permit cleartext to loopback hosts only — a release must use `https://`.
+If the backend sets `APP_SHARED_SECRET` (mandatory in production), pass it too
+with `-PairaAppToken=` or every request 401s.
 
 ## Docs
 

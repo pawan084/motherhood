@@ -18,7 +18,8 @@ state and call the API; they never make the safety decision themselves.
      │  FastAPI backend                         │
      │  security (rate-limit, app-token, caps)  │
      │  accounts · care · chat · memory ·       │
-     │  consent · feedback · content · admin    │
+     │  consent · feedback · content · privacy  │
+     │  admin                                    │
      │  safety ──▶ services ──▶ Google Gemini   │
      │  db (SQLite ⟷ Postgres)                  │
      └─────────────────────────────────────────┘
@@ -68,11 +69,29 @@ the prototypes' hardcoded "everyone is 24-weeks-pregnant" persona at the source.
 
 ## Consent & memory
 
-- **Consent** (`consent.py`) is an append-only ledger; `require_consent(feature)`
-  is a dependency that 403s before any processing — so consent-gated features
-  (e.g. the future-baby story) can't collect data before consent.
-- **Memory** (`memory.py`) only feeds *approved* items into the reply prompt, so
-  the "AI personalisation" toggle and "forget" are real, not cosmetic.
+- **Consent** (`consent.py`) is an append-only ledger. `require_consent(feature)`
+  is a dependency that 403s before any processing, ready for features that
+  collect data only after agreement (e.g. the future-baby story); no shipped
+  endpoint is gated on it yet, because none of those features are built.
+- **Memory** (`memory.py`) passes two gates before anything reaches the reply
+  prompt: the `personalization` consent, checked inside `context_summary` so no
+  call site can bypass it, and the per-item `approved` flag. That is what makes
+  the "AI personalisation" toggle and "forget" real rather than cosmetic.
+  Revoking consent stops memory being *used*; it never deletes, so the user can
+  still review and forget items, or switch personalisation back on.
+- **Export & deletion** (`privacy.py`) — `GET /v1/account/export` returns
+  everything held for the user; `POST /v1/account/delete` erases it. Each module
+  owns an `export_user`/`delete_user` pair, so a new table is covered where it is
+  defined. `accounts` deletes last: dropping the `users` row is also what kills
+  outstanding tokens, so a mid-sequence failure leaves the user able to retry.
+
+## Retention
+
+Green turns are never persisted. Amber/red flags keep the user's own words for
+`SAFETY_FLAG_RETENTION_DAYS` (default 90) and are purged at startup. A classifier
+outage is tracked as an hourly *count* (`safety_degraded`) rather than by
+retaining text, and flag messages are withheld from `viewer` admins — reviewing a
+flag needs `support`.
 
 ## Storage
 

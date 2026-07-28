@@ -30,6 +30,8 @@ apps/android/build/
 apps/android/app/build/
 apps/android/local.properties
 .idea/
+# Heap dumps a JVM/Gradle OOM drops next to the build.
+*.hprof
 
 # ── os ───────────────────────────────────────────────────────────────────
 .DS_Store
