@@ -1,0 +1,28 @@
+# Render.com blueprint for the Aira backend. Import this repo as a Blueprint.
+# Secrets (GEMINI_API_KEY, ADMIN_JWT_SECRET, APP_SESSION_SECRET, APP_SHARED_SECRET,
+# GOOGLE_CLIENT_ID) are set in the dashboard, not committed here.
+services:
+  - type: web
+    name: aira-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: ENV
+        value: production
+      - key: TRUST_FORWARDED_FOR
+        value: "1"
+      - key: ADMIN_ORIGINS
+        sync: false        # e.g. https://admin.aira.app
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ADMIN_JWT_SECRET
+        generateValue: true
+      - key: APP_SESSION_SECRET
+        generateValue: true
+      - key: APP_SHARED_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false        # optional: attach a Render Postgres to run on PG

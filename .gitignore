@@ -1,0 +1,36 @@
+# ── secrets ──────────────────────────────────────────────────────────────
+.env
+.env.*.local
+*.local
+
+# ── node ─────────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+.vinext/
+.wrangler/
+*.tsbuildinfo
+
+# ── python (backend) ─────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+*.db
+*.db-shm
+*.db-wal
+
+# ── android ──────────────────────────────────────────────────────────────
+.gradle/
+apps/android/build/
+apps/android/app/build/
+apps/android/local.properties
+.idea/
+
+# ── os ───────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

@@ -1,0 +1,18 @@
+{
+  "name": "aira",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aira — AI maternal-wellness companion. Monorepo: web + admin + android + backend.",
+  "workspaces": [
+    "apps/web",
+    "apps/admin"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace apps/web run dev",
+    "dev:admin": "npm --workspace apps/admin run dev",
+    "build:web": "npm --workspace apps/web run build",
+    "build:admin": "npm --workspace apps/admin run build",
+    "backend": "cd backend && uvicorn app:app --reload",
+    "backend:test": "cd backend && pytest -q"
+  }
+}
