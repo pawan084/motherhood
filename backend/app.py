@@ -28,6 +28,8 @@ import content
 import feedback
 import legal
 import memory
+import partner
+import prefs
 import privacy
 import prompts
 import safety
@@ -74,6 +76,8 @@ app.include_router(chat.router)
 app.include_router(memory.router)
 app.include_router(consent.router)
 app.include_router(feedback.router)
+app.include_router(prefs.router)
+app.include_router(partner.router)
 app.include_router(privacy.router)
 app.include_router(legal.router)
 
@@ -100,6 +104,8 @@ def _startup():
     feedback.init()
     care.init()
     chat.init()
+    prefs.init()
+    partner.init()
     prompts.init()
     prompts.seed_defaults()
 

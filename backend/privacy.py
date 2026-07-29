@@ -33,6 +33,8 @@ import chat
 import consent
 import feedback
 import memory
+import partner
+import prefs
 import safety
 import security
 from accounts import current_user
@@ -48,6 +50,8 @@ _SOURCES = (
     ("memory", memory),
     ("consent", consent),
     ("feedback", feedback),
+    ("prefs", prefs),
+    ("partner", partner),
     ("safety", safety),
     ("events", analytics_store),
     ("account", accounts),

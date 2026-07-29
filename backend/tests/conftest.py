@@ -12,6 +12,11 @@ os.environ.pop("DATABASE_URL", None)
 os.environ.pop("GEMINI_API_KEY", None)        # force keyword-only safety + fallback reply
 os.environ.pop("APP_SHARED_SECRET", None)     # coarse gate off in tests
 os.environ["ENV"] = "development"
+# The limiter is per-IP and every test shares the TestClient's IP, so the whole
+# suite draws on one 120-request budget — a slow accumulation that makes an
+# unrelated new test fail whichever one happens to run past the cap. Off here;
+# test_rate_limit.py exercises the limiter directly instead.
+os.environ["RATE_LIMIT_PER_MIN"] = "0"
 # Seeded on first init() into the fresh temp DB, so the admin RBAC tests have an
 # owner to log in as (and to create lower-privileged admins from).
 os.environ["ADMIN_BOOTSTRAP_EMAIL"] = "owner@test.local"
