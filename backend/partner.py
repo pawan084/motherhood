@@ -140,7 +140,11 @@ def delete_user(uid: str) -> int:
     still listed as somebody else's partner; dropping the rows where they are
     the partner would silently delete an invite belonging to another user, whose
     data this is not. So: delete what they own, detach what they hold — the
-    other person's invite row survives and simply returns to unaccepted.
+    other person's invite row survives, marked revoked.
+
+    Revoked rather than returned to pending: a pending invite still shows its
+    code, and that code would then be acceptable by anyone the owner never meant
+    to share with. The owner sees the link is dead and can issue a fresh one.
     """
     init()
     cur = _conn.execute("DELETE FROM partner_invites WHERE owner_id=?", (uid,))
