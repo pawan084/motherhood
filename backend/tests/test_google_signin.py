@@ -77,8 +77,8 @@ def test_valid_token_creates_an_account_and_returns_a_session(client, google):
 
 
 def test_signing_in_twice_returns_the_same_user(client, google):
-    a = client.post("/account/google", json={"id_token": make_token(google, sub="stable-sub")})
-    b = client.post("/account/google", json={"id_token": make_token(google, sub="stable-sub")})
+    a = client.post("/account/google", json={"id_token": make_token(google, sub="stable-sub", email="stable@example.com")})
+    b = client.post("/account/google", json={"id_token": make_token(google, sub="stable-sub", email="stable@example.com")})
     assert a.json()["user_id"] == b.json()["user_id"]
 
 
@@ -92,7 +92,7 @@ def test_signing_in_carries_over_the_anonymous_user_s_care_data(client, google):
                                         "weeks": 24}, headers=dev)
     client.post("/v1/care/reminders", json={"title": "Prenatal vitamin"}, headers=dev)
 
-    r = client.post("/account/google", json={"id_token": make_token(google, sub="promote-me"),
+    r = client.post("/account/google", json={"id_token": make_token(google, sub="promote-me", email="promote@example.com"),
                                              "device_token": reg["token"]})
     assert r.status_code == 200, r.text
     # Promoted IN PLACE — same user id, so the care rows still belong to them.
@@ -108,10 +108,56 @@ def test_signing_in_carries_over_the_anonymous_user_s_care_data(client, google):
 def test_a_stale_device_token_does_not_block_sign_in(client, google):
     """A dead device token must not stop someone signing in — it just means
     there is nothing to carry over."""
-    r = client.post("/account/google", json={"id_token": make_token(google, sub="no-carry"),
+    r = client.post("/account/google", json={"id_token": make_token(google, sub="no-carry", email="nocarry@example.com"),
                                              "device_token": "v1.garbage.garbage"})
     assert r.status_code == 200, r.text
     assert r.json()["user"]["kind"] == "account"
+
+
+def test_google_links_to_an_existing_password_account_with_the_same_email(client, google):
+    """Someone who signed up with email/password and later taps Google must land
+    in the SAME account, not a second one.
+
+    Before the unique email index existed this quietly created a duplicate; with
+    the index it became a 500. Linking is only safe because the email is stored
+    only when Google reports it verified — linking on an unverified address is a
+    known takeover route.
+    """
+    email = "both-ways@example.com"
+    signup = client.post("/account/signup",
+                         json={"email": email, "password": "a-long-enough-passphrase"}).json()
+    client.post("/v1/care/reminders", json={"title": "Iron tablet"},
+                headers={"Authorization": f"Bearer {signup['token']}"})
+
+    r = client.post("/account/google",
+                    json={"id_token": make_token(google, sub="links-to-existing", email=email)})
+    assert r.status_code == 200, r.text
+    assert r.json()["user_id"] == signup["user_id"]
+
+    # Same account means the care data is still theirs.
+    h = {"Authorization": f"Bearer {r.json()['token']}"}
+    assert [x["title"] for x in client.get("/v1/care", headers=h).json()["reminders"]] \
+        == ["Iron tablet"]
+
+    # And the password still works — linking adds a way in, it doesn't replace one.
+    assert client.post("/account/login",
+                       json={"email": email,
+                             "password": "a-long-enough-passphrase"}).status_code == 200
+
+
+def test_an_unverified_google_email_does_not_link_to_an_existing_account(client, google):
+    """The takeover case: claiming someone's address at an IdP without proving
+    it must not inherit their Aira account."""
+    email = "victim-link@example.com"
+    signup = client.post("/account/signup",
+                         json={"email": email, "password": "a-long-enough-passphrase"}).json()
+
+    r = client.post("/account/google",
+                    json={"id_token": make_token(google, sub="attacker-sub",
+                                                 email=email, email_verified=False)})
+    assert r.status_code == 200, r.text
+    assert r.json()["user_id"] != signup["user_id"]     # a separate, empty account
+    assert r.json()["user"]["email"] is None
 
 
 # ── the rejections that matter ──────────────────────────────────────────────

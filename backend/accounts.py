@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 import db
+import passwords
 import security
 
 log = logging.getLogger("aira.accounts")
@@ -55,8 +56,34 @@ def init() -> None:
               " onboarded INTEGER DEFAULT 0, token_version INTEGER DEFAULT 0,"
               " created REAL, last_seen REAL)")
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub ON users(google_sub)")
+    # Added after the table shipped, so it has to be a migration rather than a
+    # column in the CREATE above — existing installs already have the table and
+    # `CREATE TABLE IF NOT EXISTS` would skip it silently.
+    _add_column_if_missing(c, "users", "pw_hash", "TEXT")
+    # Partial index: anonymous device users all have NULL email and must not
+    # collide with each other. Indexed on LOWER(email) so signing up as
+    # `A@b.com` and `a@b.com` cannot produce two accounts.
+    c.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email "
+              "ON users(LOWER(email)) WHERE email IS NOT NULL")
     c.commit()
     _conn = c
+
+
+def _add_column_if_missing(conn, table: str, column: str, decl: str) -> None:
+    """Portable `ADD COLUMN IF NOT EXISTS`.
+
+    SQLite has no such syntax and Postgres only gained it recently, so this
+    attempts the ALTER and treats a duplicate-column complaint as success. Any
+    other failure is re-raised — a migration that swallows real errors is worse
+    than one that doesn't run.
+    """
+    try:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        conn.commit()
+    except Exception as e:  # noqa: BLE001 — narrow check on the message below
+        msg = str(e).lower()
+        if "duplicate column" not in msg and "already exists" not in msg:
+            raise
 
 
 # ── token mint / verify (stdlib HMAC) ────────────────────────────────────────
@@ -271,6 +298,28 @@ def account_google(body: GoogleIn):
                       (email, name, time.time(), uid))
         _conn.commit()
     else:
+        # Already an account with this email — from email/password signup, or an
+        # earlier Google identity. Attach this `sub` to it and sign them in,
+        # rather than creating a second account and colliding on the unique email
+        # index (which surfaced as a 500).
+        #
+        # Linking on email is only safe because `email` here is non-None ONLY when
+        # Google reported it verified. Linking on an unverified address is a known
+        # account-takeover route: claim someone's email at an IdP, sign in, inherit
+        # their account.
+        linked = (_conn.execute("SELECT id FROM users WHERE LOWER(email)=?", (email,)).fetchone()
+                  if email else None)
+        if linked:
+            uid = linked[0]
+            _conn.execute("UPDATE users SET kind='account', google_sub=?, "
+                          "name=COALESCE(NULLIF(name,''),?), last_seen=? WHERE id=?",
+                          (sub, name, time.time(), uid))
+            _conn.commit()
+            log.info("linked google identity to existing account %s", uid)
+            u = get_user(uid)
+            return {"user_id": uid, "token": mint_token(uid, u["token_version"]),
+                    "user": public_user(u)}
+
         # Promote the anonymous device user in place when we can (keeps its care
         # data), else create a fresh account user.
         prior = _verify_token(body.device_token or "") if body.device_token else None
@@ -288,6 +337,149 @@ def account_google(body: GoogleIn):
     u = get_user(uid)
     return {"user_id": uid, "token": mint_token(uid, u["token_version"]),
             "user": public_user(u)}
+
+
+# ── email + password ─────────────────────────────────────────────────────────
+#
+# The second way to hold an account, alongside Google. Both are optional: Aira
+# works anonymously from first launch, and an account exists so care context can
+# follow someone to another device.
+#
+# There is deliberately NO self-serve password reset. It needs to send email, and
+# this project has no provider configured — a "Forgot password?" link that goes
+# nowhere is exactly the kind of control this codebase has spent its time
+# removing. `POST /account/password` covers the case we can actually honour:
+# changing it while signed in. The clients say so plainly.
+
+# Long rather than complex. Length is what defeats offline cracking, and
+# composition rules mostly produce `Password1!` and a reused credential.
+MIN_PASSWORD_LENGTH = 12
+
+
+class SignupIn(BaseModel):
+    email: str
+    password: str
+    device_token: str | None = None
+
+
+def _clean_email(raw: str) -> str:
+    email = (raw or "").strip().lower()
+    # Deliberately not a full RFC validator — those reject addresses that work.
+    # This only catches input that cannot be an address at all.
+    if "@" not in email or email.startswith("@") or email.endswith("@") or len(email) > 254:
+        raise HTTPException(status_code=400, detail="that doesn't look like an email address")
+    return email
+
+
+@router.post("/account/signup", dependencies=[Depends(security.require_app_token)])
+def account_signup(body: SignupIn):
+    """Create an email/password account, carrying anonymous care data over.
+
+    `device_token` is the caller's current anonymous session. When present and
+    valid, that user is promoted in place — same row, same id — so everything
+    done before signing up survives. Without it, a new account is created and the
+    anonymous data stays where it is.
+    """
+    email = _clean_email(body.email)
+    if len(body.password or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"password must be at least {MIN_PASSWORD_LENGTH} characters")
+    init()
+    taken = _conn.execute("SELECT 1 FROM users WHERE LOWER(email)=?", (email,)).fetchone()
+    if taken:
+        raise HTTPException(status_code=409, detail="an account with that email already exists")
+
+    pw_hash = passwords.hash_pw(body.password)
+    now = time.time()
+    prior = _verify_token(body.device_token or "") if body.device_token else None
+    if prior and (get_user(prior) or {}).get("kind") == "device":
+        uid = prior
+        _conn.execute("UPDATE users SET kind='account', email=?, pw_hash=?, last_seen=? "
+                      "WHERE id=?", (email, pw_hash, now, uid))
+    else:
+        uid = "usr_" + uuid.uuid4().hex
+        _conn.execute("INSERT INTO users (id, kind, email, pw_hash, created, last_seen) "
+                      "VALUES (?,?,?,?,?,?)", (uid, "account", email, pw_hash, now, now))
+    _conn.commit()
+    u = get_user(uid)
+    log.info("account created for %s", uid)
+    return {"user_id": uid, "token": mint_token(uid, u["token_version"]),
+            "user": public_user(u)}
+
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+
+@router.post("/account/login", dependencies=[Depends(security.require_app_token)])
+def account_login(body: LoginIn):
+    """Exchange an email and password for a session.
+
+    Note what this does NOT do: it never promotes or merges the caller's
+    anonymous data. Signing in means "show me my account", and silently folding
+    one person's device notes into an existing account is not recoverable. The
+    clients warn before this point when local data exists.
+    """
+    email = _clean_email(body.email)
+    if passwords.throttle_locked(f"user:{email}"):
+        # Same message and status as a wrong password — saying "locked" would
+        # confirm the address is registered.
+        raise HTTPException(status_code=401, detail="invalid email or password")
+
+    init()
+    row = _conn.execute("SELECT id, pw_hash FROM users WHERE LOWER(email)=?", (email,)).fetchone()
+    # Verify against a dummy when the account is missing, so a wrong password and
+    # an unknown address take the same time and latency reveals neither.
+    stored = row[1] if row and row[1] else passwords.DUMMY_PW_HASH
+    ok = passwords.verify_pw(body.password, stored)
+    if not ok or not row or not row[1]:
+        passwords.throttle_fail(f"user:{email}")
+        raise HTTPException(status_code=401, detail="invalid email or password")
+
+    passwords.throttle_reset(f"user:{email}")
+    uid = row[0]
+    # Upgrade the stored hash while we still hold the plaintext, so an iteration
+    # bump reaches existing accounts instead of only new ones.
+    if passwords.needs_rehash(row[1]):
+        _conn.execute("UPDATE users SET pw_hash=? WHERE id=?",
+                      (passwords.hash_pw(body.password), uid))
+    _conn.execute("UPDATE users SET last_seen=? WHERE id=?", (time.time(), uid))
+    _conn.commit()
+    u = get_user(uid)
+    return {"user_id": uid, "token": mint_token(uid, u["token_version"]),
+            "user": public_user(u)}
+
+
+class PasswordChangeIn(BaseModel):
+    current: str
+    new: str
+
+
+@router.post("/account/password")
+def account_change_password(body: PasswordChangeIn, uid: str = Depends(current_user)):
+    """Change the password while signed in. Requires the current one, so a
+    borrowed unlocked phone cannot lock the owner out of their own account."""
+    if len(body.new or "") < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400,
+            detail=f"password must be at least {MIN_PASSWORD_LENGTH} characters")
+    init()
+    row = _conn.execute("SELECT pw_hash FROM users WHERE id=?", (uid,)).fetchone()
+    if not row or not row[0]:
+        raise HTTPException(status_code=400, detail="this account has no password set")
+    if not passwords.verify_pw(body.current, row[0]):
+        raise HTTPException(status_code=401, detail="current password is incorrect")
+
+    _conn.execute("UPDATE users SET pw_hash=? WHERE id=?", (passwords.hash_pw(body.new), uid))
+    _conn.commit()
+    # Sign out everywhere else. A password change is usually a response to
+    # suspicion, and leaving other sessions alive would defeat the point. The
+    # caller gets a fresh token so the device they changed it on stays signed in.
+    bump_token_version(uid)
+    u = get_user(uid)
+    return {"ok": True, "token": mint_token(uid, u["token_version"])}
 
 
 @router.get("/account/me")

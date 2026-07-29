@@ -17,7 +17,6 @@ import json
 import logging
 import os
 import secrets
-import threading
 import time
 
 from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
@@ -28,6 +27,7 @@ import analytics_store
 import content
 import db
 import feedback
+import passwords
 import prompts
 import safety
 import security
@@ -90,60 +90,31 @@ def _audit(actor: str, action: str, detail: str = "") -> None:
 
 
 # ── password + token (stdlib) ────────────────────────────────────────────────
+#
+# The hashing, timing dummy and login throttle moved to `passwords.py` when
+# consumer email/password sign-in needed the same primitives. Keeping a second
+# copy here would have been the kind of duplication that quietly diverges — one
+# side gets an iteration bump or a timing fix and the other doesn't. These names
+# stay as aliases so the call sites below read unchanged.
 
-PBKDF2_ITERATIONS = 600_000
-_LEGACY_ITERATIONS = 200_000
+PBKDF2_ITERATIONS = passwords.PBKDF2_ITERATIONS
+_hash_pw = passwords.hash_pw
+_verify_pw = passwords.verify_pw
+_DUMMY_PW_HASH = passwords.DUMMY_PW_HASH
 
-
-def _hash_pw(pw: str, salt: str | None = None, iterations: int = PBKDF2_ITERATIONS) -> str:
-    salt = salt or secrets.token_hex(16)
-    dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), iterations)
-    return f"{iterations}${salt}${dk.hex()}"
-
-
-_DUMMY_PW_HASH = _hash_pw("aira-timing-oracle-dummy")
-
-
-def _verify_pw(pw: str, stored: str) -> bool:
-    parts = stored.split("$")
-    try:
-        if len(parts) == 3:
-            iterations, salt, h = int(parts[0]), parts[1], parts[2]
-        elif len(parts) == 2:
-            iterations, (salt, h) = _LEGACY_ITERATIONS, parts
-        else:
-            return False
-        dk = hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), iterations)
-    except (ValueError, TypeError):
-        return False
-    return hmac.compare_digest(dk.hex(), h)
-
-
-# account-keyed login throttle (OWASP; defense-in-depth alongside the per-IP limiter)
-_LOGIN_MAX_FAILS = int(os.environ.get("ADMIN_LOGIN_MAX_FAILS", "8"))
-_LOGIN_LOCK_SECONDS = int(os.environ.get("ADMIN_LOGIN_LOCK_SECONDS", "900"))
-_login_fails: dict[str, tuple[int, float]] = {}
-_login_lock = threading.Lock()
-
-
+# Admin lockouts are keyed separately from consumer ones, so a locked admin
+# address never affects a consumer account that happens to share the email.
 def _throttle_check(email: str) -> None:
-    with _login_lock:
-        _, until = _login_fails.get(email, (0, 0.0))
-    if until > time.time():
+    if passwords.throttle_locked(f"admin:{email}"):
         raise HTTPException(status_code=401, detail="invalid credentials")
 
 
 def _throttle_fail(email: str) -> None:
-    with _login_lock:
-        count, _ = _login_fails.get(email, (0, 0.0))
-        count += 1
-        until = time.time() + _LOGIN_LOCK_SECONDS if count >= _LOGIN_MAX_FAILS else 0.0
-        _login_fails[email] = (count, until)
+    passwords.throttle_fail(f"admin:{email}")
 
 
 def _throttle_reset(email: str) -> None:
-    with _login_lock:
-        _login_fails.pop(email, None)
+    passwords.throttle_reset(f"admin:{email}")
 
 
 def _token_version(email: str) -> int:
