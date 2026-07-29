@@ -8,9 +8,9 @@
 // setting, which is what it used to be.
 
 import { useEffect, useState } from "react";
-import { Brain, Download, LockKeyhole, LifeBuoy, Siren, Trash2, Users } from "lucide-react";
+import { Brain, Download, LockKeyhole, LifeBuoy, LogIn, LogOut, Siren, Trash2, Users } from "lucide-react";
 import {
-  AiraAPI, clearSession, downloadJson, VOICES,
+  AiraAPI, clearSession, downloadJson, signOut, VOICES,
   type ConsentFeature, type Journey, type Prefs, type User,
 } from "../aira-api";
 import { JOURNEY_LABEL, type ToolName } from "./types";
@@ -19,6 +19,7 @@ const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "exploring"];
 
 export default function You({
   user, consent, openTool, onProfileSaved, onConsentChanged, onDeleted,
+  onSignIn, onSignedOut,
 }: {
   user: User | null;
   consent: ConsentFeature[];
@@ -26,12 +27,14 @@ export default function You({
   onProfileSaved: (u: User) => void;
   onConsentChanged: (f: ConsentFeature[]) => void;
   onDeleted: () => void;
+  onSignIn: () => void;
+  onSignedOut: () => void;
 }) {
   const [name, setName] = useState(user?.name ?? "");
   const [journey, setJourney] = useState<Journey>((user?.journey || "exploring") as Journey);
   const [language, setLanguage] = useState(user?.language ?? "English");
   const [savingProfile, setSavingProfile] = useState(false);
-  const [busy, setBusy] = useState<"" | "export" | "delete">("");
+  const [busy, setBusy] = useState<"" | "export" | "delete" | "signout">("");
   const [note, setNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
@@ -40,6 +43,19 @@ export default function You({
   const partnerAccess = consent.find((c) => c.key === "partner_access");
 
   useEffect(() => { AiraAPI.prefs().then(setPrefs).catch(() => undefined); }, []);
+
+  const runSignOut = async () => {
+    setBusy("signout");
+    setNote("");
+    try {
+      await signOut();
+      onSignedOut();
+    } catch {
+      // signOut() clears the local token even when the server call fails, so
+      // this browser is signed out either way; the caller reloads regardless.
+      onSignedOut();
+    }
+  };
 
   const chooseVoice = async (voice: string) => {
     const previous = prefs;
@@ -211,6 +227,40 @@ export default function You({
       )}
 
       {note && <div className="banner" style={{ marginTop: 18 }}>{note}</div>}
+
+      {/* Account.
+          Signing in and out existed nowhere inside the web app: the only way in
+          was the landing page's dialog, and there was no way out at all — on a
+          shared computer, a signed-in session simply stayed signed in. */}
+      <section className="panel" style={{ marginTop: 18, padding: 24 }}>
+        <div className="section-heading"><h3>Account</h3></div>
+        {user?.kind === "account" ? (
+          <>
+            <p style={{ margin: "0 0 14px", color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
+              Signed in as <strong style={{ color: "var(--ink)" }}>{user.email}</strong>. Your care
+              context follows this account to any device you sign in on.
+            </p>
+            <button className="btn-ghost" onClick={runSignOut} disabled={busy !== ""}>
+              <LogOut size={15} /> {busy === "signout" ? "Signing out…" : "Sign out"}
+            </button>
+            <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
+              Signing out ends every session on every device, and leaves this browser using
+              Aira anonymously again.
+            </p>
+          </>
+        ) : (
+          <>
+            <p style={{ margin: "0 0 14px", color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
+              You&apos;re using Aira without an account. Everything you&apos;ve added lives in this
+              browser — an account carries it to your other devices, and means clearing your
+              browser data can&apos;t take it with it.
+            </p>
+            <button className="btn-ghost" onClick={onSignIn}>
+              <LogIn size={15} /> Create an account or sign in
+            </button>
+          </>
+        )}
+      </section>
 
       <section className="danger-zone">
         <h4>Your data</h4>

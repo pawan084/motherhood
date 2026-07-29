@@ -857,6 +857,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   border: 1px solid #ecd8a8; border-radius: 12px; background: #fdf7e9; color: #8a5f21; font-size: 13px;
 }
 .banner.error { border-color: #e7c3c0; background: #fdf1f0; color: #a53b36; }
+/* "or" between two sign-in methods, as a rule with the word sitting in it. */
+.or-rule {
+  display: flex; align-items: center; gap: 12px;
+  margin: 20px 0 14px; color: var(--muted); font-size: 12px;
+  text-transform: uppercase; letter-spacing: .1em;
+}
+.or-rule::before, .or-rule::after {
+  content: ""; flex: 1; height: 1px; background: var(--line);
+}
 .skeleton { border-radius: 12px; background: linear-gradient(90deg, #efe9e4, #f7f3ef, #efe9e4); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 

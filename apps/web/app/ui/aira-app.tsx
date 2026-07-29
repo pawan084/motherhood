@@ -19,6 +19,7 @@ import JourneyScreen from "./journey";
 import Care from "./care";
 import Updates, { buildUpdates } from "./updates";
 import You from "./you";
+import SignIn from "./sign-in";
 import ToolSheet from "./tools";
 import Urgent from "./urgent";
 import Onboarding from "./onboarding";
@@ -50,6 +51,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   const [tool, setTool] = useState<ToolName | null>(null);
   const [urgent, setUrgent] = useState<{ open: boolean; payload: UrgentHelp | null }>(
     { open: false, payload: null });
+  const [signingIn, setSigningIn] = useState(false);
 
   // Leaving a screen closes whatever was open on top of it.
   //
@@ -263,6 +265,12 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onProfileSaved={(u) => { setUser(u); refresh(); reloadJourney(); }}
               onConsentChanged={setConsent}
               onDeleted={onExit}
+              onSignIn={() => setSigningIn(true)}
+              // Signing out swaps identity underneath every screen, so the app
+              // reboots rather than trying to patch each piece of loaded state
+              // back to an anonymous user. The next request registers a fresh
+              // device session, which is the state Aira runs in by default.
+              onSignedOut={() => window.location.reload()}
             />
           )}
         </div>
@@ -275,6 +283,12 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           tool={tool}
           close={() => setTool(null)}
           onSaved={() => { refresh(); AiraAPI.consent().then((r) => setConsent(r.features)).catch(() => undefined); }}
+        />
+      )}
+      {signingIn && (
+        <SignIn
+          close={() => setSigningIn(false)}
+          onSignedIn={() => window.location.reload()}
         />
       )}
       {urgent.open && (

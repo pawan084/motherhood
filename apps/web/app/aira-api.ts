@@ -231,6 +231,84 @@ export async function signInWithGoogle(idToken: string): Promise<User> {
   return data.user as User;
 }
 
+/** Matches accounts.MIN_PASSWORD_LENGTH; the server rejects anything shorter. */
+export const MIN_PASSWORD_LENGTH = 12;
+
+/**
+ * Post to an auth endpoint that MINTS a session rather than using one.
+ *
+ * Deliberately bypasses `req`, for the same reason `signInWithGoogle` does: it
+ * must not call ensureToken(), because the whole point is to replace the
+ * session. Calling ensureToken() here would register a throwaway anonymous user
+ * on every sign-in attempt, including the failed ones.
+ */
+async function authPost(path: string, body: unknown, fallback: string): Promise<User> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(APP_TOKEN ? { "X-App-Token": APP_TOKEN } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => ({}));
+    throw new Error((detail as { detail?: string }).detail || `${fallback} (${res.status})`);
+  }
+  const data = await res.json();
+  setToken(data.token);
+  return data.user as User;
+}
+
+/**
+ * Create an email/password account, carrying this browser's anonymous care
+ * data with it.
+ *
+ * `device_token` is what makes that carry-over happen: the backend promotes the
+ * anonymous row in place — same user id — so onboarding answers, care items and
+ * memory all survive. Sign-UP keeps your data; sign-IN switches to the
+ * account's own, which is why the dialog warns before the latter.
+ */
+export async function signUp(email: string, password: string): Promise<User> {
+  return authPost("/account/signup", { email, password, device_token: getToken() },
+                  "Couldn't create your account");
+}
+
+export async function signIn(email: string, password: string): Promise<User> {
+  return authPost("/account/login", { email, password }, "Couldn't sign you in");
+}
+
+/**
+ * Sign out everywhere, then forget the token locally.
+ *
+ * The server bumps token_version, so every issued token stops verifying — a
+ * shared or lost device can't keep the session alive. Dropping the local copy
+ * afterwards means the next request registers a fresh anonymous user, which is
+ * the state the app is designed to run in anyway.
+ */
+export async function signOut(): Promise<void> {
+  try {
+    await req("/account/logout", { method: "POST" });
+  } finally {
+    // Even if the call fails — offline, revoked already — this browser must
+    // stop holding a credential the user has asked it to forget.
+    clearSession();
+  }
+}
+
+/** How much care data is on this device's anonymous session, so the sign-in
+ *  path can say what signing in would leave behind rather than discovering it
+ *  afterwards. */
+export async function localCareItemCount(): Promise<number> {
+  try {
+    const [care, timeline] = await Promise.all([AiraAPI.care(), AiraAPI.timeline()]);
+    return care.appointments.length + care.medicines_due.length +
+      care.reminders.length + care.documents_count + timeline.items.length;
+  } catch {
+    return 0;
+  }
+}
+
 export const AiraAPI = {
   // identity + profile
   me: () => req<{ user: User }>("/account/me"),
