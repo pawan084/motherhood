@@ -105,8 +105,8 @@ fun AuthScreen(
         Spacer(Modifier.height(10.dp))
         Text(
             text = if (signUp) {
-                "An account means your care context follows you if you change " +
-                    "phone. Everything you've already added comes with you."
+                "An account means everything you've saved follows you if you " +
+                    "change phone — your reminders, notes and documents."
             } else {
                 "Enter the email and password you signed up with."
             },

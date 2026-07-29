@@ -53,22 +53,30 @@ enum class AiraTool(
     val title: String,
     val eyebrow: String,
 ) {
-    Notifications("Updates", "Notification centre"),
+    // Eyebrows name the subject, not the machinery. "Aira tool", "Notification
+    // centre" and "Conversation settings" described the app's own furniture to
+    // someone who only wants to know what the sheet is for.
+    Notifications("Updates", "What needs you"),
     CheckIn("How are you?", "Daily check-in"),
-    Reminder("Create a reminder", "Aira tool"),
-    Medicines("Medicines", "Care routine"),
+    Reminder("Create a reminder", "Reminders"),
+    Medicines("Medicines", "Your routine"),
     // Eyebrows are static labels, so they must not claim a specific time or week
     // — "Tomorrow · 10:30 AM" and "Week 24 priorities" were shown to every user.
-    Appointment("Visit copilot", "Appointments"),
-    CareVault("Add to Care Vault", "Private document upload"),
-    Reset("A two-minute reset", "Guided wellness"),
-    Symptom("Log a symptom", "Track, don’t diagnose"),
+    // "Visit copilot" was product-speak: nobody arriving at a scan thinks of
+    // it as piloting anything.
+    Appointment("Prepare for a visit", "Appointments"),
+    CareVault("Add to Care Vault", "Documents"),
+    Reset("A two-minute reset", "A moment to breathe"),
+    // The eyebrow was "Track, don't diagnose" — a disclaimer where the label
+    // for the tool should be. The caution belongs in the sheet, next to the
+    // thing being cautioned about, not as the name of the feature.
+    Symptom("Log a symptom", "Symptoms & changes"),
     Companion("Companion mode", "Avatar & connection"),
     CarePlan("Your care plan", "Built from your reminders"),
-    Privacy("Privacy centre", "Your data, your control"),
-    Memory("What Aira remembers", "Care context"),
-    Voice("Voice & language", "Conversation settings"),
-    Partner("Partner actions", "Practical support"),
+    Privacy("Privacy centre", "Your data"),
+    Memory("What Aira remembers", "Everything it knows"),
+    Voice("Language", "How Aira speaks with you"),
+    Partner("Partner access", "Sharing with someone"),
     Support("Human support", "Help centre"),
     Emergency("Emergency profile", "Available offline"),
 }
@@ -274,7 +282,7 @@ fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
             OnboardingPrompt(
                 field = OnboardingField.Journey,
                 question = "Where are you in your journey?",
-                helper = "This helps Aira shape a private care context.",
+                helper = "So Aira can keep what it shows you relevant to where you are.",
                 options = JourneyType.entries.map { it.label },
             ),
         )

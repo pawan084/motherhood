@@ -232,7 +232,7 @@ fun CareScreen(
         }
 
         Spacer(modifier = Modifier.height(22.dp))
-        SectionLabel("Your care hub")
+        SectionLabel("Everything else")
 
         ToolListRow(
             icon = Icons.Outlined.Medication,
@@ -361,7 +361,7 @@ fun CareScreen(
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
                     Text(
-                        text = "Encrypted care context",
+                        text = "Your documents stay private",
                         style = MaterialTheme.typography.titleSmall,
                         color = Ink,
                     )

@@ -135,21 +135,20 @@ fun AiraChatScreen(
                             }
                             Spacer(modifier = Modifier.width(11.dp))
                             Column {
+                                // Two stacked labels — "NEXT BEST ACTION" and
+                                // "Based on your context" — sat above a title
+                                // that already says what the card offers. Both
+                                // described the card rather than its subject.
                                 Text(
-                                    text = "NEXT BEST ACTION",
+                                    text = "Suggested for you",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Plum,
-                                )
-                                Text(
-                                    text = "Based on your context",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = InkMuted,
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "Appointment copilot",
+                            text = "Prepare for your visit",
                             style = MaterialTheme.typography.titleLarge,
                             color = Ink,
                         )

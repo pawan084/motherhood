@@ -454,9 +454,14 @@ private fun destinationSubtitle(
                 !journey.isNullOrBlank() -> journeyLabel(journey)
                 else -> ""
             }
-        MainDestination.Aira -> "Your care companion"
-        MainDestination.Care -> "Private care hub"
-        MainDestination.You -> "Your care, your control"
+        // Three different descriptions of the same app used to sit here —
+        // "Your care companion", "Private care hub", "Your care, your control" —
+        // changing under the logo as you moved between tabs, which reads as
+        // three products rather than one. The subtitle now says which screen
+        // you are on, which is the only thing that actually differs.
+        MainDestination.Aira -> "Chat"
+        MainDestination.Care -> "Your care"
+        MainDestination.You -> "Settings"
     }
 
 

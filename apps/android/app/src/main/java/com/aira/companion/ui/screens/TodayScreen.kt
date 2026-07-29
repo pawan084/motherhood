@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -70,7 +71,14 @@ fun TodayScreen(
     // stranger's name on a private health app.
     val name = today?.name?.ifBlank { null }
     val priorities = today?.priorities.orEmpty()
-    val headerText = if (weeks != null) "Week $weeks" else journeyLabel(today?.journey)
+    // The chip used to read "Week 24" — the same string the app bar shows two
+    // rows above it, and the same one the ring below repeats. Today had no date
+    // anywhere, so the word "today" was never anchored to one; that is what
+    // this line is for now.
+    val headerText = remember {
+        java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("EEEE d MMMM"))
+    }
     val contextLine = today?.contextLine?.ifBlank { null }
     val action = today?.nextAction
     val actionTitle = action?.title?.ifBlank { null }
@@ -118,11 +126,19 @@ fun TodayScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = InkMuted,
         )
-        // "You're on track" was unconditional — it claimed a state the screen
-        // had no way to know, including with nothing scheduled at all and with
-        // the backend down.
+        // The headline says where you are, not how you're doing.
+        //
+        // It was "You're on track." — unconditional, so it claimed a state the
+        // screen had no way to know, and after that was gated it still spent
+        // the largest text on the screen saying nothing the user could act on.
+        // The stage line was already computed for the ring below; putting it
+        // here means the biggest words on Today are the truest ones.
         Text(
-            text = if (loaded) "You’re on track." else "Just a moment…",
+            text = when {
+                !loaded -> "Just a moment…"
+                contextLine != null -> contextLine
+                else -> "Here's your day."
+            },
             style = MaterialTheme.typography.headlineLarge,
             color = Ink,
         )
@@ -131,7 +147,7 @@ fun TodayScreen(
             text = if (loaded) {
                 "Nothing urgent needs your attention right now."
             } else {
-                "Aira is loading your care context. Nothing here is your data yet."
+                "Aira is fetching your care. Nothing here is your data yet."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = InkMuted,
@@ -141,7 +157,7 @@ fun TodayScreen(
 
         GradientHeroSurface(modifier = Modifier.fillMaxWidth()) {
             Column {
-                SectionLabel("Your current context")
+                SectionLabel("Where you are")
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -172,14 +188,17 @@ fun TodayScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
+                        // The stage line moved up to the headline, so this card
+                        // stops repeating it. It says where the tap goes
+                        // instead, which is the one thing the row wasn't saying.
                         Text(
-                            text = contextLine ?: "Your care context",
+                            text = "Your journey",
                             style = MaterialTheme.typography.titleLarge,
                             color = Ink,
                         )
                         Text(
                             text = if (loaded) {
-                                "Only what's most useful to know right now."
+                                "What's worth knowing right now"
                             } else {
                                 "Not loaded yet."
                             },
@@ -200,11 +219,21 @@ fun TodayScreen(
                 // are real and worth showing.
                 if (priorities.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
+                    // One heading for the group, rather than the word "focus"
+                    // stamped under every chip. Repeating a label under each
+                    // item says nothing the group heading didn't, and "focus"
+                    // on its own reads as an instruction rather than a caption.
+                    Text(
+                        text = "You asked Aira to focus on",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         priorities.take(3).forEach { priority ->
                             MetricPill(
                                 value = priority,
-                                label = "focus",
+                                label = "",
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -214,7 +243,7 @@ fun TodayScreen(
         }
 
         Spacer(modifier = Modifier.height(26.dp))
-        SectionLabel("One meaningful next action")
+        SectionLabel("Do this next")
         Spacer(modifier = Modifier.height(10.dp))
 
         AiraCard {
@@ -234,11 +263,11 @@ fun TodayScreen(
                 }
                 Spacer(modifier = Modifier.width(13.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Next best action",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Plum,
-                    )
+                    // The eyebrow said "Next best action" directly under a
+                    // heading that already said "Do this next", above a title
+                    // that says what the action is — three labels before any
+                    // content. Only the duration survives, because that is
+                    // information rather than a description of the card.
                     if (actionMinutes != null) {
                         Text(
                             text = "About $actionMinutes min",
@@ -259,7 +288,7 @@ fun TodayScreen(
                 text = actionDetail ?: if (loaded) {
                     "Aira will surface one step here when it has something useful."
                 } else {
-                    "Aira hasn't been able to load your care context."
+                    "Aira hasn't been able to load your care."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = InkMuted,

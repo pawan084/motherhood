@@ -64,6 +64,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
@@ -334,9 +335,16 @@ fun SectionLabel(
     modifier: Modifier = Modifier,
 ) {
     Text(
-        text = text.uppercase(),
+        // Sentence case, not uppercase.
+        //
+        // Screen readers pronounce short all-caps strings as initialisms
+        // ("D-U-E N-O-W"), and capitals remove the word shapes that make
+        // reading fast — which matters most to the people using this app at
+        // 3am on no sleep. The letter-spacing keeps the label distinct from
+        // body copy without shouting it.
+        text = text,
         modifier = modifier,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.08.em),
         color = PlumSoft,
     )
 }
@@ -358,13 +366,17 @@ fun MetricPill(
                 style = MaterialTheme.typography.titleSmall,
                 color = Ink,
             )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.bodySmall,
-                color = InkMuted,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // A blank label draws nothing rather than an empty line — callers
+            // that have a group heading don't need a caption per chip.
+            if (label.isNotBlank()) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }

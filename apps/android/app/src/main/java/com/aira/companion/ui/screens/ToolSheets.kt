@@ -172,7 +172,7 @@ fun ToolTraySheet(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
-                    SectionLabel("Tools in this conversation")
+                    SectionLabel("Add to your care")
                     Text(
                         text = "What would help now?",
                         style = MaterialTheme.typography.headlineMedium,
@@ -1106,7 +1106,7 @@ private fun MemoryTool(actions: ToolActions, memory: List<MemoryItem>) {
     LaunchedEffect(Unit) { actions.loadMemory() }
 
     if (memory.isEmpty()) {
-        InfoBanner(Icons.Outlined.Memory, "Aira is not currently remembering any care context.", SageMist)
+        InfoBanner(Icons.Outlined.Memory, "Aira isn't remembering anything about you yet.", SageMist)
         return
     }
     Text(

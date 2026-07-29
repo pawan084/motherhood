@@ -96,7 +96,7 @@ fun OnboardingChatScreen(
             Column(modifier = Modifier.weight(1f)) {
                 Text("Aira", style = MaterialTheme.typography.titleMedium, color = Ink)
                 Text(
-                    if (finished) "Your care context is ready" else "Getting to know you",
+                    if (finished) "You're all set" else "Getting to know you",
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
                 )
@@ -206,7 +206,7 @@ fun OnboardingChatScreen(
                             Spacer(modifier = Modifier.width(13.dp))
                             Column {
                                 Text(
-                                    text = "Your private care context is ready",
+                                    text = "Aira is ready for you",
                                     style = MaterialTheme.typography.titleMedium,
                                     color = Ink,
                                 )
@@ -295,7 +295,7 @@ private fun optionSupport(
                 // Was "Week-by-week body and baby context" — pregnancy copy shown
                 // to postpartum and trying-to-conceive users too.
                 "Understand changes" -> "What's typical for where you are now"
-                "Prepare for a visit" -> "Questions, notes and appointment copilot"
+                "Prepare for a visit" -> "Questions worth asking, and notes to bring"
                 "Feel calmer" -> "Gentle check-ins and guided resets"
                 "Plan my care" -> "Medicines, reminders and documents"
                 else -> null

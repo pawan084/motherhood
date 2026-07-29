@@ -163,7 +163,7 @@ fun YouScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        SectionLabel("Your care, your control")
+        SectionLabel("Privacy and settings")
 
         ToolListRow(
             icon = Icons.Outlined.Lock,
@@ -174,7 +174,7 @@ fun YouScreen(
         ToolListRow(
             icon = Icons.Outlined.Memory,
             title = "What Aira remembers",
-            subtitle = "Review or forget care context",
+            subtitle = "Review or forget what it knows",
             onClick = { onOpenTool(AiraTool.Memory) },
         )
         ToolListRow(
@@ -299,7 +299,7 @@ fun YouScreen(
             AiraCard {
                 Text(
                     text = "You're using Aira without an account, which is fine — " +
-                        "everything works. An account only means your care context " +
+                        "everything works. An account only means what you've saved " +
                         "follows you if you change phone.",
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
