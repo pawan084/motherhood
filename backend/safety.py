@@ -18,6 +18,7 @@ only half of the safety flow, and drifted. One gate here means both clients
 route urgent input identically and correctly.
 """
 import logging
+import re
 import os
 import time
 
@@ -40,33 +41,79 @@ def worse(a: str, b: str) -> str:
     return a if _RANK.get(a, 0) >= _RANK.get(b, 0) else b
 
 
-# Curated phrase lists. English plus common Hindi/Hinglish transliterations,
-# since Aira's audience uses all three. Substring match on a lowercased message,
-# so keep entries specific enough to avoid false positives ("bleeding" is fine;
-# a bare "pain" is not — it would flag every "growing pains" message).
+# Curated phrase lists, matched against a NORMALISED message — see _normalise.
+# English plus common Hindi/Hinglish transliterations, since Aira's audience
+# uses all three.
+#
+# Every entry here is written without apostrophes because the message has had
+# them stripped before matching. That one step closes a whole class of misses:
+# the list previously held "can't breathe" and a user typing "i cant breathe"
+# — which is how most people type on a phone — was screened GREEN and handed a
+# normal AI reply.
 _RED_PHRASES = (
-    "heavy bleeding", "bleeding heavily", "won't stop bleeding", "cannot stop bleeding",
-    "gushing blood", "lot of blood", "severe bleeding", "bahut khoon", "khoon bah raha",
-    "chest pain", "can't breathe", "cannot breathe", "trouble breathing", "saans nahi",
+    "heavy bleeding", "bleeding heavily", "wont stop bleeding", "cannot stop bleeding",
+    "gushing blood", "lot of blood", "so much blood", "severe bleeding",
+    "soaking a pad", "soaking pads", "filling a pad", "bahut khoon", "khoon bah raha",
+    "chest pain", "chest hurts", "cant breathe", "cannot breathe", "trouble breathing",
+    "struggling to breathe", "saans nahi",
     "severe pain", "unbearable pain", "worst headache", "vision blur", "blurred vision",
-    "seeing spots", "fainted", "passed out", "seizure", "convulsion",
-    "water broke", "water breaking", "no movement", "baby not moving", "not moving",
-    "kill myself", "end my life", "suicidal", "want to die", "harm my baby",
-    "hurt my baby", "hurt the baby", "overdose", "can't go on",
+    "blurry vision", "seeing spots", "flashing lights", "fainted", "passed out",
+    "seizure", "convulsion",
+    "water broke", "water breaking",
+    "kill myself", "end my life", "end it all", "suicidal", "want to die",
+    "hurt myself", "harm myself", "hurting myself", "harming myself",
+    "harm my baby", "hurt my baby", "hurt the baby", "overdose", "cant go on",
+    "dont want to be here", "no reason to live",
 )
+
+# Some red flags are a shape, not a phrase. Fetal movement is the clearest
+# case: "baby isnt moving", "havent felt the baby move", "no kicks since last
+# night" and "the baby stopped moving" all describe the same emergency and
+# share almost no words. Substring matching cannot express that, and reduced
+# fetal movement is among the most important things this floor has to catch.
+_RED_PATTERNS = (
+    re.compile(r"\b(baby|bub|bump|little one)\b[^.?!]{0,30}"
+               r"\b(isnt|is not|hasnt|has not|not|stopped|arent|are not)\b"
+               r"[^.?!]{0,15}\b(mov\w*|kick\w*|active)\b"),
+    re.compile(r"\b(no|any|fewer|less|reduced|hardly any)\b[^.?!]{0,15}"
+               r"\b(kicks?|movements?|movement)\b"),
+    re.compile(r"\b(havent|have not|hasnt|has not|not)\b[^.?!]{0,20}"
+               r"\bfelt\b[^.?!]{0,20}\b(baby|move|moving|kick|kicks)\b"),
+    # Self-harm phrased as intent rather than with the listed nouns.
+    re.compile(r"\b(want|going|thinking|plan|planning)\b[^.?!]{0,20}"
+               r"\b(end|kill|hurt|harm)\b[^.?!]{0,12}"
+               r"\b(it|me|myself|my life|things|it all)\b"),
+)
+
 _AMBER_PHRASES = (
     "bleeding", "spotting", "cramping", "cramps", "contractions", "headache",
     "dizzy", "dizziness", "swelling", "swollen", "fever", "vomiting", "throwing up",
     "reduced movement", "less movement", "leaking", "blurry", "anxious", "panic",
-    "depressed", "hopeless", "can't sleep", "cant sleep", "so tired", "burning pee",
+    "depressed", "hopeless", "cant sleep", "so tired", "burning pee",
     "pain when", "hurts a lot", "dard", "bukhar", "chakkar",
 )
 
+# Apostrophes (straight and curly) are removed rather than replaced, so
+# "isn't" becomes "isnt" and matches an entry written that way. Everything else
+# non-alphanumeric collapses to a space so punctuation can't split a phrase.
+_APOSTROPHES = str.maketrans("", "", "'’ʼ`")
+
+
+def _normalise(message: str) -> str:
+    lowered = (message or "").lower().translate(_APOSTROPHES)
+    return re.sub(r"[^a-z0-9]+", " ", lowered).strip()
+
 
 def _keyword_level(message: str) -> tuple[str, list[str]]:
-    """Deterministic floor. Returns (level, matched_categories)."""
-    m = (message or "").lower()
+    """Deterministic floor. Returns (level, matched_categories).
+
+    This is the ONLY screening when no classifier is configured — which is the
+    state this app currently ships in — so a miss here is not a degraded
+    experience, it is no screening at all for that message.
+    """
+    m = _normalise(message)
     red = [p for p in _RED_PHRASES if p in m]
+    red += [p.pattern[:28] for p in _RED_PATTERNS if p.search(m)]
     if red:
         return RED, red
     amber = [p for p in _AMBER_PHRASES if p in m]
