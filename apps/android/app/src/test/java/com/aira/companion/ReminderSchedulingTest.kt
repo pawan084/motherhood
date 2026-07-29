@@ -65,4 +65,59 @@ class ReminderSchedulingTest {
     fun nonsenseTimesAreRejectedRatherThanClamped() {
         assertNull(ReminderScheduler.nextOccurrence("99:99", wednesdayNoon))
     }
+
+    // ── appointments ────────────────────────────────────────────────────────
+    //
+    // A visit is the one thing here with a fixed date and a real cost to
+    // missing it: a scan is rebooked weeks out, not tomorrow.
+
+    private fun epochOf(y: Int, m: Int, d: Int): Long =
+        java.time.LocalDate.of(y, m, d)
+            .atStartOfDay(java.time.ZoneId.systemDefault())
+            .toEpochSecond()
+
+    @Test
+    fun aVisitIsFlaggedTheEveningBefore() {
+        // The evening before, not the morning of: what a reminder buys you is
+        // time to arrange the lift or the childcare, and at 8am on the day that
+        // is already too late.
+        val at = ReminderScheduler.appointmentReminderAt(
+            epochOf(2026, 8, 14),
+            now = LocalDateTime.of(2026, 8, 1, 9, 0),
+        )
+        assertEquals(LocalDateTime.of(2026, 8, 13, 18, 0), at)
+    }
+
+    @Test
+    fun aVisitTomorrowIsNotFlaggedRetroactively() {
+        // The nudge window has passed. Firing immediately for something the
+        // user just typed is noise, not a reminder.
+        assertNull(
+            ReminderScheduler.appointmentReminderAt(
+                epochOf(2026, 8, 2),
+                now = LocalDateTime.of(2026, 8, 1, 21, 0),
+            ),
+        )
+    }
+
+    @Test
+    fun aPastVisitIsNeverFlagged() {
+        assertNull(
+            ReminderScheduler.appointmentReminderAt(
+                epochOf(2026, 7, 1),
+                now = LocalDateTime.of(2026, 8, 1, 9, 0),
+            ),
+        )
+    }
+
+    @Test
+    fun theEveningBeforeStillCountsUntilSixOClock() {
+        // Booked for tomorrow, and it is 17:00 today — there is still an
+        // evening to have, so the nudge stands.
+        val at = ReminderScheduler.appointmentReminderAt(
+            epochOf(2026, 8, 2),
+            now = LocalDateTime.of(2026, 8, 1, 17, 0),
+        )
+        assertEquals(LocalDateTime.of(2026, 8, 1, 18, 0), at)
+    }
 }

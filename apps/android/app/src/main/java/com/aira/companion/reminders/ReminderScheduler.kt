@@ -80,12 +80,74 @@ object ReminderScheduler {
      * own list the single source of truth rather than something accumulated
      * locally over time.
      */
-    fun syncAll(context: Context, reminders: List<CareItem>) {
+    fun syncAll(
+        context: Context,
+        reminders: List<CareItem>,
+        appointments: List<CareItem> = emptyList(),
+    ) {
         ensureChannel(context)
         val wm = WorkManager.getInstance(context)
         wm.cancelAllWorkByTag(WORK_PREFIX)
         if (!canNotify(context)) return
         reminders.filterNot { it.done }.forEach { schedule(context, it) }
+        appointments.forEach { scheduleAppointment(context, it) }
+    }
+
+    /**
+     * A nudge the evening before a visit.
+     *
+     * Appointments are the one thing in this app with a fixed date and real
+     * consequences for missing it — a scan is rebooked weeks out, not
+     * tomorrow. The evening before rather than the morning of, because what a
+     * reminder actually buys you is the time to arrange the lift, the childcare
+     * or the afternoon off, and at 8am on the day that is all too late.
+     *
+     * Only for appointments that carry a real date. One notification, not a
+     * repeating one: unlike a daily medicine, a visit happens once.
+     */
+    private fun scheduleAppointment(context: Context, item: CareItem) {
+        val at = item.at ?: return
+        val visit = java.time.Instant.ofEpochSecond(at.toLong())
+            .atZone(java.time.ZoneId.systemDefault())
+            .toLocalDate()
+        val remindAt = LocalDateTime.of(visit.minusDays(1), APPOINTMENT_REMINDER_TIME)
+        val delay = Duration.between(LocalDateTime.now(), remindAt)
+        // Nothing for a visit booked for tomorrow or already past: firing
+        // immediately for something the user just typed is noise, not a
+        // reminder.
+        if (delay.isNegative) return
+        val request = OneTimeWorkRequestBuilder<ReminderWorker>()
+            .setInitialDelay(delay)
+            .addTag(WORK_PREFIX)
+            .setInputData(
+                Data.Builder()
+                    .putString(KEY_ID, item.id)
+                    .putString(KEY_TITLE, "Tomorrow: ${item.title}")
+                    // No time in this line, so the worker's "book the next one"
+                    // finds nothing to parse and the notification stays a
+                    // one-off — which is what a single visit needs.
+                    .putString(KEY_DETAIL, item.subtitle)
+                    .build(),
+            )
+            .build()
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork(WORK_PREFIX + item.id, ExistingWorkPolicy.REPLACE, request)
+    }
+
+    /** 18:00 the day before. Late enough to be the evening, early enough that
+     *  it isn't competing with getting a household to bed. */
+    internal val APPOINTMENT_REMINDER_TIME: LocalTime = LocalTime.of(18, 0)
+
+    /** When the nudge for a visit on [visitEpochSeconds] would fire, or null if
+     *  that moment has already passed. Exposed for tests. */
+    fun appointmentReminderAt(
+        visitEpochSeconds: Long,
+        now: LocalDateTime = LocalDateTime.now(),
+        zone: java.time.ZoneId = java.time.ZoneId.systemDefault(),
+    ): LocalDateTime? {
+        val visit = java.time.Instant.ofEpochSecond(visitEpochSeconds).atZone(zone).toLocalDate()
+        val remindAt = LocalDateTime.of(visit.minusDays(1), APPOINTMENT_REMINDER_TIME)
+        return if (remindAt.isAfter(now)) remindAt else null
     }
 
     private fun schedule(context: Context, item: CareItem) {

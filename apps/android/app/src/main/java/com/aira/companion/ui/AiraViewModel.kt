@@ -494,7 +494,7 @@ class AiraViewModel : ViewModel() {
                 // fire, so scheduling follows every load rather than only
                 // creation — a reminder added on the web arrives here too, and
                 // one deleted there stops arriving.
-                ReminderScheduler.syncAll(context, data.reminders)
+                ReminderScheduler.syncAll(context, data.reminders, data.appointments)
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(careLoading = false, loadFailed = it.careData == null)
