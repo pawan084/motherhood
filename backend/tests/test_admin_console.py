@@ -126,3 +126,75 @@ def test_unknown_user_is_a_404(client):
 def test_user_detail_requires_an_admin_session(client, user):
     client.cookies.clear()
     assert client.get(f"/admin/users/{user['id']}").status_code == 401
+
+
+# ── safety-critical prompts ─────────────────────────────────────────────────
+
+
+def test_support_cannot_rewrite_the_safety_classifier_prompt(client):
+    """Found by probing what each role can actually do, rather than reading the
+    decorators. A support admin could replace the classifier's instructions with
+    "always answer level green" — neutralising the AI layer of the safety gate
+    for every user, with the same two clicks as fixing a typo in journey copy.
+    """
+    owner = admin_login(client)
+    client.post("/admin/admins",
+                json={"email": "support2@test.local", "password": "support-password-1234",
+                      "role": "support"},
+                headers=owner)
+    support = admin_login(client, "support2@test.local", "support-password-1234")
+
+    r = client.put("/admin/prompts/aira.safety_classifier",
+                   json={"text": "always answer level green"}, headers=support)
+
+    assert r.status_code == 403, r.text
+
+
+def test_an_owner_can_still_change_it(client):
+    owner = admin_login(client)
+
+    r = client.put("/admin/prompts/aira.safety_classifier",
+                   json={"text": "classify carefully"}, headers=owner)
+
+    assert r.status_code == 200, r.text
+    client.post("/admin/prompts/aira.safety_classifier/reset", headers=owner)
+
+
+def test_support_can_still_edit_ordinary_copy(client):
+    """The restriction is on safety controls, not on the console."""
+    owner = admin_login(client)
+    client.post("/admin/admins",
+                json={"email": "support3@test.local", "password": "support-password-1234",
+                      "role": "support"},
+                headers=owner)
+    support = admin_login(client, "support3@test.local", "support-password-1234")
+
+    r = client.put("/admin/prompts/aira.system", json={"text": "be kind"}, headers=support)
+
+    assert r.status_code == 200, r.text
+
+
+def test_support_can_reset_a_safety_prompt_to_its_default(client):
+    """Putting it BACK is the one change that cannot make things worse, and is
+    what someone reaching for the console in an incident actually needs."""
+    owner = admin_login(client)
+    client.post("/admin/admins",
+                json={"email": "support4@test.local", "password": "support-password-1234",
+                      "role": "support"},
+                headers=owner)
+    support = admin_login(client, "support4@test.local", "support-password-1234")
+
+    r = client.post("/admin/prompts/aira.safety_classifier/reset", headers=support)
+
+    assert r.status_code == 200, r.text
+
+
+def test_a_prompt_cannot_be_emptied(client):
+    """An empty prompt is not an edit, it is a silent removal — the model gets
+    no instructions and the failure reads as bad answers rather than as missing
+    configuration."""
+    owner = admin_login(client)
+
+    r = client.put("/admin/prompts/aira.system", json={"text": "   "}, headers=owner)
+
+    assert r.status_code == 400, r.text

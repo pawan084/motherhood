@@ -377,8 +377,33 @@ class PromptIn(BaseModel):
     text: str
 
 
+# Prompts that are safety controls rather than copy.
+#
+# Editing the tone of the pregnancy journey text and editing the instructions
+# the safety classifier runs on are not the same risk, and they sat behind the
+# same role: a support admin could replace the classifier's prompt with "always
+# answer level green" and neutralise the AI layer of the gate for every user,
+# with the same two clicks as fixing a typo. The keyword floor would still
+# apply, but the classifier is precisely the layer that catches what a word
+# list cannot.
+SAFETY_CRITICAL_PROMPTS = {"aira.safety_classifier"}
+
+
+def _guard_prompt_key(key: str, admin: dict) -> None:
+    if key in SAFETY_CRITICAL_PROMPTS and admin.get("role") != "owner":
+        raise HTTPException(
+            status_code=403,
+            detail="this prompt is a safety control and can only be changed by an owner")
+
+
 @router.put("/prompts/{key}")
 def put_prompt(key: str, body: PromptIn, admin=Depends(require_admin("support"))):
+    _guard_prompt_key(key, admin)
+    # An empty prompt is not an edit, it is a silent removal: the model gets no
+    # instructions and the failure looks like bad answers rather than a missing
+    # configuration.
+    if not body.text.strip():
+        raise HTTPException(status_code=400, detail="a prompt cannot be empty")
     prompts.set_row(key, body.text, actor=admin["sub"])
     _audit(admin["sub"], "prompt.edit", key)
     return {"ok": True}
@@ -386,6 +411,8 @@ def put_prompt(key: str, body: PromptIn, admin=Depends(require_admin("support"))
 
 @router.post("/prompts/{key}/reset")
 def reset_prompt(key: str, admin=Depends(require_admin("support"))):
+    # Reset is always allowed for support: putting a safety prompt BACK to its
+    # in-code default is the one change to it that cannot make things worse.
     default = prompts.default_for(key)
     if default is None:
         raise HTTPException(status_code=404, detail="no in-code default for key")

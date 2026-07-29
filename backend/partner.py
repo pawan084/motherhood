@@ -47,7 +47,7 @@ import secrets
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import accounts
 import care
@@ -155,6 +155,16 @@ def delete_user(uid: str) -> int:
 # ── owner routes ─────────────────────────────────────────────────────────────
 
 class InviteIn(BaseModel):
+    # Unknown keys are rejected rather than ignored.
+    #
+    # The defaults here are permissive, so a body in the wrong shape — a client
+    # sending {"scopes": {...}} instead of flat fields, say — used to be
+    # silently accepted and every default applied, handing a partner MORE than
+    # the user had ticked. For a control whose entire job is limiting what
+    # somebody else can see, a misunderstood request has to fail loudly rather
+    # than fall back to sharing.
+    model_config = ConfigDict(extra="forbid")
+
     appointments: bool = True
     reminders: bool = True
     health_details: bool = False

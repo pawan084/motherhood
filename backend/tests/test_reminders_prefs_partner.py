@@ -326,3 +326,30 @@ def test_delete_removes_prefs_and_revokes_issued_invites(client):
     assert partner_mod.export_user(uid)["invites_issued"] == []
     # The partner's view of a deleted account goes away with it.
     assert client.get("/v1/partner/shared", headers=partner_h).json()["items"] == []
+
+
+def test_a_misshaped_invite_body_is_refused_not_defaulted(client, user):
+    """The scope fields are flat; a client sending them nested used to be
+    accepted with every permissive default applied, granting a partner more
+    than the owner had ticked. A control that limits what someone else sees has
+    to fail loudly when it doesn't understand the request."""
+    h = user["headers"]
+    client.post("/v1/consent", json={"feature": "partner_access", "granted": True}, headers=h)
+
+    r = client.post("/v1/partner/invite",
+                    json={"scopes": {"appointments": True, "reminders": False}},
+                    headers=h)
+
+    assert r.status_code == 422, r.text
+
+
+def test_a_well_formed_invite_keeps_exactly_the_scopes_asked_for(client, user):
+    h = user["headers"]
+    client.post("/v1/consent", json={"feature": "partner_access", "granted": True}, headers=h)
+
+    r = client.post("/v1/partner/invite",
+                    json={"appointments": True, "reminders": False, "health_details": False},
+                    headers=h)
+
+    assert r.json()["scopes"] == {
+        "appointments": True, "reminders": False, "health_details": False}
