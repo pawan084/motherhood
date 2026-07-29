@@ -1,0 +1,16 @@
+<resources>
+    <!--
+      The dark values of the launch surfaces. These are XML rather than Compose
+      because they are painted before any of our code runs: the splash window
+      and the navigation bar. Without them a phone in dark mode showed a bright
+      ivory splash and then dropped into a dark app — the flash of white that a
+      dark theme exists to avoid, at the one moment the user can't do anything
+      about it.
+
+      Kept in step with DarkAiraColors.ivory / .plum by hand; there is no way to
+      share a value between a Compose palette and a resource file.
+    -->
+    <color name="aira_ivory">#17141A</color>
+    <color name="aira_plum">#D9BCE0</color>
+    <color name="aira_sage">#9DB79C</color>
+</resources>

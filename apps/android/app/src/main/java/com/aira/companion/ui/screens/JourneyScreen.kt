@@ -138,9 +138,10 @@ fun JourneyScreen(
             SectionLabel("Read about")
             Spacer(modifier = Modifier.height(9.dp))
 
+            val palettes = sectionPalette()
             sections.forEachIndexed { index, section ->
                 if (index > 0) Spacer(modifier = Modifier.height(10.dp))
-                val palette = SECTION_PALETTE[index % SECTION_PALETTE.size]
+                val palette = palettes[index % palettes.size]
                 JourneyCard(
                     icon = palette.icon,
                     title = section.title,
@@ -200,7 +201,10 @@ private data class SectionPalette(
     val tint: Color,
 )
 
-private val SECTION_PALETTE = listOf(
+/** Composable because the colours now depend on the active theme; the icons
+ *  are the only fixed part. */
+@Composable
+private fun sectionPalette(): List<SectionPalette> = listOf(
     SectionPalette(Icons.Outlined.PersonOutline, SageMist, SageDeep),
     SectionPalette(Icons.Outlined.FavoriteBorder, LilacMist, Plum),
     SectionPalette(Icons.Outlined.Checklist, AmberMist, Plum),

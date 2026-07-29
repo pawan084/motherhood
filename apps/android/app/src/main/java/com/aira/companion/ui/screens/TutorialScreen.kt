@@ -64,8 +64,19 @@ private data class TutorialCard(
     val title: String,
     val body: String,
     val icon: ImageVector?,
-    val accent: androidx.compose.ui.graphics.Color,
+    /** Which palette tint the card carries. An index rather than a Color, so
+     *  the list can stay a plain top-level constant while the colours follow
+     *  the active theme. */
+    val accent: Accent,
 )
+
+private enum class Accent { Lilac, Sage }
+
+@Composable
+private fun Accent.color() = when (this) {
+    Accent.Lilac -> LilacMist
+    Accent.Sage -> SageMist
+}
 
 private val CARDS = listOf(
     TutorialCard(
@@ -75,7 +86,7 @@ private val CARDS = listOf(
             "between — questions at odd hours, reminders that matter, and one " +
             "clear next step instead of a feed to keep up with.",
         icon = null, // the brand orb stands in, so the first card leads with identity
-        accent = LilacMist,
+        accent = Accent.Lilac,
     ),
     TutorialCard(
         eyebrow = "PRIVATE BY DESIGN",
@@ -84,7 +95,7 @@ private val CARDS = listOf(
             "and you can export everything at any time. Your health data is never " +
             "used for advertising — that one isn't a setting you have to find.",
         icon = Icons.Outlined.Lock,
-        accent = LilacMist,
+        accent = Accent.Lilac,
     ),
     TutorialCard(
         eyebrow = "NOT A DOCTOR",
@@ -93,7 +104,7 @@ private val CARDS = listOf(
             "message is screened first, and anything urgent goes straight to your " +
             "care team rather than to another AI answer.",
         icon = Icons.Outlined.HealthAndSafety,
-        accent = SageMist,
+        accent = Accent.Sage,
     ),
 )
 
@@ -179,7 +190,7 @@ private fun TutorialPage(card: TutorialCard) {
     ) {
         Surface(
             modifier = Modifier.size(if (card.icon == null) 132.dp else 96.dp),
-            color = card.accent,
+            color = card.accent.color(),
             shape = CircleShape,
         ) {
             Box(contentAlignment = Alignment.Center) {
@@ -189,7 +200,7 @@ private fun TutorialPage(card: TutorialCard) {
                     Icon(
                         imageVector = card.icon,
                         contentDescription = null,
-                        tint = if (card.accent == SageMist) SageDeep else Plum,
+                        tint = if (card.accent == Accent.Sage) SageDeep else Plum,
                         modifier = Modifier.size(38.dp),
                     )
                 }

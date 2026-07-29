@@ -74,6 +74,7 @@ import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Lilac
 import com.aira.companion.ui.theme.LilacMist
+import com.aira.companion.ui.theme.LocalAiraColors
 import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
@@ -90,34 +91,38 @@ fun BrandOrb(
     compact: Boolean = false,
 ) {
     val size = if (compact) 32.dp else 82.dp
+    // Resolved in composition: Canvas's draw block is not composable, so the
+    // palette has to be read before entering it.
+    val halo = Lilac
+    val glow = Sage
+    val core = Plum
+    val highlight = Paper
+    val orbOuter = if (LocalAiraColors.current.isDark) Color(0xFF2B2333) else Color(0xFFF9F2FA)
+    val orbEdge = if (LocalAiraColors.current.isDark) Color(0xFF4B3B55) else Color(0xFFD6C1DE)
     Canvas(modifier = modifier.size(size)) {
         val radius = this.size.minDimension / 2f
         drawCircle(
             brush =
                 Brush.radialGradient(
                     colors =
-                        listOf(
-                            Color(0xFFF9F2FA),
-                            Lilac,
-                            Color(0xFFD6C1DE),
-                        ),
+                        listOf(orbOuter, halo, orbEdge),
                     center = center,
                     radius = radius,
                 ),
             radius = radius,
         )
         drawCircle(
-            color = Sage.copy(alpha = 0.34f),
+            color = glow.copy(alpha = 0.34f),
             radius = radius * 0.59f,
             center = center + Offset(radius * 0.08f, -radius * 0.04f),
         )
         drawCircle(
-            color = Plum.copy(alpha = 0.88f),
+            color = core.copy(alpha = 0.88f),
             radius = radius * 0.29f,
             center = center,
         )
         drawCircle(
-            color = Paper,
+            color = highlight,
             radius = radius * 0.10f,
             center = center,
         )
@@ -497,7 +502,11 @@ fun GradientHeroSurface(
                     shape = RoundedCornerShape(30.dp),
                 ).border(
                     width = 1.dp,
-                    color = Color.White.copy(alpha = 0.75f),
+                    // Was Color.White at 75%: a highlight that reads as a soft
+                    // sheen on the light gradient and as a hard white outline on
+                    // the dark one. The palette's own outline works in both,
+                    // because it moves with the theme.
+                    color = OutlineSoft.copy(alpha = 0.75f),
                     shape = RoundedCornerShape(30.dp),
                 ).padding(22.dp),
         content = content,

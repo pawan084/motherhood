@@ -47,6 +47,7 @@ import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.LilacMist
+import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageMist
@@ -107,7 +108,10 @@ fun WelcomeScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Surface(
-                    color = Color.White.copy(alpha = 0.34f),
+                    // The halo behind the orb. Hardcoded white read as a soft
+                    // glow on ivory and as a bright disc on charcoal; Paper is
+                    // the theme's own raised surface, which is what this is.
+                    color = Paper.copy(alpha = 0.34f),
                     shape = CircleShape,
                     shadowElevation = 18.dp,
                 ) {
@@ -138,7 +142,7 @@ fun WelcomeScreen(
                 border =
                     androidx.compose.foundation.BorderStroke(
                         width = 1.dp,
-                        color = Color.White.copy(alpha = 0.9f),
+                        color = OutlineSoft.copy(alpha = 0.9f),
                     ),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 8.dp)) {
