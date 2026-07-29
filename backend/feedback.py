@@ -65,6 +65,23 @@ def report_answer(body: FeedbackIn, uid: str = Depends(current_user)):
     return submit_feedback(body, uid)
 
 
+# ── per-user data (privacy.py: export / delete) ──────────────────────────────
+
+def export_user(uid: str) -> list[dict]:
+    init()
+    rows = _conn.execute("SELECT id, kind, message, ref, ts, status FROM feedback "
+                         "WHERE user_id=? ORDER BY ts", (uid,)).fetchall()
+    cols = ("id", "kind", "message", "ref", "ts", "status")
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def delete_user(uid: str) -> int:
+    init()
+    cur = _conn.execute("DELETE FROM feedback WHERE user_id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
+
+
 # ── admin surface (auth applied where mounted) ───────────────────────────────
 
 def list_feedback(kind: str | None = None, status: str | None = None,

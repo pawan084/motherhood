@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -167,7 +166,11 @@ fun JourneyScreen(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = "Next milestone · Glucose screening",
+                    // Was "Next milestone · Glucose screening" — a pregnancy test
+                    // announced to postpartum and trying-to-conceive users alike.
+                    // Nothing here knows the user's actual schedule, so it must
+                    // not name one.
+                    text = "Preparing for your next visit",
                     style = MaterialTheme.typography.titleSmall,
                     color = Ink,
                 )
@@ -175,8 +178,9 @@ fun JourneyScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text =
-                    "Aira can help you understand what to expect and prepare questions. " +
-                        "Your care team decides what testing is right for you.",
+                    "Aira can help you gather what's worth asking and what you've " +
+                        "noticed since last time. Your care team decides what testing " +
+                        "is right for you.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = InkMuted,
             )

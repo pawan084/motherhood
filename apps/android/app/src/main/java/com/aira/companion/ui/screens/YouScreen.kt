@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -36,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
+import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
@@ -52,6 +52,11 @@ import com.aira.companion.ui.theme.SageMist
 fun YouScreen(
     onOpenTool: (AiraTool) -> Unit,
     modifier: Modifier = Modifier,
+    // Real profile, not the "Maya · Week 24" placeholder this screen shipped with.
+    name: String = "",
+    weeks: Int? = null,
+    journey: String? = null,
+    language: String = "",
 ) {
     var personalisationEnabled by remember { mutableStateOf(true) }
 
@@ -73,16 +78,24 @@ fun YouScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "M",
+                    // The user's own initial, not a hardcoded "M" for "Maya".
+                    text = name.trim().firstOrNull()?.uppercase() ?: "·",
                     style = MaterialTheme.typography.headlineSmall,
                     color = Plum,
                 )
             }
             Spacer(modifier = Modifier.width(15.dp))
             Column {
-                Text("Maya", style = MaterialTheme.typography.headlineMedium, color = Ink)
                 Text(
-                    "Week 24 · English & Hindi",
+                    name.ifBlank { "You" },
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Ink,
+                )
+                Text(
+                    listOfNotNull(
+                        weeks?.let { "Week $it" } ?: journeyLabel(journey),
+                        language.ifBlank { null },
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkMuted,
                 )

@@ -75,6 +75,26 @@ def _list_items(uid: str, kind: str) -> list[dict]:
     return out
 
 
+# ── per-user data (privacy.py: export / delete) ──────────────────────────────
+
+def export_user(uid: str) -> dict:
+    init()
+    row = _conn.execute("SELECT data FROM emergency_profiles WHERE user_id=?", (uid,)).fetchone()
+    return {"context": _context(uid),
+            "items": {kind: _list_items(uid, kind) for kind in sorted(_ITEM_KINDS)},
+            "emergency_profile": json.loads(row[0]) if row else {}}
+
+
+def delete_user(uid: str) -> int:
+    init()
+    n = 0
+    for table in ("care_items", "care_context", "emergency_profiles"):
+        cur = _conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
+        n += getattr(cur, "rowcount", 0) or 0
+    _conn.commit()
+    return n
+
+
 # ── onboarding ───────────────────────────────────────────────────────────────
 
 class OnboardingIn(BaseModel):
@@ -148,6 +168,44 @@ def _care_plan(uid: str) -> dict:
     return {"total": len(reminders), "on_track": done}
 
 
+# ── scoped read for an invited partner (partner.py) ──────────────────────────
+
+def shared_view(owner_id: str, scopes: dict) -> dict:
+    """The subset of `owner_id`'s care a partner has been granted.
+
+    Lives here rather than in partner.py so this module keeps owning its own
+    SQL, and so a new care item kind can only become partner-visible by being
+    added deliberately here. Everything defaults to withheld: an unrecognised
+    or missing scope yields nothing rather than falling through to the full row.
+
+    `health_details` is the sensitive one and is off by default — symptoms,
+    check-ins and documents are never included without it, and even then only
+    counts and titles are returned, never note or symptom free text.
+    """
+    out: dict = {}
+    if scopes.get("appointments"):
+        out["appointments"] = [
+            {k: v for k, v in a.items() if k in ("id", "doctor", "place", "when")}
+            for a in _list_items(owner_id, "appointment")
+        ]
+    if scopes.get("reminders"):
+        out["reminders"] = [
+            {k: v for k, v in r.items() if k in ("id", "title", "time", "repeat", "done")}
+            for r in _list_items(owner_id, "reminder")
+        ]
+        out["medicines"] = [
+            {k: v for k, v in m.items() if k in ("id", "name", "dose", "schedule", "time")}
+            for m in _list_items(owner_id, "medicine") if not m.get("done")
+        ]
+    if scopes.get("health_details"):
+        # Counts and labels only. The body of a symptom log or a private
+        # check-in note is not something an invite link should hand over.
+        out["symptom_count"] = len(_list_items(owner_id, "symptom"))
+        out["checkin_count"] = len(_list_items(owner_id, "checkin"))
+        out["documents_count"] = len(_list_items(owner_id, "document"))
+    return out
+
+
 # ── tools (in-conversation) ──────────────────────────────────────────────────
 
 class ReminderIn(BaseModel):
@@ -165,6 +223,31 @@ def get_reminders(uid: str = Depends(current_user)):
 @router.post("/care/reminders")
 def add_reminder(body: ReminderIn, uid: str = Depends(current_user)):
     return _add_item(uid, "reminder", body.model_dump())
+
+
+class ReminderDoneIn(BaseModel):
+    done: bool = True
+
+
+@router.post("/care/reminders/{item_id}/done")
+def mark_reminder_done(item_id: str, body: ReminderDoneIn | None = None,
+                       uid: str = Depends(current_user)):
+    """Complete — or re-open — a reminder.
+
+    Toggleable, unlike `medicines/{item_id}/taken`: a dose marked taken is a
+    statement about the past, but a reminder ticked by mistake is just a
+    mistake, and a checklist you cannot untick is a trap. Without this endpoint
+    `care_items.done` was unreachable for reminders, so `care_plan.on_track`
+    could only ever report 0 and the clients' tick was necessarily inert.
+    """
+    done = True if body is None else body.done
+    init()
+    cur = _conn.execute("UPDATE care_items SET done=? WHERE id=? AND user_id=? "
+                        "AND kind='reminder'", (1 if done else 0, item_id, uid))
+    _conn.commit()
+    if getattr(cur, "rowcount", 0) == 0:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True, "done": done}
 
 
 class MedicineIn(BaseModel):

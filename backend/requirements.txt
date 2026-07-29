@@ -15,5 +15,9 @@ pyjwt[crypto]==2.13.0
 redis==8.0.1
 # Error tracking — inert until SENTRY_DSN is set (app.py).
 sentry-sdk[fastapi]==2.64.0
-# Postgres backend — only needed when DATABASE_URL is set; SQLite is the default.
-# psycopg[binary]>=3.1
+# Postgres backend. SQLite is the default, but db.py imports this lazily the
+# moment DATABASE_URL is set — and every deploy target here (fly.toml,
+# render.yaml, DEPLOY.md) recommends Postgres for real traffic, so it ships
+# installed rather than as a commented-out afterthought that turns the
+# documented path into a ModuleNotFoundError on the first query.
+psycopg[binary]==3.3.4

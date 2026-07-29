@@ -329,8 +329,14 @@ def get_user(user_id: str, admin=Depends(require_admin())):
 @router.get("/safety/flags")
 def safety_flags(level: str = "", unreviewed: bool = False, limit: int = 100,
                  admin=Depends(require_admin())):
+    # The flag message is the user's verbatim words about their health. Reviewing
+    # a flag already requires `support` (see review_flag), so a `viewer` reading
+    # that text was access without a job to do — they get the metadata instead.
+    can_read_message = _ROLES.get(admin.get("role"), -1) >= _ROLES["support"]
     return {"items": safety.recent_flags(limit=limit, level=level or None,
-                                         unreviewed_only=unreviewed),
+                                         unreviewed_only=unreviewed,
+                                         include_message=can_read_message),
+            "messages_redacted": not can_read_message,
             "stats": safety.stats()}
 
 

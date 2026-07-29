@@ -1,17 +1,21 @@
 package com.aira.companion.ui
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
+import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.ChatMessage
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
+import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.OnboardingAnswer
-import com.aira.companion.model.onboardingPrompts
+import com.aira.companion.model.OnboardingField
+import com.aira.companion.model.onboardingPromptsFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,31 +34,91 @@ class AiraViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(AiraUiState())
     val uiState: StateFlow<AiraUiState> = _uiState.asStateFlow()
 
+    /**
+     * Decide at launch whether onboarding still needs to run.
+     *
+     * The session token is cached in SharedPreferences and the backend already
+     * knows whether this user finished setup, but nothing ever asked — so the
+     * app restarted the four-question onboarding on EVERY launch. This resolves
+     * that against `/account/me` and drops straight into Today when the answer
+     * is yes. Failure is silent and lands on Welcome, which is the safe default.
+     */
+    fun restoreSession(context: Context?) {
+        if (context == null || _uiState.value.stage != AppStage.Starting) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val user = try {
+                AiraApi.me(context)
+            } catch (_: Exception) {
+                null
+            }
+            if (user != null && user.onboarded) {
+                _uiState.update {
+                    it.copy(
+                        stage = AppStage.Main,
+                        destination = MainDestination.Today,
+                        language = user.language.ifBlank { it.language },
+                        journey = JourneyType.entries.firstOrNull { j ->
+                            j.name.equals(user.journey, ignoreCase = true) ||
+                                journeyLabel(user.journey) == j.label
+                        } ?: it.journey,
+                        messages = it.messages.ifEmpty {
+                            listOf(
+                                ChatMessage(
+                                    id = 1,
+                                    fromAira = true,
+                                    text = "Welcome back. Ask me anything, or open Today " +
+                                        "for the one step that matters now.",
+                                ),
+                            )
+                        },
+                    )
+                }
+                loadToday(context)
+                loadJourney(context)
+                loadCare(context)
+            } else {
+                _uiState.update { it.copy(stage = AppStage.Welcome) }
+            }
+        }
+    }
+
     fun startOnboarding() {
         _uiState.update { it.copy(stage = AppStage.Onboarding) }
     }
 
     fun answerOnboarding(answer: String) {
         _uiState.update { state ->
+            // The prompt list depends on the journey (weeks is pregnancy-only), so
+            // resolve it from the CURRENT state — the step being answered was
+            // rendered against exactly this list.
+            val prompts = onboardingPromptsFor(state.journey)
             // Guard the index: answerOnboarding is public and tap-driven, so a
             // queued/double tap past the last prompt must be a no-op, not a crash.
-            if (state.onboardingStep >= onboardingPrompts.size) return@update state
-            val prompt = onboardingPrompts[state.onboardingStep]
+            if (state.onboardingStep >= prompts.size) return@update state
+            val prompt = prompts[state.onboardingStep]
+            val trimmed = answer.trim()
+            // A skipped free-text answer is recorded honestly in the transcript
+            // rather than as an empty bubble.
             var next =
                 state.copy(
-                    onboardingAnswers = state.onboardingAnswers + OnboardingAnswer(prompt.question, answer),
+                    onboardingAnswers = state.onboardingAnswers +
+                        OnboardingAnswer(
+                            prompt.question,
+                            trimmed.ifBlank { "Skipped" },
+                        ),
                     onboardingStep = state.onboardingStep + 1,
                 )
 
-            when (state.onboardingStep) {
-                0 ->
-                    next =
-                        next.copy(
-                            journey = JourneyType.entries.firstOrNull { it.label == answer },
-                        )
-                1 -> next = next.copy(language = answer)
-                2 -> next = next.copy(priority = answer)
-                3 -> next = next.copy(companionPreference = answer)
+            next = when (prompt.field) {
+                OnboardingField.Journey ->
+                    next.copy(journey = JourneyType.entries.firstOrNull { it.label == trimmed })
+                OnboardingField.Name -> next.copy(name = trimmed.take(120))
+                // Only a plausible pregnancy week; anything else is treated as skipped.
+                OnboardingField.Weeks ->
+                    next.copy(weeks = trimmed.toIntOrNull()?.takeIf { it in 1..45 })
+                OnboardingField.Language -> next.copy(language = trimmed)
+                OnboardingField.Priority -> next.copy(priority = trimmed)
+                OnboardingField.Companion -> next.copy(companionPreference = trimmed)
             }
 
             next
@@ -72,8 +136,10 @@ class AiraViewModel : ViewModel() {
                         ChatMessage(
                             id = 1,
                             fromAira = true,
+                            // Not "by text or voice": spoken conversation isn't
+                            // wired up in this build and the mic is disabled.
                             text = "You're all set. I'll keep Today focused on one meaningful step — " +
-                                "ask me anything by text or voice whenever you like.",
+                                "ask me anything whenever you like.",
                         ),
                     ),
             )
@@ -86,11 +152,18 @@ class AiraViewModel : ViewModel() {
                 AiraApi.onboarding(
                     ctx = context,
                     journey = apiJourney(snapshot.journey),
-                    name = null,
+                    name = snapshot.name.ifBlank { null },
                     language = snapshot.language,
                     priorities = listOfNotNull(snapshot.priority.takeIf { it.isNotBlank() }),
-                    weeks = null,
+                    // Only sent for a pregnancy — the backend week-bands on this,
+                    // and a stale week from a changed journey would be worse than none.
+                    weeks = snapshot.weeks.takeIf { snapshot.journey == JourneyType.Pregnant },
                 )
+                // Pull the assembled Today/Journey straight away so the first
+                // screen reflects the name and week just submitted.
+                loadToday(context)
+                loadJourney(context)
+                loadCare(context)
             } catch (_: Exception) {
             }
         }
@@ -124,6 +197,188 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Load the Care hub from `/v1/care`. Until this existed, Care rendered a
+     * fixed "Dr. Meera Shah · Tomorrow 10:30 AM · Prenatal vitamin" for every
+     * user, including people who had entered nothing at all.
+     */
+    fun loadCare(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(careLoading = it.careData == null) }
+            try {
+                val data = AiraApi.care(context)
+                _uiState.update { it.copy(careData = data, careLoading = false) }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(careLoading = false) }
+            }
+        }
+    }
+
+    // ── tool actions: these WRITE to the backend ─────────────────────────────
+    //
+    // Every tool sheet used to end in `onNotify("Saved")` and nothing else, so
+    // reminders, medicines, appointments, check-ins and symptom logs were all
+    // discarded the moment the sheet closed. Each action below persists, then
+    // refreshes Care so the new row is visible immediately.
+
+    private fun write(
+        context: Context?,
+        success: String,
+        refreshCare: Boolean = true,
+        block: suspend (Context) -> Unit,
+    ) {
+        if (context == null) {
+            notify("Not connected — nothing was saved.")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                block(context)
+                notify(success)
+                if (refreshCare) loadCare(context)
+            } catch (e: Exception) {
+                notify("Couldn't save that. ${e.message.orEmpty()}".trim())
+            }
+        }
+    }
+
+    fun saveReminder(context: Context?, title: String, time: String, repeat: String) =
+        write(context, "Reminder saved.") { AiraApi.addReminder(it, title, time, repeat) }
+
+    fun saveMedicine(context: Context?, name: String, dose: String, time: String) =
+        write(context, "Medicine added.") { AiraApi.addMedicine(it, name, dose, time) }
+
+    fun markMedicineTaken(context: Context?, id: String) =
+        write(context, "Marked as taken.") { AiraApi.markMedicineTaken(it, id) }
+
+    fun setReminderDone(context: Context?, id: String, done: Boolean) =
+        write(context, if (done) "Reminder done." else "Reminder reopened.") {
+            AiraApi.setReminderDone(it, id, done)
+        }
+
+    /**
+     * Stream a picked document into the Care Vault.
+     *
+     * Not routed through [write]: the upload takes long enough to need its own
+     * in-progress flag, and the sheet stays open until it finishes so a failure
+     * is visible instead of being dismissed along with the sheet.
+     */
+    fun uploadDocument(context: Context?, uri: Uri, kind: String) {
+        if (context == null) {
+            notify("Not connected — nothing was uploaded.")
+            return
+        }
+        _uiState.update { it.copy(uploadingDocument = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.uploadDocument(context, uri, kind)
+                _uiState.update { it.copy(uploadingDocument = false, activeTool = null) }
+                notify("Saved to your private Care Vault.")
+                loadCare(context)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(uploadingDocument = false) }
+                notify("Couldn't upload that. ${e.message.orEmpty()}".trim())
+            }
+        }
+    }
+
+    fun loadPrefs(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(voicePrefs = AiraApi.prefs(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun setVoice(context: Context?, voice: String) =
+        write(context, "Voice preference saved.", refreshCare = false) {
+            AiraApi.setVoice(it, voice)
+            _uiState.update { s -> s.copy(voicePrefs = s.voicePrefs.copy(voice = voice)) }
+        }
+
+    /**
+     * Create a real partner invite. The resulting code goes into UI state so the
+     * sheet can show it and offer the system share sheet — previously this was a
+     * toast reading "Private partner invitation prepared", and no invitation of
+     * any kind existed.
+     */
+    fun createPartnerInvite(
+        context: Context?,
+        appointments: Boolean,
+        reminders: Boolean,
+        healthDetails: Boolean,
+    ) = write(context, "Invite ready to share.", refreshCare = false) {
+        val invite = AiraApi.createPartnerInvite(it, appointments, reminders, healthDetails)
+        _uiState.update { s -> s.copy(partnerInvite = invite) }
+    }
+
+    /** Drop the code from memory when the sheet closes; it is single-use anyway. */
+    fun clearPartnerInvite() {
+        _uiState.update { it.copy(partnerInvite = null) }
+    }
+
+    fun saveAppointment(context: Context?, doctor: String, place: String, whenText: String) =
+        write(context, "Appointment saved.") { AiraApi.addAppointment(it, doctor, place, whenText) }
+
+    fun saveCheckIn(context: Context?, feeling: String, sleepHours: Double, note: String) =
+        write(context, "Check-in saved.") { AiraApi.addCheckIn(it, feeling, sleepHours, note) }
+
+    fun saveSymptom(context: Context?, what: String, severity: String, started: String) =
+        write(context, "Added to your timeline.") { AiraApi.addSymptom(it, what, severity, started) }
+
+    fun saveEmergencyProfile(context: Context?, fields: Map<String, String>) =
+        write(context, "Emergency profile saved.", refreshCare = false) {
+            AiraApi.putEmergencyProfile(it, fields)
+            val phone = fields["care_team_phone"]?.ifBlank { null }
+            _uiState.update { s -> s.copy(careTeamPhone = phone) }
+        }
+
+    fun sendReport(context: Context?, kind: String, message: String) =
+        write(context, "Thank you — a human will review this.", refreshCare = false) {
+            AiraApi.reportAnswer(it, kind, message)
+        }
+
+    fun setConsent(context: Context?, feature: String, granted: Boolean) =
+        write(context, if (granted) "Turned on." else "Turned off.", refreshCare = false) {
+            AiraApi.setConsent(it, feature, granted)
+            _uiState.update { s -> s.copy(consent = AiraApi.consent(it)) }
+        }
+
+    fun loadConsent(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(consent = AiraApi.consent(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun loadMemory(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(memory = AiraApi.memory(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun setMemoryApproved(context: Context?, id: String, approved: Boolean) =
+        write(context, if (approved) "Aira can use this." else "Aira won't use this.", refreshCare = false) {
+            AiraApi.setMemoryApproved(it, id, approved)
+            _uiState.update { s -> s.copy(memory = AiraApi.memory(it)) }
+        }
+
+    fun forgetMemory(context: Context?, id: String) =
+        write(context, "Forgotten.", refreshCare = false) {
+            AiraApi.forgetMemory(it, id)
+            _uiState.update { s -> s.copy(memory = AiraApi.memory(it)) }
+        }
+
     fun openTools() {
         _uiState.update { it.copy(toolsOpen = true, activeTool = null) }
     }
@@ -147,7 +402,9 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val ep = AiraApi.emergencyProfile(context)
-                val phone = ep.optString("care_team_phone").ifBlank { null }
+                // Null-aware: see optStringOrNull — a JSON null would otherwise
+                // become the string "null" and look like a real phone number.
+                val phone = ep.optStringOrNull("care_team_phone")
                 if (phone != null) _uiState.update { it.copy(careTeamPhone = phone) }
             } catch (_: Exception) {
             }

@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -143,7 +142,7 @@ fun AiraChatScreen(
                             color = Ink,
                         )
                         Text(
-                            text = "Three questions based on Week 24 and your fatigue note.",
+                            text = "Questions worth asking, prepared from what you've told Aira.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = InkMuted,
                         )
@@ -217,11 +216,16 @@ fun AiraChatScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(20.dp),
                 )
-                IconButton(onClick = { onQuickMessage("Start a voice conversation") }) {
+                // Disabled, not removed. This used to send the literal text
+                // "Start a voice conversation" into the chat as if the user had
+                // typed it, so tapping the mic produced an AI reply about voice
+                // rather than any voice input. There is no speech recognition in
+                // this build; the button says so instead of faking one.
+                IconButton(onClick = {}, enabled = false) {
                     Icon(
                         imageVector = Icons.Outlined.Mic,
-                        contentDescription = "Start voice conversation",
-                        tint = Plum,
+                        contentDescription = "Voice input is not available in this build",
+                        tint = InkMuted,
                     )
                 }
                 FilledIconButton(

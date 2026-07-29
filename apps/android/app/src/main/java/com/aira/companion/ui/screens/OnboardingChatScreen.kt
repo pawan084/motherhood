@@ -1,6 +1,8 @@
 package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,16 +29,25 @@ import androidx.compose.material.icons.outlined.MicNone
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.JourneyType
-import com.aira.companion.model.onboardingPrompts
+import com.aira.companion.model.OnboardingField
+import com.aira.companion.model.onboardingPromptsFor
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChatBubble
@@ -59,10 +69,12 @@ fun OnboardingChatScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val finished = state.onboardingStep >= onboardingPrompts.size
+    // The question set depends on the journey — the pregnancy-week question is
+    // only asked of someone who is pregnant — so it is resolved per render.
+    val prompts = onboardingPromptsFor(state.journey)
+    val finished = state.onboardingStep >= prompts.size
     val progress =
-        (state.onboardingStep.coerceAtMost(onboardingPrompts.size)).toFloat() /
-            onboardingPrompts.size.toFloat()
+        (state.onboardingStep.coerceAtMost(prompts.size)).toFloat() / prompts.size.toFloat()
 
     Column(
         modifier =
@@ -115,7 +127,10 @@ fun OnboardingChatScreen(
         ) {
             item {
                 ChatBubble(
-                    text = "Hi, I’m Aira. I’ll keep this simple—four short questions, all inside our conversation.",
+                    // Counted, not hardcoded — the set grows by one when someone
+                    // says they're pregnant and we ask how many weeks.
+                    text = "Hi, I’m Aira. I’ll keep this simple—${prompts.size} short " +
+                        "questions, all inside our conversation.",
                     fromAira = true,
                 )
             }
@@ -126,7 +141,7 @@ fun OnboardingChatScreen(
             }
 
             if (!finished) {
-                val prompt = onboardingPrompts[state.onboardingStep]
+                val prompt = prompts[state.onboardingStep]
                 item {
                     ChatBubble(text = prompt.question, fromAira = true)
                 }
@@ -138,19 +153,32 @@ fun OnboardingChatScreen(
                         color = InkMuted,
                     )
                 }
-                items(prompt.options) { option ->
-                    val helper =
-                        if (state.onboardingStep == 0) {
-                            JourneyType.entries.firstOrNull { it.label == option }?.supportingText
-                        } else {
-                            optionSupport(state.onboardingStep, option)
-                        }
-                    ChoiceCard(
-                        title = option,
-                        subtitle = helper,
-                        icon = optionIcon(state.onboardingStep, option),
-                        onClick = { onAnswer(option) },
-                    )
+                if (prompt.options.isEmpty()) {
+                    // Free-text prompts (name, pregnancy week). `key` resets the
+                    // field between questions so an answer can't leak forward.
+                    item(key = "input-${prompt.field}") {
+                        FreeTextAnswer(
+                            hint = prompt.inputHint,
+                            numeric = prompt.numeric,
+                            skippable = prompt.skippable,
+                            onSubmit = onAnswer,
+                        )
+                    }
+                } else {
+                    items(prompt.options) { option ->
+                        val helper =
+                            if (prompt.field == OnboardingField.Journey) {
+                                JourneyType.entries.firstOrNull { it.label == option }?.supportingText
+                            } else {
+                                optionSupport(prompt.field, option)
+                            }
+                        ChoiceCard(
+                            title = option,
+                            subtitle = helper,
+                            icon = optionIcon(prompt.field, option),
+                            onClick = { onAnswer(option) },
+                        )
+                    }
                 }
             } else {
                 item {
@@ -183,7 +211,11 @@ fun OnboardingChatScreen(
                                     color = Ink,
                                 )
                                 Text(
-                                    text = "Pregnancy guidance · ${state.language} · ${state.companionPreference}",
+                                    // The journey the person actually picked. This was hardcoded
+                                    // to "Pregnancy guidance", so someone who chose "Trying to
+                                    // conceive" was told their context was set up for pregnancy.
+                                    text = "${state.journey?.label ?: "Wellness support"} · " +
+                                        "${state.language} · ${state.companionPreference}",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = InkMuted,
                                 )
@@ -202,27 +234,73 @@ fun OnboardingChatScreen(
     }
 }
 
+/** A free-text onboarding answer (name, pregnancy week). */
+@Composable
+private fun FreeTextAnswer(
+    hint: String,
+    numeric: Boolean,
+    skippable: Boolean,
+    onSubmit: (String) -> Unit,
+) {
+    var value by remember { mutableStateOf("") }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { value = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(hint) },
+            singleLine = true,
+            shape = RoundedCornerShape(17.dp),
+            keyboardOptions =
+                KeyboardOptions(
+                    keyboardType = if (numeric) KeyboardType.Number else KeyboardType.Text,
+                    imeAction = ImeAction.Done,
+                ),
+            keyboardActions = KeyboardActions(onDone = { if (value.isNotBlank()) onSubmit(value) }),
+        )
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PrimaryButton(
+                label = "Continue",
+                onClick = { onSubmit(value) },
+                modifier = Modifier.weight(1f),
+                enabled = value.isNotBlank(),
+            )
+            if (skippable) {
+                Spacer(modifier = Modifier.width(10.dp))
+                // Submits blank; the ViewModel records it as "Skipped" and sends
+                // nothing for that field.
+                TextButton(onClick = { onSubmit("") }) {
+                    Text("Skip", color = Plum)
+                }
+            }
+        }
+    }
+}
+
 private fun optionSupport(
-    step: Int,
+    field: OnboardingField,
     option: String,
 ): String? =
-    when (step) {
-        1 ->
+    when (field) {
+        OnboardingField.Language ->
             when (option) {
                 "English" -> "Continue in English"
                 "Hindi" -> "हिंदी में बातचीत"
                 "Hinglish" -> "A natural mix of Hindi and English"
                 else -> null
             }
-        2 ->
+        OnboardingField.Priority ->
             when (option) {
-                "Understand changes" -> "Week-by-week body and baby context"
+                // Was "Week-by-week body and baby context" — pregnancy copy shown
+                // to postpartum and trying-to-conceive users too.
+                "Understand changes" -> "What's typical for where you are now"
                 "Prepare for a visit" -> "Questions, notes and appointment copilot"
                 "Feel calmer" -> "Gentle check-ins and guided resets"
                 "Plan my care" -> "Medicines, reminders and documents"
                 else -> null
             }
-        3 ->
+        OnboardingField.Companion ->
             when (option) {
                 "Text & voice" -> "Switch naturally between typing and speaking"
                 "Talking avatar" -> "A warm, lip-synced companion mode"
@@ -233,13 +311,14 @@ private fun optionSupport(
     }
 
 private fun optionIcon(
-    step: Int,
+    field: OnboardingField,
     option: String,
 ): ImageVector =
-    when (step) {
-        0 -> Icons.Outlined.FavoriteBorder
-        1 -> Icons.Outlined.Language
-        2 -> Icons.Outlined.AutoAwesome
-        3 -> if (option == "Chat only") Icons.Outlined.ChatBubbleOutline else Icons.Outlined.MicNone
+    when (field) {
+        OnboardingField.Journey -> Icons.Outlined.FavoriteBorder
+        OnboardingField.Language -> Icons.Outlined.Language
+        OnboardingField.Priority -> Icons.Outlined.AutoAwesome
+        OnboardingField.Companion ->
+            if (option == "Chat only") Icons.Outlined.ChatBubbleOutline else Icons.Outlined.MicNone
         else -> Icons.Outlined.AutoAwesome
     }

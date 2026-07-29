@@ -5,7 +5,11 @@ import { api, type SafetyFlag } from "@/lib/api";
 
 type SafetyResp = {
   items: SafetyFlag[];
-  stats: { total: number; red: number; amber: number; unreviewed: number; degraded: number };
+  messages_redacted: boolean;
+  stats: {
+    total: number; red: number; amber: number; unreviewed: number;
+    degraded: number; degraded_screens_24h: number; retention_days: number;
+  };
 };
 
 function fmt(ts: number | null): string {
@@ -56,8 +60,23 @@ export default function SafetyPage() {
             <span className="text-ink-muted">Red <b className="text-urgent">{data.stats.red}</b></span>
             <span className="text-ink-muted">Amber <b className="text-amber">{data.stats.amber}</b></span>
             <span className="text-ink-muted">Unreviewed <b className="text-aubergine">{data.stats.unreviewed}</b></span>
-            <span className="text-ink-muted">Degraded <b className="text-aubergine">{data.stats.degraded}</b></span>
+            <span className="text-ink-muted">Degraded flags <b className="text-aubergine">{data.stats.degraded}</b></span>
+            {/* The real outage signal: keyword-only screens in the last 24h,
+                including the green turns that never become flags. */}
+            <span className="text-ink-muted" title="Screens in the last 24h that ran keyword-only because the classifier was unavailable (green turns included)">
+              Keyword-only 24h{" "}
+              <b className={data.stats.degraded_screens_24h > 0 ? "text-amber" : "text-aubergine"}>
+                {data.stats.degraded_screens_24h}
+              </b>
+            </span>
           </section>
+
+          {data.messages_redacted && (
+            <p className="text-sm text-ink-muted">
+              Messages are hidden for your role. Reviewing a flag requires the
+              <b> support</b> role, which also reveals the message text.
+            </p>
+          )}
 
           <section className="flex flex-wrap items-center gap-4">
             <select className="input max-w-[10rem]" value={level} onChange={(e) => setLevel(e.target.value)}>
@@ -96,7 +115,11 @@ export default function SafetyPage() {
                       )}
                     </td>
                     <td className="td">{f.categories.join(", ")}</td>
-                    <td className="td max-w-md">{f.message}</td>
+                    <td className="td max-w-md">
+                      {f.message_redacted
+                        ? <span className="italic text-ink-muted">hidden for your role</span>
+                        : f.message}
+                    </td>
                     <td className="td font-mono text-xs text-ink-muted">{f.user_id.slice(0, 8)}…</td>
                     <td className="td">
                       {f.reviewed ? (

@@ -63,6 +63,21 @@ def _save(uid: str, role: str, text: str, level: str = "") -> None:
     _conn.commit()
 
 
+def export_user(uid: str) -> list[dict]:
+    """Every turn this user has exchanged, for their data export (privacy.py)."""
+    init()
+    rows = _conn.execute("SELECT ts, role, text, safety_level FROM chat_turns "
+                         "WHERE user_id=? ORDER BY ts", (uid,)).fetchall()
+    return [{"ts": r[0], "role": r[1], "text": r[2], "safety_level": r[3]} for r in rows]
+
+
+def delete_user(uid: str) -> int:
+    init()
+    cur = _conn.execute("DELETE FROM chat_turns WHERE user_id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
+
+
 def _urgent_payload(uid: str) -> dict:
     """The urgent-care handoff. The care-team number is sourced from the user's
     emergency profile (single source of truth) — never a hardcoded demo number.
@@ -182,9 +197,11 @@ def safety_screen(body: ScreenIn, uid: str = Depends(current_user)):
 @router.get("/chat/history")
 def chat_history(uid: str = Depends(current_user), limit: int = 50):
     init()
+    # Clamp low as well as high: LIMIT -1 means "unlimited" to SQLite and is an
+    # error on Postgres, so a negative `limit` would defeat the cap entirely.
     rows = _conn.execute("SELECT ts, role, text, safety_level FROM chat_turns "
                          "WHERE user_id=? ORDER BY ts DESC LIMIT ?",
-                         (uid, min(int(limit), 200))).fetchall()
+                         (uid, max(1, min(int(limit), 200)))).fetchall()
     items = [{"ts": r[0], "role": r[1], "text": r[2], "safety_level": r[3]}
              for r in reversed(rows)]
     return {"items": items}

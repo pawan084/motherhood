@@ -21,7 +21,7 @@ def init() -> None:
         return
     c = db.connect()
     c.execute("CREATE TABLE IF NOT EXISTS events ("
-              " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+              f" id {db.AUTOINC_PK},"
               " ts REAL, user_id TEXT, name TEXT, props TEXT DEFAULT '{}')")
     c.execute("CREATE INDEX IF NOT EXISTS events_ts ON events(ts)")
     c.commit()
@@ -36,6 +36,20 @@ def record_event(user_id: str, name: str, props: dict | None = None) -> None:
         _conn.commit()
     except Exception as e:  # noqa: BLE001 — analytics must never break a request
         log.warning("record_event failed: %s", e)
+
+
+def export_user(uid: str) -> list[dict]:
+    init()
+    rows = _conn.execute("SELECT ts, name, props FROM events WHERE user_id=? ORDER BY ts",
+                         (uid,)).fetchall()
+    return [{"ts": r[0], "name": r[1], "props": json.loads(r[2] or "{}")} for r in rows]
+
+
+def delete_user(uid: str) -> int:
+    init()
+    cur = _conn.execute("DELETE FROM events WHERE user_id=?", (uid,))
+    _conn.commit()
+    return getattr(cur, "rowcount", 0) or 0
 
 
 def _count(sql: str, params=()) -> int:

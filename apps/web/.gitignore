@@ -29,6 +29,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the template must ship: README tells you to `cp .env.example .env`,
+# and `.env*` above was quietly swallowing it.
+!.env.example
 
 # vercel
 .vercel

@@ -28,6 +28,9 @@ import content
 import feedback
 import legal
 import memory
+import partner
+import prefs
+import privacy
 import prompts
 import safety
 import security
@@ -73,6 +76,9 @@ app.include_router(chat.router)
 app.include_router(memory.router)
 app.include_router(consent.router)
 app.include_router(feedback.router)
+app.include_router(prefs.router)
+app.include_router(partner.router)
+app.include_router(privacy.router)
 app.include_router(legal.router)
 
 
@@ -98,8 +104,14 @@ def _startup():
     feedback.init()
     care.init()
     chat.init()
+    prefs.init()
+    partner.init()
     prompts.init()
     prompts.seed_defaults()
+
+    # Enforce the safety-flag retention window on boot, so the policy holds
+    # without depending on an external cron being wired up.
+    safety.purge_expired()
 
     # Fail closed in production: signing secrets must not be committed defaults,
     # and the coarse app-token gate must be on (else every data route is open).

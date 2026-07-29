@@ -113,7 +113,10 @@ export type UserRow = {
 };
 export type SafetyFlag = {
   id: number; ts: number; user_id: string; level: string; categories: string[];
-  message: string; degraded: boolean; reviewed: boolean; reviewed_by: string; note: string;
+  // Empty (and `message_redacted: true`) for admins below `support` — the
+  // backend withholds the user's verbatim health text from `viewer`.
+  message: string; message_redacted: boolean;
+  degraded: boolean; reviewed: boolean; reviewed_by: string; note: string;
 };
 export type FeedbackRow = {
   id: string; user_id: string; kind: string; message: string; ref: string;
