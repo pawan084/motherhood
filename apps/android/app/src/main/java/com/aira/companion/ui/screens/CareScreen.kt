@@ -1,6 +1,7 @@
 package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
@@ -94,6 +96,7 @@ fun CareScreen(
     onDelete: (String) -> Unit = {},
     /** Opens the full reminder sheet rather than an inline rename. */
     onEditReminder: (CareItem) -> Unit = {},
+    onOpenDocument: (CareItem) -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -297,6 +300,10 @@ fun CareScreen(
                     item = doc,
                     icon = Icons.Outlined.Description,
                     tint = Plum,
+                    // The row opens the file. Until the bytes were stored there
+                    // was nothing to open, so this list was a set of filenames
+                    // next to a promise that the documents were kept.
+                    onOpen = { onOpenDocument(doc) },
                     // The filename is fixed at upload; what a person can correct
                     // is what kind of document they said it was.
                     renameField = "type",
@@ -468,6 +475,7 @@ private fun CareRow(
     onRename: (String, String, String) -> Unit,
     onDelete: (String) -> Unit,
     renameSeed: String? = null,
+    onOpen: (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     EditableRow(
@@ -479,7 +487,21 @@ private fun CareRow(
     ) {
         Icon(imageVector = icon, contentDescription = null, tint = tint)
         Spacer(modifier = Modifier.width(11.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .then(
+                    if (onOpen != null) {
+                        Modifier.clickable(
+                            role = Role.Button,
+                            onClickLabel = "Open ${item.title}",
+                            onClick = onOpen,
+                        )
+                    } else {
+                        Modifier
+                    },
+                ),
+        ) {
             Text(item.title, style = MaterialTheme.typography.titleSmall, color = Ink)
             if (item.subtitle.isNotBlank()) {
                 Text(

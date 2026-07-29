@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  What the FileProvider is allowed to hand out.
+
+  Exactly one directory: the downloaded-documents cache. Deliberately not the
+  whole cache or the app's files dir — a provider's scope is the set of things
+  another app can be granted, and for an app holding someone's medical records
+  that set should be as small as the feature needs.
+-->
+<paths>
+    <cache-path name="documents" path="documents/" />
+</paths>

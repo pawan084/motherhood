@@ -623,6 +623,38 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Open a stored document in whatever the phone uses for it.
+     *
+     * Downloads to the app's cache and hands over a content:// URI with a
+     * one-shot read grant, rather than writing anywhere shared: a scan is the
+     * most sensitive thing in this app, and "open" should not mean "publish".
+     */
+    fun openDocument(context: Context?, item: CareItem) {
+        if (context == null) {
+            notify("Not connected — Aira can't fetch that file right now.")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = AiraApi.downloadDocument(context, item.id, item.title)
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    context, "${context.packageName}.files", file,
+                )
+                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, item.contentType ?: "*/*")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(intent)
+            } catch (e: android.content.ActivityNotFoundException) {
+                notify("No app on this phone can open that file.")
+            } catch (e: Exception) {
+                notify(e.message ?: "Couldn't open that document.")
+            }
+        }
+    }
+
     fun loadDocuments(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {

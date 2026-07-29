@@ -266,6 +266,7 @@ private fun MainExperience(
                         },
                         onDelete = { viewModel.deleteCareItem(context, it) },
                         onEditReminder = viewModel::editReminder,
+                        onOpenDocument = { viewModel.openDocument(context, it) },
                     )
                 MainDestination.You ->
                     YouScreen(

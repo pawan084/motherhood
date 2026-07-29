@@ -367,6 +367,45 @@ object AiraApi {
         )
     }
 
+    /**
+     * Download a stored document to a cache file and return it.
+     *
+     * The bytes were discarded on upload until recently, so the vault listed
+     * files it did not have; now that they exist, being able to open one is
+     * the difference between a list of filenames and a place you keep your
+     * scans. Written to the app's cache dir, which is covered by the FileProvider
+     * so a viewer can be handed a content:// URI without exporting the file.
+     */
+    suspend fun downloadDocument(ctx: Context, id: String, name: String): java.io.File =
+        withContext(Dispatchers.IO) {
+            val token = ensureToken(ctx)
+            val dir = java.io.File(ctx.cacheDir, "documents").apply { mkdirs() }
+            val out = java.io.File(dir, "${id}_${name.replace(Regex("""[^A-Za-z0-9._-]"""), "_")}")
+            val conn = (URL("$base/v1/care/documents/$id/file").openConnection() as HttpURLConnection)
+                .apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 30000
+                    setRequestProperty("Authorization", "Bearer $token")
+                    if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)
+                }
+            try {
+                if (conn.responseCode !in 200..299) {
+                    throw IllegalStateException(
+                        if (conn.responseCode == 410) {
+                            "This file isn't stored any more."
+                        } else {
+                            "Couldn't open that document (${conn.responseCode})."
+                        },
+                    )
+                }
+                conn.inputStream.use { input -> out.outputStream().use { input.copyTo(it) } }
+            } finally {
+                conn.disconnect()
+            }
+            out
+        }
+
     suspend fun documents(ctx: Context): List<CareItem> =
         request("GET", "/v1/care/documents", null, ensureToken(ctx))
             .optJSONArray("items").toCareItems()
@@ -860,6 +899,8 @@ data class CareItem(
      *  ends up silently changing what it didn't understand. */
     val time: String? = null,
     val repeat: String? = null,
+    /** Documents: what to hand a viewer when opening the file. */
+    val contentType: String? = null,
 )
 
 data class CareData(
@@ -983,6 +1024,7 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 takenToday = o.optBoolean("taken_today", false),
                 time = o.optStringOrNull("time"),
                 repeat = o.optStringOrNull("repeat"),
+                contentType = o.optStringOrNull("content_type"),
             ),
         )
     }

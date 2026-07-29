@@ -36,3 +36,7 @@ apps/android/local.properties
 # ── os ───────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# Uploaded Care Vault documents (local dev). Real deployments point
+# AIRA_FILES_DIR at object storage; nothing here belongs in the repo.
+backend/files/

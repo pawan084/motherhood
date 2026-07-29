@@ -9,10 +9,13 @@ biggest correctness gap in the prototypes, fixed at the source.
 import datetime
 import json
 import logging
+import os
+import shutil
 import time
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 import accounts
@@ -93,6 +96,10 @@ def delete_user(uid: str) -> int:
         cur = _conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
         n += getattr(cur, "rowcount", 0) or 0
     _conn.commit()
+    # And every stored file. "Delete all my data" that leaves someone's scans
+    # on disk is the most consequential possible version of a control that
+    # says one thing and does another.
+    shutil.rmtree(os.path.join(FILES_DIR, uid), ignore_errors=True)
     return n
 
 
@@ -384,12 +391,89 @@ async def upload_document(kind: str = Form("Other"), file: UploadFile = File(...
     """Care Vault upload. Reads with the size cap; stores metadata only in this
     scaffold (byte storage → object storage/R2 is a production integration).
     OCR/extraction happens only after the user approves it (not implemented)."""
+    content_type = (file.content_type or "").split(";")[0].strip().lower()
+    if content_type not in ALLOWED_DOCUMENT_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail="only PDF, JPEG and PNG documents can be stored")
     data = await security.read_capped(file)
-    return _add_item(uid, "document", {
+    item = _add_item(uid, "document", {
         "name": file.filename or "document", "type": kind,
-        "size": len(data), "content_type": file.content_type or "",
+        "size": len(data), "content_type": content_type,
         "use_in_answers": False,  # opt-in only, after approval
     })
+    _store_document(uid, item["id"], data)
+    return item
+
+
+@router.get("/care/documents/{item_id}/file")
+def get_document_file(item_id: str, uid: str = Depends(current_user)):
+    """The file itself, for the person who uploaded it.
+
+    Scoped to `current_user` like everything else here — the path is derived
+    from the caller's own id, so one user's id can never address another's
+    file even if they guess an item id.
+
+    Served as an attachment with the stored content type. Never inline: these
+    are user-supplied bytes, and a document rendered in place is a way to run
+    someone else's content in this origin.
+    """
+    kind, data = _get_item(uid, item_id)
+    if kind != "document":
+        raise HTTPException(status_code=404, detail="not found")
+    path = _document_path(uid, item_id)
+    if not os.path.exists(path):
+        # Uploaded before files were stored, or removed out of band. Say so
+        # rather than serving an empty file that looks like a corrupt scan.
+        raise HTTPException(status_code=410, detail="this file is no longer stored")
+    return FileResponse(
+        path,
+        media_type=data.get("content_type") or "application/octet-stream",
+        filename=data.get("name") or "document",
+        content_disposition_type="attachment",
+    )
+
+
+# ── document bytes ───────────────────────────────────────────────────────────
+#
+# Uploads used to be read and thrown away: only the name, type and size were
+# kept. The Care Vault then listed the file with the right filename and the
+# right size, and the bytes did not exist. A user uploading their 20-week scan
+# had every reason to believe they had a copy, and no way to discover they
+# didn't until they went looking for it — which is the worst possible moment.
+#
+# Files live on disk beside the database rather than in it: a 20 MB scan in a
+# row makes every unrelated query carry it. In production this points at object
+# storage; the shape here — write on upload, read through an authorised route,
+# delete with the item — is the same either way.
+FILES_DIR = os.environ.get("AIRA_FILES_DIR") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "files")
+
+# Only what the clients offer and what a care record actually contains. An
+# allow-list rather than a block-list, and enforced here rather than only in the
+# picker, because the picker is a suggestion and this is the door.
+ALLOWED_DOCUMENT_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+
+
+def _document_path(uid: str, item_id: str) -> str:
+    # The item id is server-generated hex; the user's filename never touches the
+    # path, so there is nothing here to traverse with.
+    safe = "".join(c for c in item_id if c.isalnum() or c == "_")
+    return os.path.join(FILES_DIR, uid, safe)
+
+
+def _store_document(uid: str, item_id: str, data: bytes) -> None:
+    path = _document_path(uid, item_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "wb") as fh:
+        fh.write(data)
+
+
+def _delete_document_file(uid: str, item_id: str) -> None:
+    try:
+        os.remove(_document_path(uid, item_id))
+    except FileNotFoundError:
+        pass
 
 
 class CheckinIn(BaseModel):
@@ -488,6 +572,10 @@ def delete_item(item_id: str, uid: str = Depends(current_user)):
     _conn.commit()
     if getattr(cur, "rowcount", 0) == 0:
         raise HTTPException(status_code=404, detail="not found")
+    # The bytes go with the row. Removing the record and leaving the scan on
+    # disk would be exactly the "hidden flag" this route exists to avoid, one
+    # layer down.
+    _delete_document_file(uid, item_id)
     return {"ok": True}
 
 

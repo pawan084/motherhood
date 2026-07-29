@@ -21,6 +21,9 @@ os.environ["RATE_LIMIT_PER_MIN"] = "0"
 # owner to log in as (and to create lower-privileged admins from).
 os.environ["ADMIN_BOOTSTRAP_EMAIL"] = "owner@test.local"
 os.environ["ADMIN_BOOTSTRAP_PASSWORD"] = "owner-password-for-tests"
+# Uploaded document bytes live on disk; point them at the same throwaway dir as
+# the database so a test run never writes into the checkout.
+os.environ["AIRA_FILES_DIR"] = os.path.join(_TMP, "files")
 
 import pytest
 from fastapi.testclient import TestClient
