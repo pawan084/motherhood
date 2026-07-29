@@ -414,18 +414,31 @@ private fun AiraAppHeader(
                     )
                 }
             }
+            // The urgent control carries its own name.
+            //
+            // It was a red circle with a shield glyph and no text — on the one
+            // control in the app that someone might need while frightened, at
+            // speed, having never pressed it before. An icon is a thing you
+            // learn; a word is a thing you read.
             Surface(
-                modifier = Modifier.size(42.dp),
                 color = UrgentMist,
                 contentColor = Urgent,
                 shape = CircleShape,
                 onClick = onUrgentHelp,
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.HealthAndSafety,
-                        contentDescription = "Open urgent help",
-                        modifier = Modifier.size(21.dp),
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "Urgent",
+                        style = MaterialTheme.typography.labelMedium,
                     )
                 }
             }

@@ -140,15 +140,27 @@ private data class ChatToolItem(
     val icon: ImageVector,
 )
 
+// The tray used to show six of the app's tools with no way to reach the rest —
+// no "more", no scroll cue, nothing to say the list was partial. Everything a
+// user can actually do from here is now here, in the order you'd reach for it:
+// the things you add most often first, the reference and admin ones after.
+//
+// "Companion — Voice or avatar mode" is not in the list: it offered a choice
+// between two things that don't exist, from the tray of tools that do.
 private val chatToolItems =
     listOf(
         ChatToolItem(AiraTool.CheckIn, "Check in", "Mood, energy & sleep", Icons.Outlined.FavoriteBorder),
         ChatToolItem(AiraTool.Reminder, "Reminder", "Medicine or care task", Icons.Outlined.AccessTime),
-        ChatToolItem(AiraTool.CareVault, "Care Vault", "Prescription or report", Icons.Outlined.FolderOpen),
-        ChatToolItem(AiraTool.Reset, "Reset", "Two calm minutes", Icons.Outlined.Waves),
         ChatToolItem(AiraTool.Symptom, "Track", "Log a change", Icons.Outlined.TrackChanges),
-        // "Companion — Voice or avatar mode" removed: it offered a choice
-        // between two things that don't exist, from the tray of tools that do.
+        ChatToolItem(AiraTool.Medicines, "Medicines", "Your routine", Icons.Outlined.Medication),
+        ChatToolItem(AiraTool.Appointment, "Appointment", "Prepare for a visit", Icons.Outlined.CalendarMonth),
+        ChatToolItem(AiraTool.CareVault, "Documents", "Prescription or report", Icons.Outlined.FolderOpen),
+        ChatToolItem(AiraTool.Reset, "Reset", "Two calm minutes", Icons.Outlined.Waves),
+        ChatToolItem(AiraTool.CarePlan, "Your plan", "Built from your reminders", Icons.Outlined.Description),
+        ChatToolItem(AiraTool.Memory, "What Aira knows", "Review or forget it", Icons.Outlined.Memory),
+        ChatToolItem(AiraTool.Partner, "Partner access", "Sharing with someone", Icons.Outlined.Group),
+        ChatToolItem(AiraTool.Emergency, "Emergency profile", "Care team and contact", Icons.Outlined.Security),
+        ChatToolItem(AiraTool.Support, "Help", "Questions and feedback", Icons.Outlined.SupportAgent),
     )
 
 @OptIn(ExperimentalMaterial3Api::class)
