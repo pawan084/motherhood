@@ -3,6 +3,8 @@ package com.aira.companion.model
 import com.aira.companion.data.CareData
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.MemoryItem
+import com.aira.companion.data.PartnerInvite
+import com.aira.companion.data.VoicePrefs
 
 enum class AppStage {
     /** Resolving the cached session against the backend before showing anything,
@@ -161,6 +163,13 @@ data class AiraUiState(
     val careTeamPhone: String? = null,
     val urgentMessage: String? = null,
     val snackbarMessage: String? = null,
+    // The stored voice preference, and the partner invite most recently created.
+    // Both used to be toasts that persisted nothing.
+    val voicePrefs: VoicePrefs = VoicePrefs(),
+    val partnerInvite: PartnerInvite? = null,
+    // Set while a Care Vault file is streaming, so the sheet can show progress
+    // instead of looking idle through a 20 MB upload.
+    val uploadingDocument: Boolean = false,
 )
 
 /** Which piece of the care context a prompt collects. */

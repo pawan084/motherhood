@@ -216,11 +216,16 @@ fun AiraChatScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(20.dp),
                 )
-                IconButton(onClick = { onQuickMessage("Start a voice conversation") }) {
+                // Disabled, not removed. This used to send the literal text
+                // "Start a voice conversation" into the chat as if the user had
+                // typed it, so tapping the mic produced an AI reply about voice
+                // rather than any voice input. There is no speech recognition in
+                // this build; the button says so instead of faking one.
+                IconButton(onClick = {}, enabled = false) {
                     Icon(
                         imageVector = Icons.Outlined.Mic,
-                        contentDescription = "Start voice conversation",
-                        tint = Plum,
+                        contentDescription = "Voice input is not available in this build",
+                        tint = InkMuted,
                     )
                 }
                 FilledIconButton(

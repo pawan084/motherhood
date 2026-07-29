@@ -117,4 +117,65 @@ class AiraViewModelTest {
         assertFalse(state.toolsOpen)
         assertNull(state.activeTool)
     }
+
+    // ── the actions that used to be toasts ──────────────────────────────────
+    //
+    // With no Context there is no backend, and the honest result is to say
+    // nothing was saved. Reporting success offline is the same failure these
+    // actions had when they were toasts: the user is told something happened
+    // that didn't.
+
+    @Test
+    fun voicePreferenceDefaultsToWarmAndIsNotSpoken() {
+        val prefs = AiraViewModel().uiState.value.voicePrefs
+        assertEquals("Aira warm", prefs.voice)
+        // No speech synthesis in this build — the UI must not imply otherwise.
+        assertFalse(prefs.spokenReplies)
+    }
+
+    @Test
+    fun savingVoiceOfflineSaysNothingWasSaved() {
+        val viewModel = AiraViewModel()
+
+        viewModel.setVoice(null, "Aira gentle")
+
+        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+        // And the choice is NOT applied locally, so the sheet can't show a
+        // selection the server never received.
+        assertEquals("Aira warm", viewModel.uiState.value.voicePrefs.voice)
+    }
+
+    @Test
+    fun creatingAPartnerInviteOfflineProducesNoInvite() {
+        val viewModel = AiraViewModel()
+
+        viewModel.createPartnerInvite(null, appointments = true, reminders = true, healthDetails = false)
+
+        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+        assertNull(viewModel.uiState.value.partnerInvite)
+    }
+
+    // No equivalent test for uploadDocument: it takes an android.net.Uri, and
+    // android.jar is stubbed on the unit-test classpath, so even Uri.EMPTY
+    // throws "Stub!" before the assertion runs. Covering it would mean enabling
+    // returnDefaultValues for the whole module, which would silently weaken
+    // every other test here. It is exercised on-device instead.
+
+    @Test
+    fun reminderCompletionOfflineSaysNothingWasSaved() {
+        val viewModel = AiraViewModel()
+
+        viewModel.setReminderDone(null, "rem_123", done = true)
+
+        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+    }
+
+    @Test
+    fun clearingThePartnerInviteDropsTheSingleUseCode() {
+        val viewModel = AiraViewModel()
+
+        viewModel.clearPartnerInvite()
+
+        assertNull(viewModel.uiState.value.partnerInvite)
+    }
 }

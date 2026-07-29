@@ -38,7 +38,6 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
 import androidx.compose.material.icons.outlined.Description
@@ -88,6 +87,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -106,6 +106,9 @@ import com.aira.companion.model.AiraTool
 import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.CareData
+import com.aira.companion.data.PartnerInvite
+import com.aira.companion.data.VoicePrefs
+import kotlinx.coroutines.delay
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChoiceCard
@@ -235,6 +238,7 @@ data class ToolActions(
     val saveCheckIn: (feeling: String, sleepHours: Double, note: String) -> Unit = { _, _, _ -> },
     val saveSymptom: (what: String, severity: String, started: String) -> Unit = { _, _, _ -> },
     val markMedicineTaken: (id: String) -> Unit = {},
+    val setReminderDone: (id: String, done: Boolean) -> Unit = { _, _ -> },
     val saveEmergencyProfile: (Map<String, String>) -> Unit = {},
     val sendReport: (kind: String, message: String) -> Unit = { _, _ -> },
     val setConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
@@ -242,6 +246,14 @@ data class ToolActions(
     val forgetMemory: (id: String) -> Unit = {},
     val loadMemory: () -> Unit = {},
     val loadConsent: () -> Unit = {},
+    val uploadDocument: (uri: Uri, kind: String) -> Unit = { _, _ -> },
+    val setVoice: (voice: String) -> Unit = {},
+    val loadPrefs: () -> Unit = {},
+    val createPartnerInvite:
+        (appointments: Boolean, reminders: Boolean, healthDetails: Boolean) -> Unit =
+        { _, _, _ -> },
+    val clearPartnerInvite: () -> Unit = {},
+    val sharePartnerInvite: (text: String) -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -255,22 +267,21 @@ fun DynamicToolSheet(
     care: CareData? = null,
     memory: List<MemoryItem> = emptyList(),
     consent: List<ConsentFeature> = emptyList(),
+    voicePrefs: VoicePrefs = VoicePrefs(),
+    partnerInvite: PartnerInvite? = null,
+    uploading: Boolean = false,
 ) {
+    // The picked document's Uri is KEPT now. It used to be dropped on the floor
+    // here ("Document selected securely."), which is why "Save to Care Vault"
+    // could only ever be a toast.
+    var pickedDocument by remember(tool) { mutableStateOf<Uri?>(null) }
     val documentLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
-        ) { uri -> if (uri != null) onNotify("Document selected securely.") }
+        ) { uri -> if (uri != null) pickedDocument = uri }
 
-    var selfPhoto by remember(tool) { mutableStateOf<Uri?>(null) }
-    var partnerPhoto by remember(tool) { mutableStateOf<Uri?>(null) }
-    val selfPhotoLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent(),
-        ) { selfPhoto = it }
-    val partnerPhotoLauncher =
-        rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent(),
-        ) { partnerPhoto = it }
+    // The self/partner photo pickers that used to live here are gone with the
+    // future-baby story's picker UI — see CompanionTool.
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -298,28 +309,23 @@ fun DynamicToolSheet(
                 AiraTool.Appointment -> AppointmentTool(actions, care, onDismiss)
                 AiraTool.CareVault ->
                     CareVaultTool(
+                        picked = pickedDocument,
+                        uploading = uploading,
                         onPickDocument = {
                             documentLauncher.launch(
                                 arrayOf("application/pdf", "image/jpeg", "image/png"),
                             )
                         },
-                        onNotify = onNotify,
+                        onUpload = actions.uploadDocument,
                     )
-                AiraTool.Reset -> ResetTool(onNotify)
+                AiraTool.Reset -> ResetTool()
                 AiraTool.Symptom -> SymptomTool(actions, onUrgentHelp, onDismiss)
-                AiraTool.Companion ->
-                    CompanionTool(
-                        selfPhoto = selfPhoto,
-                        partnerPhoto = partnerPhoto,
-                        onPickSelfPhoto = { selfPhotoLauncher.launch("image/*") },
-                        onPickPartnerPhoto = { partnerPhotoLauncher.launch("image/*") },
-                        onNotify = onNotify,
-                    )
-                AiraTool.CarePlan -> CarePlanTool(care)
+                AiraTool.Companion -> CompanionTool()
+                AiraTool.CarePlan -> CarePlanTool(care, actions)
                 AiraTool.Privacy -> PrivacyTool(actions, consent)
                 AiraTool.Memory -> MemoryTool(actions, memory)
-                AiraTool.Voice -> VoiceTool(onNotify)
-                AiraTool.Partner -> PartnerTool(onNotify)
+                AiraTool.Voice -> VoiceTool(voicePrefs, actions)
+                AiraTool.Partner -> PartnerTool(partnerInvite, actions)
                 AiraTool.Support -> SupportTool(actions, onUrgentHelp, onDismiss)
                 AiraTool.Emergency -> EmergencyProfileTool(actions, onDismiss)
             }
@@ -674,11 +680,16 @@ private fun AppointmentTool(actions: ToolActions, care: CareData?, onDismiss: ()
 
 @Composable
 private fun CareVaultTool(
+    picked: Uri?,
+    uploading: Boolean,
     onPickDocument: () -> Unit,
-    onNotify: (String) -> Unit,
+    onUpload: (Uri, String) -> Unit,
 ) {
+    // The "Use in future answers" switch that used to sit here was removed
+    // rather than kept: nothing extracts text from a document in this build, so
+    // there is no "extracted detail" to approve and the toggle could not have
+    // changed anything. The note below says what actually happens instead.
     var category by remember { mutableStateOf("Prescription") }
-    var useInAnswers by remember { mutableStateOf(false) }
 
     ChoiceChips(
         options = listOf("Prescription", "Lab report", "Scan", "Other"),
@@ -691,8 +702,12 @@ private fun CareVaultTool(
             Modifier
                 .fillMaxWidth()
                 .height(138.dp)
-                .clickable(role = Role.Button, onClick = onPickDocument)
-                .border(1.dp, OutlineSoft, RoundedCornerShape(20.dp)),
+                .clickable(role = Role.Button, enabled = !uploading, onClick = onPickDocument)
+                .border(
+                    1.dp,
+                    if (picked != null) Plum else OutlineSoft,
+                    RoundedCornerShape(20.dp),
+                ),
         color = Paper,
         shape = RoundedCornerShape(20.dp),
     ) {
@@ -700,29 +715,64 @@ private fun CareVaultTool(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = Plum, modifier = Modifier.size(32.dp))
+            Icon(
+                imageVector = if (picked != null) Icons.Filled.Check else Icons.Outlined.CloudUpload,
+                contentDescription = null,
+                tint = Plum,
+                modifier = Modifier.size(32.dp),
+            )
             Spacer(Modifier.height(8.dp))
-            Text("Choose or scan a document", style = MaterialTheme.typography.titleSmall, color = Ink)
-            Text("PDF, JPG or PNG · Max 20 MB", style = MaterialTheme.typography.bodySmall, color = InkMuted)
+            Text(
+                text = if (picked != null) "Ready to upload" else "Choose or scan a document",
+                style = MaterialTheme.typography.titleSmall,
+                color = Ink,
+            )
+            Text(
+                text = picked?.lastPathSegment?.substringAfterLast('/')
+                    ?: "PDF, JPG or PNG · Max 20 MB",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
         }
     }
     Spacer(Modifier.height(14.dp))
-    SettingLine(
-        title = "Use in future answers",
-        subtitle = "Only after you approve extracted details",
-        checked = useInAnswers,
-        onCheckedChange = { useInAnswers = it },
+    InfoBanner(
+        icon = Icons.Outlined.Security,
+        text = "This build stores the file's details — name, type and size. Nothing is " +
+            "read out of a document, and a document is never used in an answer.",
+        color = SageMist,
     )
     Spacer(Modifier.height(16.dp))
     PrimaryButton(
-        label = "Save to Care Vault",
-        onClick = { onNotify("$category saved to your private Care Vault.") },
+        label = if (uploading) "Uploading…" else "Save to Care Vault",
+        onClick = { picked?.let { onUpload(it, category) } },
         modifier = Modifier.fillMaxWidth(),
+        enabled = picked != null && !uploading,
     )
 }
 
+/**
+ * The two-minute reset, with a timer that actually runs.
+ *
+ * "Begin guided session" previously showed a toast and nothing happened — the
+ * breathing circle animated whether or not you pressed it, so the button was
+ * pure decoration on a screen that claimed to guide a session. The web build has
+ * had a real 2:00 countdown; this brings Android to parity.
+ */
 @Composable
-private fun ResetTool(onNotify: (String) -> Unit) {
+private fun ResetTool() {
+    var remaining by remember { mutableIntStateOf(RESET_SECONDS) }
+    var running by remember { mutableStateOf(false) }
+    val finished = remaining == 0
+    val ticking = running && !finished
+
+    LaunchedEffect(ticking) {
+        while (ticking && remaining > 0) {
+            delay(1000)
+            remaining -= 1
+        }
+    }
+
     val infinite = rememberInfiniteTransition(label = "breathing")
     val scale by infinite.animateFloat(
         initialValue = 0.84f,
@@ -744,7 +794,10 @@ private fun ResetTool(onNotify: (String) -> Unit) {
         Box(
             modifier =
                 Modifier
-                    .scale(scale)
+                    // The circle only breathes while the session is running.
+                    // It used to animate regardless, which is what made the
+                    // inert button so easy to miss.
+                    .scale(if (ticking) scale else 1f)
                     .size(142.dp)
                     .background(Lilac.copy(alpha = 0.48f), CircleShape),
             contentAlignment = Alignment.Center,
@@ -761,14 +814,19 @@ private fun ResetTool(onNotify: (String) -> Unit) {
         }
     }
     Text(
-        text = "Breathe in slowly",
+        text = "%d:%02d".format(remaining / 60, remaining % 60),
         modifier = Modifier.fillMaxWidth(),
-        style = MaterialTheme.typography.headlineSmall,
+        style = MaterialTheme.typography.displaySmall,
         textAlign = TextAlign.Center,
-        color = Ink,
+        color = Plum,
     )
+    Spacer(Modifier.height(6.dp))
     Text(
-        text = "A gentle two-minute reset. Stop whenever you need.",
+        text = when {
+            ticking -> "Breathe in… and soften."
+            finished -> "That's two minutes. Well done."
+            else -> "A gentle two-minute reset. Stop whenever you need."
+        },
         modifier = Modifier.fillMaxWidth(),
         style = MaterialTheme.typography.bodyMedium,
         textAlign = TextAlign.Center,
@@ -776,12 +834,25 @@ private fun ResetTool(onNotify: (String) -> Unit) {
     )
     Spacer(Modifier.height(18.dp))
     PrimaryButton(
-        label = "Begin guided session",
-        onClick = { onNotify("Two-minute reset started.") },
+        label = when {
+            ticking -> "Pause"
+            finished -> "Again"
+            else -> "Begin guided session"
+        },
+        onClick = {
+            if (finished) {
+                remaining = RESET_SECONDS
+                running = true
+            } else {
+                running = !running
+            }
+        },
         modifier = Modifier.fillMaxWidth(),
-        trailingIcon = Icons.Outlined.PlayArrow,
+        trailingIcon = if (ticking) null else Icons.Outlined.PlayArrow,
     )
 }
+
+private const val RESET_SECONDS = 120
 
 @Composable
 private fun SymptomTool(
@@ -837,16 +908,22 @@ private fun SymptomTool(
     )
 }
 
+/**
+ * Companion mode — the one tool in this sheet that is still unbuilt.
+ *
+ * Both halves need a service this project doesn't have: the talking avatar needs
+ * speech synthesis and lip-sync, the future-baby story needs image generation.
+ * They previously showed "Talking avatar mode selected." and "Private
+ * illustrative story preview created." and produced nothing at all.
+ *
+ * They are labelled and disabled rather than silently faked — and the photo
+ * pickers and consent checkbox that fed the story preview are gone, because
+ * asking someone to hand over their and their partner's photos for a feature
+ * that cannot run is a worse version of the same lie.
+ */
 @Composable
-private fun CompanionTool(
-    selfPhoto: Uri?,
-    partnerPhoto: Uri?,
-    onPickSelfPhoto: () -> Unit,
-    onPickPartnerPhoto: () -> Unit,
-    onNotify: (String) -> Unit,
-) {
+private fun CompanionTool() {
     var mode by remember { mutableStateOf("Aira avatar") }
-    var consent by remember { mutableStateOf(false) }
     ChoiceChips(
         options = listOf("Aira avatar", "Future-baby story"),
         selected = mode,
@@ -865,10 +942,19 @@ private fun CompanionTool(
                 }
             }
             Spacer(Modifier.height(16.dp))
+            InfoBanner(
+                icon = Icons.Outlined.Mic,
+                text = "The talking avatar isn't wired up in this build — it needs spoken " +
+                    "replies, which Aira doesn't have yet.",
+                color = AmberMist,
+                contentColor = Amber,
+            )
+            Spacer(Modifier.height(12.dp))
             PrimaryButton(
                 label = "Use talking avatar",
-                onClick = { onNotify("Talking avatar mode selected.") },
+                onClick = {},
                 modifier = Modifier.fillMaxWidth(),
+                enabled = false,
                 trailingIcon = Icons.Outlined.RecordVoiceOver,
             )
         }
@@ -881,41 +967,25 @@ private fun CompanionTool(
                 color = InkMuted,
             )
             Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PhotoPickerCard(
-                    label = if (selfPhoto == null) "Add your photo" else "Your photo added",
-                    selected = selfPhoto != null,
-                    onClick = onPickSelfPhoto,
-                    modifier = Modifier.weight(1f),
-                )
-                PhotoPickerCard(
-                    label = if (partnerPhoto == null) "Add partner photo" else "Partner photo added",
-                    selected = partnerPhoto != null,
-                    onClick = onPickPartnerPhoto,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Spacer(Modifier.height(12.dp))
             InfoBanner(
                 icon = Icons.Outlined.Security,
                 text = "Illustrative only—not a prediction of appearance, health, personality or genetics.",
                 color = AmberMist,
                 contentColor = Amber,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = consent, onCheckedChange = { consent = it })
-                Text(
-                    "Both people consent to this private creative use.",
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Ink,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(12.dp))
+            InfoBanner(
+                icon = Icons.Outlined.AutoAwesome,
+                text = "Story previews aren't wired up in this build, so Aira doesn't ask for " +
+                    "your photos yet. Nothing is generated and nothing is uploaded.",
+                color = AmberMist,
+                contentColor = Amber,
+            )
+            Spacer(Modifier.height(12.dp))
             PrimaryButton(
                 label = "Create private preview",
-                enabled = selfPhoto != null && partnerPhoto != null && consent,
-                onClick = { onNotify("Private illustrative story preview created.") },
+                enabled = false,
+                onClick = {},
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -923,9 +993,13 @@ private fun CompanionTool(
 }
 
 @Composable
-private fun CarePlanTool(care: CareData?) {
+private fun CarePlanTool(care: CareData?, actions: ToolActions) {
     // The plan IS the user's reminders. This used to list three invented tasks
     // ("Daily prenatal vitamin") with checkboxes that saved nothing.
+    //
+    // The rows are tappable now. Until POST /v1/care/reminders/{id}/done
+    // existed there was no way to complete a reminder from any client, so
+    // "on track" was permanently 0 no matter what the user did.
     val reminders = care?.reminders.orEmpty()
     if (reminders.isEmpty()) {
         InfoBanner(
@@ -945,12 +1019,17 @@ private fun CarePlanTool(care: CareData?) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                // Toggle, not one-way: a reminder ticked by accident has to be
+                // reversible.
+                .clickable(role = Role.Checkbox) {
+                    actions.setReminderDone(item.id, !item.done)
+                }
                 .padding(vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = if (item.done) Icons.Filled.Check else Icons.Outlined.AccessTime,
-                contentDescription = null,
+                contentDescription = if (item.done) "Done — tap to reopen" else "Tap to mark done",
                 tint = if (item.done) SageDeep else InkMuted,
                 modifier = Modifier.size(18.dp),
             )
@@ -963,6 +1042,12 @@ private fun CarePlanTool(care: CareData?) {
             }
         }
     }
+    Spacer(Modifier.height(6.dp))
+    Text(
+        text = "Tap a reminder to mark it done, or tap it again to reopen it.",
+        style = MaterialTheme.typography.bodySmall,
+        color = InkMuted,
+    )
 }
 
 @Composable
@@ -1050,53 +1135,127 @@ private fun MemoryTool(actions: ToolActions, memory: List<MemoryItem>) {
     }
 }
 
+/**
+ * Voice preference. The choice is stored for real (PUT /v1/prefs) — it used to
+ * be a toast reading "English · Aira warm saved." that persisted nothing.
+ *
+ * Two things the old sheet claimed and this one does not: there is no language
+ * picker here, because conversation language lives on the profile and having a
+ * second copy would give two sources of truth that drift; and no option offers
+ * to "preview this voice", because there is no speech synthesis to preview.
+ */
 @Composable
-private fun VoiceTool(onNotify: (String) -> Unit) {
-    var language by remember { mutableStateOf("English") }
-    var voice by remember { mutableStateOf("Aira warm") }
-    Text("Conversation language", style = MaterialTheme.typography.titleSmall, color = Ink)
-    Spacer(Modifier.height(8.dp))
-    ChoiceChips(listOf("English", "Hindi", "Hinglish"), language) { language = it }
+private fun VoiceTool(
+    prefs: VoicePrefs,
+    actions: ToolActions,
+) {
+    LaunchedEffect(Unit) { actions.loadPrefs() }
+    InfoBanner(
+        icon = Icons.Outlined.Mic,
+        text = "Spoken replies aren't available in this build. Your choice is saved and " +
+            "applies as soon as they are — until then Aira replies in text.",
+        color = AmberMist,
+        contentColor = Amber,
+    )
     Spacer(Modifier.height(16.dp))
     Text("Voice", style = MaterialTheme.typography.titleSmall, color = Ink)
     Spacer(Modifier.height(8.dp))
     listOf("Aira warm", "Aira gentle", "Text only").forEach { option ->
         ChoiceCard(
             title = option,
-            subtitle = if (option == "Text only") "No spoken responses" else "Tap to preview this voice",
+            subtitle = if (option == "Text only") {
+                "Never speak, even once spoken replies ship"
+            } else {
+                "Used when spoken replies are available"
+            },
             icon = if (option == "Text only") Icons.Outlined.EditNote else Icons.Outlined.Mic,
-            selected = voice == option,
-            onClick = { voice = option },
+            selected = prefs.voice == option,
+            onClick = { actions.setVoice(option) },
         )
         Spacer(Modifier.height(8.dp))
     }
-    PrimaryButton(
-        label = "Save voice settings",
-        onClick = { onNotify("$language · $voice saved.") },
-        modifier = Modifier.fillMaxWidth(),
+    Text(
+        text = "Saved automatically.",
+        style = MaterialTheme.typography.bodySmall,
+        color = InkMuted,
     )
 }
 
+/**
+ * Partner access. Creates a real, revocable, single-use invite via
+ * POST /v1/partner/invite — this button used to show "Private partner
+ * invitation prepared" and no invitation of any kind was created.
+ *
+ * The code is shared by the user through the system share sheet rather than
+ * being emailed or texted by the backend, so Aira never collects a contact
+ * detail for a third party.
+ */
 @Composable
-private fun PartnerTool(onNotify: (String) -> Unit) {
+private fun PartnerTool(
+    invite: PartnerInvite?,
+    actions: ToolActions,
+) {
     var appointment by remember { mutableStateOf(true) }
     var reminders by remember { mutableStateOf(true) }
     var healthDetails by remember { mutableStateOf(false) }
-    InfoBanner(
-        icon = Icons.Outlined.Group,
-        text = "Partner access is practical by default. Health details stay private unless you share them.",
-        color = SageMist,
-    )
-    Spacer(Modifier.height(14.dp))
-    SettingLine("Appointment tasks", "Time, location and preparation list", appointment) { appointment = it }
-    SettingLine("Care reminders", "Medicines and practical support", reminders) { reminders = it }
-    SettingLine("Health details", "Off by default", healthDetails) { healthDetails = it }
-    Spacer(Modifier.height(16.dp))
-    PrimaryButton(
-        label = "Invite partner",
-        onClick = { onNotify("Private partner invitation prepared.") },
-        modifier = Modifier.fillMaxWidth(),
-    )
+
+    if (invite == null) {
+        InfoBanner(
+            icon = Icons.Outlined.Group,
+            text = "Partner access is practical by default. Health details stay private " +
+                "unless you share them — and even then a partner sees counts, never the " +
+                "text of a symptom log or check-in note.",
+            color = SageMist,
+        )
+        Spacer(Modifier.height(14.dp))
+        SettingLine("Appointment tasks", "Time, location and preparation list", appointment) { appointment = it }
+        SettingLine("Care reminders", "Medicines and practical support", reminders) { reminders = it }
+        SettingLine("Health details", "Off by default", healthDetails) { healthDetails = it }
+        Spacer(Modifier.height(16.dp))
+        PrimaryButton(
+            label = "Create invite",
+            onClick = { actions.createPartnerInvite(appointment, reminders, healthDetails) },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = appointment || reminders || healthDetails,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = "The invite works once and expires in 7 days. You can revoke it at any " +
+                "time, including after it's been accepted.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+        )
+    } else {
+        Text("Share this code", style = MaterialTheme.typography.titleSmall, color = Ink)
+        Spacer(Modifier.height(10.dp))
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = LilacMist,
+            shape = RoundedCornerShape(17.dp),
+        ) {
+            Text(
+                text = invite.code,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 20.dp),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                color = Plum,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        PrimaryButton(
+            label = "Share invite",
+            onClick = { actions.sharePartnerInvite(invite.shareText) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(Modifier.height(8.dp))
+        TextButton(
+            onClick = actions.clearPartnerInvite,
+            modifier = Modifier.fillMaxWidth(),
+        ) { Text("Create a different invite", color = Plum) }
+    }
 }
 
 @Composable
@@ -1330,43 +1489,3 @@ private fun InfoBanner(
     }
 }
 
-@Composable
-private fun PhotoPickerCard(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier =
-            modifier
-                .height(104.dp)
-                .clickable(role = Role.Button, onClick = onClick),
-        color = if (selected) SageMist else Ivory,
-        shape = RoundedCornerShape(17.dp),
-        border =
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                if (selected) SageDeep.copy(alpha = 0.45f) else OutlineSoft,
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.CameraAlt,
-                contentDescription = null,
-                tint = if (selected) SageDeep else Plum,
-            )
-            Spacer(Modifier.height(7.dp))
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = Ink,
-                textAlign = TextAlign.Center,
-            )
-        }
-    }
-}

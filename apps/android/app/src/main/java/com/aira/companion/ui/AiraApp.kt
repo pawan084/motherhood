@@ -1,5 +1,6 @@
 package com.aira.companion.ui
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -213,6 +214,7 @@ private fun MainExperience(
                 saveCheckIn = { f, s, n -> viewModel.saveCheckIn(context, f, s, n) },
                 saveSymptom = { w, sev, st -> viewModel.saveSymptom(context, w, sev, st) },
                 markMedicineTaken = { viewModel.markMedicineTaken(context, it) },
+                setReminderDone = { id, done -> viewModel.setReminderDone(context, id, done) },
                 saveEmergencyProfile = { viewModel.saveEmergencyProfile(context, it) },
                 sendReport = { k, m -> viewModel.sendReport(context, k, m) },
                 setConsent = { f, g -> viewModel.setConsent(context, f, g) },
@@ -220,19 +222,45 @@ private fun MainExperience(
                 forgetMemory = { viewModel.forgetMemory(context, it) },
                 loadMemory = { viewModel.loadMemory(context) },
                 loadConsent = { viewModel.loadConsent(context) },
+                uploadDocument = { uri, kind -> viewModel.uploadDocument(context, uri, kind) },
+                setVoice = { viewModel.setVoice(context, it) },
+                loadPrefs = { viewModel.loadPrefs(context) },
+                createPartnerInvite = { appts, rem, health ->
+                    viewModel.createPartnerInvite(context, appts, rem, health)
+                },
+                clearPartnerInvite = viewModel::clearPartnerInvite,
+                // The user shares the code themselves — Aira never sends an
+                // email or SMS, so no contact detail for a partner is collected.
+                sharePartnerInvite = { text ->
+                    context.startActivity(
+                        Intent.createChooser(
+                            Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, text)
+                            },
+                            "Share your Aira invite",
+                        ),
+                    )
+                },
             )
         }
 
         state.activeTool?.let { tool ->
             DynamicToolSheet(
                 tool = tool,
-                onDismiss = viewModel::closeTool,
+                onDismiss = {
+                    viewModel.clearPartnerInvite()   // the code is single-use
+                    viewModel.closeTool()
+                },
                 onNotify = viewModel::notify,
                 onUrgentHelp = { viewModel.openUrgentHelp(context) },
                 actions = toolActions,
                 care = state.careData,
                 memory = state.memory,
                 consent = state.consent,
+                voicePrefs = state.voicePrefs,
+                partnerInvite = state.partnerInvite,
+                uploading = state.uploadingDocument,
             )
         }
 

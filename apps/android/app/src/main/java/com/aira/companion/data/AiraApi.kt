@@ -1,6 +1,8 @@
 package com.aira.companion.data
 
 import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.util.Log
 import com.aira.companion.BuildConfig
 import com.aira.companion.model.JourneyData
@@ -36,6 +38,10 @@ object AiraApi {
     // dev server; REQUIRED in production, where app.py refuses to boot without
     // APP_SHARED_SECRET and every route 401s before identity is even checked.
     private val appToken = BuildConfig.AIRA_APP_TOKEN
+
+    // Mirrors security.MAX_UPLOAD_BYTES so an oversized file is rejected before
+    // it is streamed rather than after the server has read 20 MB of it.
+    private const val MAX_UPLOAD_BYTES = 20L * 1024 * 1024
 
     // ── identity ────────────────────────────────────────────────────────────
     private fun cachedToken(ctx: Context): String? =
@@ -176,6 +182,18 @@ object AiraApi {
         request("POST", "/v1/care/medicines/$id/taken", null, ensureToken(ctx))
     }
 
+    /**
+     * Complete or re-open a reminder. Toggleable, unlike a medicine dose: a dose
+     * marked taken is a fact about the past, but a reminder ticked by mistake is
+     * just a mistake.
+     */
+    suspend fun setReminderDone(ctx: Context, id: String, done: Boolean) {
+        request(
+            "POST", "/v1/care/reminders/$id/done",
+            JSONObject().put("done", done), ensureToken(ctx),
+        )
+    }
+
     suspend fun addAppointment(ctx: Context, doctor: String, place: String?, whenText: String?) {
         request(
             "POST", "/v1/care/appointments",
@@ -209,6 +227,86 @@ object AiraApi {
     suspend fun documents(ctx: Context): List<CareItem> =
         request("GET", "/v1/care/documents", null, ensureToken(ctx))
             .optJSONArray("items").toCareItems()
+
+    /**
+     * Upload a picked document to the Care Vault.
+     *
+     * This previously did not exist: the picker's result Uri was discarded and
+     * "Save to Care Vault" showed a toast, so the Care screen's document count
+     * stayed at 0 while telling the user their file was "saved privately".
+     *
+     * Streams the content Uri straight into the request body rather than reading
+     * it into a ByteArray first — a 20 MB scan otherwise lands on the heap in one
+     * piece. The size is checked against the server's cap as it streams, so an
+     * oversized file fails before the whole thing goes over the network.
+     */
+    suspend fun uploadDocument(ctx: Context, uri: Uri, kind: String): Unit =
+        withContext(Dispatchers.IO) {
+            val resolver = ctx.contentResolver
+            val name = displayName(ctx, uri) ?: "document"
+            val mime = resolver.getType(uri) ?: "application/octet-stream"
+            val token = ensureToken(ctx)
+            val boundary = "----AiraBoundary" + java.util.UUID.randomUUID().toString().take(16)
+
+            val conn = (URL("$base/v1/care/documents").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 15000
+                readTimeout = 60000          // uploads are slower than JSON calls
+                setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+                if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)
+                setRequestProperty("Authorization", "Bearer $token")
+                doOutput = true
+                doInput = true
+                setChunkedStreamingMode(0)   // don't buffer the file in memory
+            }
+            try {
+                conn.outputStream.use { out ->
+                    out.write(
+                        ("--$boundary\r\n" +
+                            "Content-Disposition: form-data; name=\"kind\"\r\n\r\n" +
+                            "$kind\r\n" +
+                            "--$boundary\r\n" +
+                            "Content-Disposition: form-data; name=\"file\"; " +
+                            "filename=\"${name.replace('"', '_')}\"\r\n" +
+                            "Content-Type: $mime\r\n\r\n").toByteArray(),
+                    )
+                    val input = resolver.openInputStream(uri)
+                        ?: throw AiraApiException(0, "That file couldn't be opened.")
+                    var total = 0L
+                    input.use { ins ->
+                        val buf = ByteArray(1 shl 16)
+                        while (true) {
+                            val n = ins.read(buf)
+                            if (n <= 0) break
+                            total += n
+                            if (total > MAX_UPLOAD_BYTES) {
+                                throw AiraApiException(413, "That file is larger than 20 MB.")
+                            }
+                            out.write(buf, 0, n)
+                        }
+                    }
+                    out.write("\r\n--$boundary--\r\n".toByteArray())
+                }
+                val code = conn.responseCode
+                if (code !in 200..299) {
+                    val text = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "{}"
+                    Log.w(TAG, "POST /v1/care/documents -> $code: $text")
+                    throw AiraApiException(code, text)
+                }
+                conn.inputStream?.close()
+            } finally {
+                conn.disconnect()
+            }
+        }
+
+    /** The picked file's human-readable name, for the Care Vault row. */
+    private fun displayName(ctx: Context, uri: Uri): String? =
+        runCatching {
+            ctx.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c ->
+                    if (c.moveToFirst()) c.getString(0)?.ifBlank { null } else null
+                }
+        }.getOrNull()
 
     // ── memory / consent / emergency / feedback ──────────────────────────────
 
@@ -273,6 +371,47 @@ object AiraApi {
             "POST", "/v1/feedback/report",
             JSONObject().put("kind", kind).put("message", message),
             ensureToken(ctx),
+        )
+    }
+
+    // ── preferences / partner ────────────────────────────────────────────────
+
+    suspend fun prefs(ctx: Context): VoicePrefs {
+        val o = request("GET", "/v1/prefs", null, ensureToken(ctx))
+        return VoicePrefs(
+            voice = o.optStringOrNull("voice") ?: "Aira warm",
+            spokenReplies = o.optBoolean("spoken_replies", false),
+        )
+    }
+
+    /** Persists the voice choice. The backend 400s an unknown voice. */
+    suspend fun setVoice(ctx: Context, voice: String) {
+        request("PUT", "/v1/prefs", JSONObject().put("voice", voice), ensureToken(ctx))
+    }
+
+    /**
+     * Create a real, revocable partner invite. Returns a single-use code the
+     * user shares themselves — the backend deliberately sends no email or SMS,
+     * so no contact detail for a third party is ever collected.
+     */
+    suspend fun createPartnerInvite(
+        ctx: Context,
+        appointments: Boolean,
+        reminders: Boolean,
+        healthDetails: Boolean,
+    ): PartnerInvite {
+        val o = request(
+            "POST", "/v1/partner/invite",
+            JSONObject()
+                .put("appointments", appointments)
+                .put("reminders", reminders)
+                .put("health_details", healthDetails),
+            ensureToken(ctx),
+        )
+        return PartnerInvite(
+            id = o.optString("id"),
+            code = o.optString("code"),
+            shareText = o.optString("share_text"),
         )
     }
 
@@ -402,6 +541,23 @@ data class ConsentFeature(
     val label: String,
     val granted: Boolean,
     val locked: Boolean,
+)
+
+/**
+ * The stored voice preference. [spokenReplies] is false in this build — there is
+ * no speech synthesis behind it yet — so the UI saves the choice but says
+ * plainly that it doesn't take effect until spoken replies ship.
+ */
+data class VoicePrefs(
+    val voice: String = "Aira warm",
+    val spokenReplies: Boolean = false,
+)
+
+/** A created partner invite: a single-use code, plus ready-to-share wording. */
+data class PartnerInvite(
+    val id: String,
+    val code: String,
+    val shareText: String,
 )
 
 /** Flatten `{id, kind, done, ...payload}` into a display row. */

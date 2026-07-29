@@ -1,6 +1,7 @@
 package com.aira.companion.ui
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
@@ -135,8 +136,10 @@ class AiraViewModel : ViewModel() {
                         ChatMessage(
                             id = 1,
                             fromAira = true,
+                            // Not "by text or voice": spoken conversation isn't
+                            // wired up in this build and the mic is disabled.
                             text = "You're all set. I'll keep Today focused on one meaningful step — " +
-                                "ask me anything by text or voice whenever you like.",
+                                "ask me anything whenever you like.",
                         ),
                     ),
             )
@@ -248,6 +251,74 @@ class AiraViewModel : ViewModel() {
 
     fun markMedicineTaken(context: Context?, id: String) =
         write(context, "Marked as taken.") { AiraApi.markMedicineTaken(it, id) }
+
+    fun setReminderDone(context: Context?, id: String, done: Boolean) =
+        write(context, if (done) "Reminder done." else "Reminder reopened.") {
+            AiraApi.setReminderDone(it, id, done)
+        }
+
+    /**
+     * Stream a picked document into the Care Vault.
+     *
+     * Not routed through [write]: the upload takes long enough to need its own
+     * in-progress flag, and the sheet stays open until it finishes so a failure
+     * is visible instead of being dismissed along with the sheet.
+     */
+    fun uploadDocument(context: Context?, uri: Uri, kind: String) {
+        if (context == null) {
+            notify("Not connected — nothing was uploaded.")
+            return
+        }
+        _uiState.update { it.copy(uploadingDocument = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.uploadDocument(context, uri, kind)
+                _uiState.update { it.copy(uploadingDocument = false, activeTool = null) }
+                notify("Saved to your private Care Vault.")
+                loadCare(context)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(uploadingDocument = false) }
+                notify("Couldn't upload that. ${e.message.orEmpty()}".trim())
+            }
+        }
+    }
+
+    fun loadPrefs(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(voicePrefs = AiraApi.prefs(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun setVoice(context: Context?, voice: String) =
+        write(context, "Voice preference saved.", refreshCare = false) {
+            AiraApi.setVoice(it, voice)
+            _uiState.update { s -> s.copy(voicePrefs = s.voicePrefs.copy(voice = voice)) }
+        }
+
+    /**
+     * Create a real partner invite. The resulting code goes into UI state so the
+     * sheet can show it and offer the system share sheet — previously this was a
+     * toast reading "Private partner invitation prepared", and no invitation of
+     * any kind existed.
+     */
+    fun createPartnerInvite(
+        context: Context?,
+        appointments: Boolean,
+        reminders: Boolean,
+        healthDetails: Boolean,
+    ) = write(context, "Invite ready to share.", refreshCare = false) {
+        val invite = AiraApi.createPartnerInvite(it, appointments, reminders, healthDetails)
+        _uiState.update { s -> s.copy(partnerInvite = invite) }
+    }
+
+    /** Drop the code from memory when the sheet closes; it is single-use anyway. */
+    fun clearPartnerInvite() {
+        _uiState.update { it.copy(partnerInvite = null) }
+    }
 
     fun saveAppointment(context: Context?, doctor: String, place: String, whenText: String) =
         write(context, "Appointment saved.") { AiraApi.addAppointment(it, doctor, place, whenText) }
