@@ -215,7 +215,7 @@ fun OnboardingChatScreen(
                                     // to "Pregnancy guidance", so someone who chose "Trying to
                                     // conceive" was told their context was set up for pregnancy.
                                     text = "${state.journey?.label ?: "Wellness support"} · " +
-                                        "${state.language} · ${state.companionPreference}",
+                                        state.language,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = InkMuted,
                                 )
@@ -300,13 +300,6 @@ private fun optionSupport(
                 "Plan my care" -> "Medicines, reminders and documents"
                 else -> null
             }
-        OnboardingField.Companion ->
-            when (option) {
-                "Text & voice" -> "Switch naturally between typing and speaking"
-                "Talking avatar" -> "A warm, lip-synced companion mode"
-                "Chat only" -> "A quiet text-first experience"
-                else -> null
-            }
         else -> null
     }
 
@@ -318,7 +311,5 @@ private fun optionIcon(
         OnboardingField.Journey -> Icons.Outlined.FavoriteBorder
         OnboardingField.Language -> Icons.Outlined.Language
         OnboardingField.Priority -> Icons.Outlined.AutoAwesome
-        OnboardingField.Companion ->
-            if (option == "Chat only") Icons.Outlined.ChatBubbleOutline else Icons.Outlined.MicNone
         else -> Icons.Outlined.AutoAwesome
     }

@@ -45,6 +45,17 @@ class AiraViewModel : ViewModel() {
      */
     fun restoreSession(context: Context?) {
         if (context == null || _uiState.value.stage != AppStage.Starting) return
+        // Seed the trust badge before any turn — with no classifier configured
+        // screening is keyword-only from the very first message.
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val d = AiraApi.screeningDegraded(context)
+                _uiState.update { it.copy(screeningDegraded = d) }
+            } catch (_: Exception) {
+                // Unreachable backend means no full screening either; say so.
+                _uiState.update { it.copy(screeningDegraded = true) }
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val user = try {
                 AiraApi.me(context)
@@ -118,7 +129,6 @@ class AiraViewModel : ViewModel() {
                     next.copy(weeks = trimmed.toIntOrNull()?.takeIf { it in 1..45 })
                 OnboardingField.Language -> next.copy(language = trimmed)
                 OnboardingField.Priority -> next.copy(priority = trimmed)
-                OnboardingField.Companion -> next.copy(companionPreference = trimmed)
             }
 
             next
@@ -553,6 +563,7 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val res = AiraApi.chatTurn(context, text, history)
+                _uiState.update { it.copy(screeningDegraded = res.degraded) }
                 if (res.urgent) {
                     _uiState.update {
                         it.copy(

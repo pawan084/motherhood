@@ -22,7 +22,6 @@ class AiraViewModelTest {
         viewModel.answerOnboarding("24")               // weeks — pregnancy only
         viewModel.answerOnboarding("Hinglish")
         viewModel.answerOnboarding("Prepare for a visit")
-        viewModel.answerOnboarding("Talking avatar")
         viewModel.finishOnboarding()
 
         val state = viewModel.uiState.value
@@ -32,8 +31,10 @@ class AiraViewModelTest {
         assertEquals("Priya", state.name)
         assertEquals(24, state.weeks)
         assertEquals("Hinglish", state.language)
-        assertEquals("Talking avatar", state.companionPreference)
-        assertEquals(6, state.onboardingAnswers.size)
+        // Five, not six: the "How would you like Aira to be present?" question
+        // is gone. Two of its three options described features this build
+        // doesn't have, and the answer was never sent anywhere.
+        assertEquals(5, state.onboardingAnswers.size)
     }
 
     @Test
@@ -45,7 +46,6 @@ class AiraViewModelTest {
         viewModel.answerOnboarding("Maya")             // name
         viewModel.answerOnboarding("Hindi")            // straight to language
         viewModel.answerOnboarding("Feel calmer")
-        viewModel.answerOnboarding("Chat only")
         viewModel.finishOnboarding()
 
         val state = viewModel.uiState.value
@@ -55,8 +55,7 @@ class AiraViewModelTest {
         // class of error as the old hardcoded "Week 24".
         assertNull(state.weeks)
         assertEquals("Hindi", state.language)
-        assertEquals("Chat only", state.companionPreference)
-        assertEquals(5, state.onboardingAnswers.size)
+        assertEquals(4, state.onboardingAnswers.size)
     }
 
     @Test

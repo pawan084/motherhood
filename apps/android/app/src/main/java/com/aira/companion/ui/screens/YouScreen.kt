@@ -78,6 +78,7 @@ fun YouScreen(
     LaunchedEffect(Unit) { onLoadConsent() }
     var confirmDelete by remember { mutableStateOf(false) }
     val personalisation = consent.firstOrNull { it.key == "personalization" }
+    val partnerAccess = consent.firstOrNull { it.key == "partner_access" }
 
     Column(
         modifier =
@@ -150,13 +151,23 @@ fun YouScreen(
         ToolListRow(
             icon = Icons.Outlined.RecordVoiceOver,
             title = "Companion mode",
-            subtitle = "Text, voice or talking avatar",
+            // Was "Text, voice or talking avatar" — it advertised two modes the
+            // build doesn't have, on the row that opens the sheet where both are
+            // disabled and labelled as such.
+            subtitle = "Chat today; voice and avatar aren't wired up yet",
             onClick = { onOpenTool(AiraTool.Companion) },
         )
         ToolListRow(
             icon = Icons.Outlined.Group,
             title = "Partner access",
-            subtitle = "Practical tasks only",
+            // Reflects the consent state rather than describing the feature in
+            // the abstract — it defaults to off, so "Practical tasks only" read
+            // as though something were already being shared.
+            subtitle = if (partnerAccess?.granted == true) {
+                "On — share or revoke access"
+            } else {
+                "Off — nothing is shared"
+            },
             onClick = { onOpenTool(AiraTool.Partner) },
             accent = SageDeep,
         )

@@ -141,7 +141,6 @@ data class AiraUiState(
     val weeks: Int? = null,
     val language: String = "English",
     val priority: String = "",
-    val companionPreference: String = "Text & voice",
     val activeTool: AiraTool? = null,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
@@ -164,6 +163,10 @@ data class AiraUiState(
     // urgent dialer calls a REAL number instead of a hardcoded one.
     val careTeamPhone: String? = null,
     val urgentMessage: String? = null,
+    // True when only the deterministic keyword floor is screening messages. The
+    // chat header claimed "Safety checked" unconditionally, which is a promise
+    // about a safety system rather than decoration.
+    val screeningDegraded: Boolean = false,
     val snackbarMessage: String? = null,
     // The stored voice preference, and the partner invite most recently created.
     // Both used to be toasts that persisted nothing.
@@ -183,7 +186,7 @@ data class AiraUiState(
 )
 
 /** Which piece of the care context a prompt collects. */
-enum class OnboardingField { Journey, Name, Weeks, Language, Priority, Companion }
+enum class OnboardingField { Journey, Name, Weeks, Language, Priority }
 
 data class OnboardingPrompt(
     val field: OnboardingField,
@@ -242,7 +245,9 @@ fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
             OnboardingPrompt(
                 field = OnboardingField.Language,
                 question = "How should we speak with you?",
-                helper = "You can change language or use voice at any time.",
+                // Not "or use voice" — spoken conversation isn't wired up and
+                // the composer's mic is disabled.
+                helper = "You can change this at any time.",
                 options = listOf("English", "Hindi", "Hinglish"),
             ),
         )
@@ -262,12 +267,12 @@ fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
                     ),
             ),
         )
-        add(
-            OnboardingPrompt(
-                field = OnboardingField.Companion,
-                question = "How would you like Aira to be present?",
-                helper = "Choose a calm interface now; this stays under your control.",
-                options = listOf("Text & voice", "Talking avatar", "Chat only"),
-            ),
-        )
+        // The "How would you like Aira to be present?" question is gone. It
+        // offered "Text & voice", "Talking avatar" and "Chat only" — two of
+        // which describe features this build doesn't have — and the answer was
+        // never sent anywhere: finishOnboarding posts journey, name, language,
+        // priorities and weeks, and `companionPreference` was only ever echoed
+        // back in the summary line. Asking someone to choose between two things
+        // that don't exist and one that isn't recorded is worse than not
+        // asking. Chat is the only mode, so there is nothing to choose yet.
     }

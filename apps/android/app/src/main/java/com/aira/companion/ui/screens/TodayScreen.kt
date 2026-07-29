@@ -58,22 +58,28 @@ fun TodayScreen(
     modifier: Modifier = Modifier,
     today: TodayData? = null,
 ) {
-    // Journey-aware fields, falling back to the static demo copy when offline.
+    // Every field here comes from /v1/today or is omitted. The fallbacks that
+    // used to sit on these lines were caught on a real device with an expired
+    // token: with the backend unreachable the screen still rendered "Second
+    // trimester" and "Prepare for tomorrow's appointment" in full confidence,
+    // so a postpartum user — or anyone simply offline — was told they were
+    // mid-pregnancy with a visit booked for the next day. An empty screen is
+    // recoverable; a confidently wrong one is not.
     val weeks = today?.weeks
-    // No invented name. Onboarding never asks for one, so the fallback greeted
-    // every user as "Maya" — a stranger's name on a private health app.
+    // No invented name. The fallback used to greet every user as "Maya" — a
+    // stranger's name on a private health app.
     val name = today?.name?.ifBlank { null }
     val priorities = today?.priorities.orEmpty()
     val headerText = if (weeks != null) "Week $weeks" else journeyLabel(today?.journey)
-    val contextLine = today?.contextLine?.ifBlank { null } ?: "Second trimester"
+    val contextLine = today?.contextLine?.ifBlank { null }
     val action = today?.nextAction
-    val actionTitle = action?.title?.ifBlank { null } ?: "Prepare for tomorrow’s appointment"
-    // Generic fallback only — the real copy comes from /v1/today. It used to
-    // reference "Week 24" and a fatigue note that belonged to nobody.
+    val actionTitle = action?.title?.ifBlank { null }
     val actionDetail = action?.detail?.ifBlank { null }
-        ?: "A small step Aira can help you take today."
-    val actionMinutes = action?.minutes ?: 3
+    val actionMinutes = action?.minutes
     val actionTool = toolKeyToTool(action?.tool) ?: AiraTool.Appointment
+    // "Loaded" means the server answered. Until it does, the screen says it is
+    // still loading rather than asserting anything about the user's care.
+    val loaded = today != null
     Column(
         modifier =
             modifier
@@ -112,14 +118,21 @@ fun TodayScreen(
             style = MaterialTheme.typography.bodyLarge,
             color = InkMuted,
         )
+        // "You're on track" was unconditional — it claimed a state the screen
+        // had no way to know, including with nothing scheduled at all and with
+        // the backend down.
         Text(
-            text = "You’re on track.",
+            text = if (loaded) "You’re on track." else "Just a moment…",
             style = MaterialTheme.typography.headlineLarge,
             color = Ink,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = "Nothing urgent needs your attention right now.",
+            text = if (loaded) {
+                "Nothing urgent needs your attention right now."
+            } else {
+                "Aira is loading your care context. Nothing here is your data yet."
+            },
             style = MaterialTheme.typography.bodyMedium,
             color = InkMuted,
         )
@@ -160,12 +173,16 @@ fun TodayScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = contextLine,
+                            text = contextLine ?: "Your care context",
                             style = MaterialTheme.typography.titleLarge,
                             color = Ink,
                         )
                         Text(
-                            text = "Only what's most useful to know right now.",
+                            text = if (loaded) {
+                                "Only what's most useful to know right now."
+                            } else {
+                                "Not loaded yet."
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = InkMuted,
                         )
@@ -222,32 +239,42 @@ fun TodayScreen(
                         style = MaterialTheme.typography.labelMedium,
                         color = Plum,
                     )
-                    Text(
-                        text = "About $actionMinutes min",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
+                    if (actionMinutes != null) {
+                        Text(
+                            text = "About $actionMinutes min",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
                 }
             }
             Spacer(modifier = Modifier.height(15.dp))
             Text(
-                text = actionTitle,
+                text = actionTitle ?: "Nothing to suggest yet",
                 style = MaterialTheme.typography.titleLarge,
                 color = Ink,
             )
             Spacer(modifier = Modifier.height(5.dp))
             Text(
-                text = actionDetail,
+                text = actionDetail ?: if (loaded) {
+                    "Aira will surface one step here when it has something useful."
+                } else {
+                    "Aira hasn't been able to load your care context."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = InkMuted,
             )
             Spacer(modifier = Modifier.height(17.dp))
-            PrimaryButton(
-                label = "Start with Aira",
-                onClick = { onOpenTool(actionTool) },
-                modifier = Modifier.fillMaxWidth(),
-                trailingIcon = Icons.Outlined.ArrowForward,
-            )
+            // Offering "Start" for an action the server never sent would open a
+            // tool chosen by a fallback, not by the user's actual context.
+            if (actionTitle != null) {
+                PrimaryButton(
+                    label = "Start with Aira",
+                    onClick = { onOpenTool(actionTool) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = Icons.Outlined.ArrowForward,
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -268,13 +295,23 @@ fun TodayScreen(
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Column {
+                    // "Caught up" is a claim about the user's care, so it needs
+                    // the server to have actually said so.
                     Text(
-                        text = "You’re caught up for today.",
+                        text = if (loaded) {
+                            "You’re caught up for today."
+                        } else {
+                            "Aira can’t reach its backend."
+                        },
                         style = MaterialTheme.typography.titleSmall,
                         color = Ink,
                     )
                     Text(
-                        text = "Aira will surface something only when it matters.",
+                        text = if (loaded) {
+                            "Aira will surface something only when it matters."
+                        } else {
+                            "This screen can’t tell you what needs attention until it connects."
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = InkMuted,
                     )

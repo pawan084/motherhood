@@ -90,7 +90,16 @@ fun AiraChatScreen(
                     modifier = Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center,
                 ) {
-                    SafetyBadge()
+                    // Was unconditional "Safety checked" — a promise about the
+                    // safety system that held even when only the deterministic
+                    // keyword floor was running.
+                    SafetyBadge(
+                        text = if (state.screeningDegraded) {
+                            "Keyword-only screening"
+                        } else {
+                            "Safety checked"
+                        },
+                    )
                 }
             }
 

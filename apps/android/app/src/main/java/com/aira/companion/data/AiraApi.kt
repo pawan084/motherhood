@@ -55,7 +55,15 @@ object AiraApi {
             .putString(KEY_TOKEN, token).apply()
     }
 
+    // The application context, captured the first time a call resolves a token.
+    // Held so the transport can clear a dead session on a 401 without threading
+    // a Context through every request signature. `applicationContext` is a
+    // process singleton, so this holds no activity and leaks nothing.
+    @Volatile
+    private var appCtx: Context? = null
+
     private suspend fun ensureToken(ctx: Context): String {
+        appCtx = ctx.applicationContext
         cachedToken(ctx)?.let { return it }
         val res = request("POST", "/device/register", null, token = null)
         val token = res.getString("token")
@@ -91,6 +99,17 @@ object AiraApi {
 
     suspend fun emergencyProfile(ctx: Context): JSONObject =
         request("GET", "/v1/emergency-profile", null, ensureToken(ctx))
+
+    /**
+     * Unauthenticated liveness probe. Used to seed the chat header's trust state
+     * before the first turn: with no classifier configured, screening is
+     * keyword-only from the very first message, and the badge should say so
+     * rather than defaulting to a reassuring "Safety checked".
+     */
+    suspend fun screeningDegraded(ctx: Context): Boolean {
+        appCtx = ctx.applicationContext
+        return !request("GET", "/health", null, null).optBoolean("llm_configured", false)
+    }
 
     suspend fun today(ctx: Context): TodayData {
         val o = request("GET", "/v1/today", null, ensureToken(ctx))
@@ -539,6 +558,16 @@ object AiraApi {
             val text = stream?.bufferedReader()?.use { it.readText() } ?: "{}"
             if (code !in 200..299) {
                 Log.w(TAG, "$method $path -> $code: $text")
+                // A 401 means the cached token is revoked, expired, or belongs
+                // to a deleted account. Without this the app kept resending the
+                // dead token forever: every screen fell back to placeholder
+                // content and the only cure was reinstalling — `pm clear` is
+                // blocked by some OEMs, so a real user could not recover at all.
+                // The web client has always dropped the token here; this brings
+                // Android in line, and the next call re-registers.
+                if (code == 401 && path != "/device/register") {
+                    appCtx?.let { clearSession(it) }
+                }
                 throw AiraApiException(code, text)
             }
             JSONObject(text)
@@ -553,6 +582,10 @@ class AiraApiException(val code: Int, message: String) : Exception(message)
 /** Parsed chat-turn result. A red turn has [urgent] = true, [reply] = null. */
 data class TurnResult(
     val level: String,
+    /** True when the LLM classifier was unavailable and only the deterministic
+     *  keyword floor ran. The user is still protected, but the chat header must
+     *  say so rather than claiming full screening. */
+    val degraded: Boolean,
     val urgent: Boolean,
     val reply: String?,
     val trustLabel: String?,
@@ -579,6 +612,7 @@ data class TurnResult(
             }
             return TurnResult(
                 level = safety.optString("level", "green"),
+                degraded = safety.optBoolean("degraded", false),
                 urgent = o.optBoolean("urgent", false),
                 reply = if (o.isNull("reply")) null else o.optString("reply"),
                 trustLabel = if (o.isNull("trust_label")) null else o.optString("trust_label"),
