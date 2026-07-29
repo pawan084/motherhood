@@ -295,6 +295,15 @@ export const AiraAPI = {
     }
     return res.json() as Promise<CareItem>;
   },
+  // Every care kind was create-only: a typo was permanent, a cancelled
+  // appointment stayed forever, and a stopped medicine went on reading as due.
+  updateCareItem: (id: string, fields: Record<string, unknown>) =>
+    req<CareItem>(`/v1/care/items/${id}`, { method: "PATCH", body: JSON.stringify(fields) }),
+  deleteCareItem: (id: string) =>
+    req<{ ok: boolean }>(`/v1/care/items/${id}`, { method: "DELETE" }),
+  /** Check-ins and symptom logs — the "timeline" the tools have always named. */
+  timeline: () => req<{ items: CareItem[] }>("/v1/care/timeline"),
+
   addCheckin: (b: { feeling?: string; sleep_hours?: number; note?: string }) =>
     req<CareItem>("/v1/care/checkin", { method: "POST", body: JSON.stringify(b) }),
   addSymptom: (b: { what: string; severity?: string; started?: string; pattern?: string }) =>

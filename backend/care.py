@@ -346,6 +346,97 @@ def add_symptom(body: SymptomIn, uid: str = Depends(current_user)):
     return _add_item(uid, "symptom", body.model_dump())
 
 
+# ── editing and removing care items ──────────────────────────────────────────
+#
+# Everything above could only be CREATED. There was no PATCH and no DELETE for
+# any kind, which meant a typo in a doctor's name was permanent, a cancelled
+# appointment stayed on Today forever, and — the one that matters — a medicine
+# the care team had stopped went on being listed as due. An app that keeps
+# prompting someone to take a discontinued medicine is misleading about their
+# care, however carefully the copy says Aira never changes medication.
+#
+# One generic pair rather than twelve near-identical routes. `kind` lives on the
+# row, so the id alone is enough, and every query is scoped by user_id — an item
+# id is not a capability.
+
+# What a user may change, per kind. An allow-list rather than a merge of whatever
+# arrives: without it a client could write `done`, `kind` or invented keys into
+# the payload blob and quietly reshape the row.
+_EDITABLE_FIELDS = {
+    "reminder": {"title", "time", "repeat"},
+    "medicine": {"name", "dose", "schedule", "time"},
+    "appointment": {"doctor", "place", "when", "notes"},
+    "document": {"type"},
+    "checkin": {"feeling", "sleep_hours", "note"},
+    "symptom": {"what", "severity", "started", "pattern"},
+}
+
+
+def _get_item(uid: str, item_id: str) -> tuple[str, dict]:
+    init()
+    row = _conn.execute("SELECT kind, data FROM care_items WHERE id=? AND user_id=?",
+                        (item_id, uid)).fetchone()
+    if not row:
+        # 404 rather than 403 for someone else's id: distinguishing "not yours"
+        # from "doesn't exist" would confirm that an id is real.
+        raise HTTPException(status_code=404, detail="not found")
+    return row[0], json.loads(row[1] or "{}")
+
+
+@router.patch("/care/items/{item_id}")
+def update_item(item_id: str, body: dict, uid: str = Depends(current_user)):
+    """Edit a care item. Partial: only the fields supplied change."""
+    kind, data = _get_item(uid, item_id)
+    allowed = _EDITABLE_FIELDS.get(kind, set())
+    unknown = set(body) - allowed
+    if unknown:
+        raise HTTPException(
+            status_code=400,
+            detail=f"cannot edit {', '.join(sorted(unknown))} on a {kind}")
+    if not body:
+        raise HTTPException(status_code=400, detail="nothing to change")
+    data.update({k: v for k, v in body.items()})
+    _conn.execute("UPDATE care_items SET data=? WHERE id=? AND user_id=?",
+                  (json.dumps(data), item_id, uid))
+    _conn.commit()
+    row = _conn.execute("SELECT done, created FROM care_items WHERE id=?", (item_id,)).fetchone()
+    return {"id": item_id, "kind": kind, "done": bool(row[0]), "created": row[1], **data}
+
+
+@router.delete("/care/items/{item_id}")
+def delete_item(item_id: str, uid: str = Depends(current_user)):
+    """Remove a care item for good.
+
+    A real delete, not a hidden flag. Someone removing a medicine they no longer
+    take, or a scan they uploaded by mistake, means it should be gone — leaving
+    it in the row and merely hiding it would keep health data they asked to
+    remove.
+    """
+    init()
+    cur = _conn.execute("DELETE FROM care_items WHERE id=? AND user_id=?", (item_id, uid))
+    _conn.commit()
+    if getattr(cur, "rowcount", 0) == 0:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
+
+
+# ── the timeline ─────────────────────────────────────────────────────────────
+
+@router.get("/care/timeline")
+def timeline(limit: int = 50, uid: str = Depends(current_user)):
+    """Check-ins and symptom logs, newest first.
+
+    These were write-only. The clients said "Add to timeline", the note field
+    said "a private note for your timeline", and the success message said
+    "Added to your timeline" — while nothing could read either kind back. Someone
+    logging symptoms for three weeks to show their doctor arrived at the
+    appointment with nothing to show.
+    """
+    items = _list_items(uid, "checkin") + _list_items(uid, "symptom")
+    items.sort(key=lambda i: i.get("created") or 0, reverse=True)
+    return {"items": items[:max(1, min(limit, 200))]}
+
+
 # ── emergency profile (offline) ──────────────────────────────────────────────
 
 class EmergencyProfileIn(BaseModel):

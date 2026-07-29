@@ -5,24 +5,99 @@
 // showed "Dr. Ananya Mehta · 4 documents · 1 medicine due" to every user
 // regardless of what they had entered.
 
-import { Calendar, Check, ClipboardCheck, FileText, Phone, Pill, Plus, Siren } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, Calendar, Check, ClipboardCheck, FileText, Heart, Pencil, Phone, Pill, Plus, Siren, Trash2, X } from "lucide-react";
 import type { CareData, CareItem, EmergencyProfile } from "../aira-api";
 import { telHref } from "../aira-api";
-import type { ToolName } from "./types";
+import { formatDate, type ToolName } from "./types";
 
 function str(v: unknown, fallback = ""): string {
   return typeof v === "string" && v.trim() ? v : fallback;
 }
 
+/**
+ * Rename or remove a row, inline.
+ *
+ * Every care kind used to be create-only, so a typo in a doctor's name was
+ * permanent and a cancelled appointment sat on Today forever. Editing here is
+ * deliberately limited to the row's main label — the field people actually
+ * mistype — with the full form still available through the tool sheet.
+ *
+ * Delete asks first. These are small rows next to each other and the action
+ * can't be undone.
+ */
+function RowActions({
+  item, label, field, onRename, onDelete,
+}: {
+  item: CareItem;
+  label: string;
+  field: string;
+  onRename: (id: string, field: string, value: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [value, setValue] = useState(label);
+
+  if (editing) {
+    return (
+      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <input
+          className="input-inline"
+          value={value}
+          autoFocus
+          aria-label={`Rename ${label}`}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && value.trim()) { onRename(item.id, field, value.trim()); setEditing(false); }
+            if (e.key === "Escape") { setValue(label); setEditing(false); }
+          }}
+        />
+        <button
+          className="btn-ghost" disabled={!value.trim()}
+          onClick={() => { onRename(item.id, field, value.trim()); setEditing(false); }}
+        >Save</button>
+        <button className="btn-ghost" aria-label="Cancel editing"
+                onClick={() => { setValue(label); setEditing(false); }}><X size={14} /></button>
+      </span>
+    );
+  }
+
+  if (confirming) {
+    return (
+      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+        <small style={{ color: "var(--muted)" }}>Remove?</small>
+        <button className="btn-danger" onClick={() => onDelete(item.id)}>Yes, remove</button>
+        <button className="btn-ghost" onClick={() => setConfirming(false)}>Keep</button>
+      </span>
+    );
+  }
+
+  return (
+    <span style={{ display: "flex", gap: 4 }}>
+      <button className="btn-ghost" aria-label={`Edit ${label}`} onClick={() => setEditing(true)}>
+        <Pencil size={14} />
+      </button>
+      <button className="btn-ghost" aria-label={`Remove ${label}`} onClick={() => setConfirming(true)}>
+        <Trash2 size={14} />
+      </button>
+    </span>
+  );
+}
+
 export default function Care({
-  care, emergency, loading, openTool, onMarkTaken, onReminderDone,
+  care, emergency, timeline, loading, openTool, onMarkTaken, onReminderDone,
+  onRename, onDelete,
 }: {
   care: CareData | null;
   emergency: EmergencyProfile | null;
+  timeline: CareItem[];
   loading: boolean;
   openTool: (t: ToolName) => void;
   onMarkTaken: (id: string) => void;
   onReminderDone: (id: string, done: boolean) => void;
+  onRename: (id: string, field: string, value: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const appts = care?.appointments ?? [];
   const meds = care?.medicines_due ?? [];
@@ -67,11 +142,15 @@ export default function Care({
                   {/* Row actions repeat once per item, so the accessible name
                       carries the item — otherwise a list of appointments is
                       just "Prepare, Prepare, Prepare". */}
-                  <button
-                    className="btn-ghost"
-                    onClick={() => openTool("appointment")}
-                    aria-label={`Prepare for your visit with ${str(a.doctor, "your care team")}`}
-                  >Prepare</button>
+                  <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => openTool("appointment")}
+                      aria-label={`Prepare for your visit with ${str(a.doctor, "your care team")}`}
+                    >Prepare</button>
+                    <RowActions item={a} label={str(a.doctor, "Appointment")} field="doctor"
+                                onRename={onRename} onDelete={onDelete} />
+                  </span>
                 </div>
               ))}
               {!loading && !appts.length && (
@@ -95,13 +174,19 @@ export default function Care({
                     <strong>{str(m.name, "Medicine")}</strong>
                     <small>{[str(m.dose), str(m.schedule), str(m.time)].filter(Boolean).join(" · ") || "As you set it"}</small>
                   </div>
-                  <button
-                    className="btn-ghost"
-                    onClick={() => onMarkTaken(m.id)}
-                    aria-label={`Mark ${str(m.name, "this medicine")} as taken`}
-                  >
-                    <Check size={14} /> Taken
-                  </button>
+                  <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => onMarkTaken(m.id)}
+                      aria-label={`Mark ${str(m.name, "this medicine")} as taken`}
+                    >
+                      <Check size={14} /> Taken
+                    </button>
+                    {/* The safety one: a medicine the care team stopped used to
+                        stay listed as due with no way to remove it. */}
+                    <RowActions item={m} label={str(m.name, "Medicine")} field="name"
+                                onRename={onRename} onDelete={onDelete} />
+                  </span>
                 </div>
               ))}
               {!loading && !meds.length && <p className="empty-row">Nothing due right now.</p>}
@@ -126,19 +211,77 @@ export default function Care({
                     <strong>{str(r.title, "Reminder")}</strong>
                     <small>{[str(r.time), str(r.repeat)].filter(Boolean).join(" · ") || "No time set"}</small>
                   </div>
-                  <button
-                    className="btn-ghost"
-                    onClick={() => onReminderDone(r.id, !r.done)}
-                    aria-pressed={!!r.done}
-                    aria-label={r.done
-                      ? `${str(r.title, "Reminder")} is done — select to reopen it`
-                      : `Mark ${str(r.title, "this reminder")} done`}
-                  >
-                    {r.done ? <><Check size={14} /> Done</> : "Mark done"}
-                  </button>
+                  <span style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <button
+                      className="btn-ghost"
+                      onClick={() => onReminderDone(r.id, !r.done)}
+                      aria-pressed={!!r.done}
+                      aria-label={r.done
+                        ? `${str(r.title, "Reminder")} is done — select to reopen it`
+                        : `Mark ${str(r.title, "this reminder")} done`}
+                    >
+                      {r.done ? <><Check size={14} /> Done</> : "Mark done"}
+                    </button>
+                    <RowActions item={r} label={str(r.title, "Reminder")} field="title"
+                                onRename={onRename} onDelete={onDelete} />
+                  </span>
                 </div>
               ))}
               {!loading && !reminders.length && <p className="empty-row">No reminders yet.</p>}
+            </div>
+          </section>
+
+          {/* The timeline the tools have always named. Check-ins and symptom
+              logs were written and never shown again — someone tracking
+              symptoms to raise at an appointment had nothing to bring. */}
+          <section className="panel" style={{ padding: 24 }}>
+            <div className="section-heading">
+              <h3>Your timeline</h3>
+              <button onClick={() => openTool("symptom")} aria-label="Log a symptom">
+                <Plus size={13} /> Log
+              </button>
+            </div>
+            <div className="list-rows">
+              {timeline.map((t: CareItem) => (
+                <div key={t.id}>
+                  <span className={t.kind === "symptom" ? "icon-box lilac" : "icon-box sage"}>
+                    {t.kind === "symptom" ? <AlertTriangle size={18} /> : <Heart size={18} />}
+                  </span>
+                  <div>
+                    <strong>
+                      {t.kind === "symptom"
+                        ? str(t.what, "Symptom")
+                        : `Feeling ${str(t.feeling, "noted").toLowerCase()}`}
+                    </strong>
+                    <small>
+                      {[
+                        formatDate(t.created),
+                        str(t.severity),
+                        str(t.started),
+                        typeof t.sleep_hours === "number" ? `${t.sleep_hours}h sleep` : "",
+                        str(t.note),
+                      ].filter(Boolean).join(" · ")}
+                    </small>
+                  </div>
+                  <RowActions
+                    item={t}
+                    label={t.kind === "symptom" ? str(t.what, "Symptom") : "this check-in"}
+                    field={t.kind === "symptom" ? "what" : "note"}
+                    onRename={onRename}
+                    onDelete={onDelete}
+                  />
+                </div>
+              ))}
+              {!timeline.length && (
+                <p className="empty-row">
+                  Nothing logged yet. Check-ins and symptoms you record appear here,
+                  so you can look back — or show someone — later.
+                </p>
+              )}
+            </div>
+            <div className="note-line" style={{ marginTop: 16 }}>
+              Logging is tracking, not diagnosis. Bring anything that worries you to
+              your care team rather than waiting for a pattern.
             </div>
           </section>
         </div>

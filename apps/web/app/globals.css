@@ -851,6 +851,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @keyframes sheet-up { from { opacity: .4; transform: translateY(22%); } to { opacity: 1; transform: translateY(0); } }
 @keyframes tray-up { from { opacity: .3; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Inline rename field on a care row. Sized to sit inside the row's action slot
+   without pushing the layout around while someone is typing. */
+.input-inline {
+  min-width: 0; width: min(190px, 40vw);
+  padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--paper); color: var(--ink);
+  font: inherit; font-size: 13px;
+}
+.input-inline:focus-visible { outline: 2px solid var(--aubergine); outline-offset: 1px; }
+
 /* ── public legal pages (/privacy, /terms) ─────────────────────────────────
    Long-form reading, so this is a single measure-limited column rather than
    the app's panel grid. Sized in ch to keep the line length readable no matter

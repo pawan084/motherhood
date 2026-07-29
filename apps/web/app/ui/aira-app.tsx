@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import {
-  AiraAPI, health, type CareData, type ConsentFeature, type EmergencyProfile,
+  AiraAPI, health, type CareData, type CareItem, type ConsentFeature, type EmergencyProfile,
   type JourneyData, type TodayData, type UrgentHelp, type User,
 } from "../aira-api";
 import { Header, MobileNav, Sidebar } from "./shell";
@@ -41,6 +41,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   const [today, setToday] = useState<TodayData | null>(null);
   const [journey, setJourney] = useState<JourneyData | null>(null);
   const [care, setCare] = useState<CareData | null>(null);
+  const [timeline, setTimeline] = useState<CareItem[]>([]);
   const [emergency, setEmergency] = useState<EmergencyProfile | null>(null);
   const [consent, setConsent] = useState<ConsentFeature[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,12 +52,13 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     { open: false, payload: null });
 
   const refresh = useCallback(async () => {
-    const [t, c, e] = await Promise.allSettled([
-      AiraAPI.today(), AiraAPI.care(), AiraAPI.emergencyProfile(),
+    const [t, c, e, tl] = await Promise.allSettled([
+      AiraAPI.today(), AiraAPI.care(), AiraAPI.emergencyProfile(), AiraAPI.timeline(),
     ]);
     if (t.status === "fulfilled") setToday(t.value);
     if (c.status === "fulfilled") setCare(c.value);
     if (e.status === "fulfilled") setEmergency(e.value);
+    if (tl.status === "fulfilled") setTimeline(tl.value.items);
   }, []);
 
   // First load. `me` decides whether onboarding runs, so it gates the rest.
@@ -110,6 +112,20 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
       await AiraAPI.setReminderDone(id, done);
       await refresh();
     } catch { /* the row keeps its previous state */ }
+  }, [refresh]);
+
+  const renameItem = useCallback(async (id: string, field: string, value: string) => {
+    try {
+      await AiraAPI.updateCareItem(id, { [field]: value });
+      await refresh();
+    } catch { /* the row keeps its previous label */ }
+  }, [refresh]);
+
+  const deleteItem = useCallback(async (id: string) => {
+    try {
+      await AiraAPI.deleteCareItem(id);
+      await refresh();
+    } catch { /* the row stays */ }
   }, [refresh]);
 
   const openUrgent = (payload: UrgentHelp | null) => {
@@ -220,9 +236,11 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           )}
           {screen === "Journey" && <JourneyScreen journey={journey} loading={!journey} />}
           {screen === "Care" && (
-            <Care care={care} emergency={emergency} loading={care === null}
+            <Care care={care} emergency={emergency} timeline={timeline}
+                  loading={care === null}
                   openTool={setTool} onMarkTaken={markTaken}
-                  onReminderDone={setReminderDone} />
+                  onReminderDone={setReminderDone}
+                  onRename={renameItem} onDelete={deleteItem} />
           )}
           {screen === "Updates" && <Updates updates={updates} loading={care === null} />}
           {screen === "You" && (
