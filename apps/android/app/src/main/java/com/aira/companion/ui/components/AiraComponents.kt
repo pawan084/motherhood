@@ -487,3 +487,35 @@ fun ToolListRow(
         )
     }
 }
+
+/**
+ * A short, tinted explanation attached to whatever sits above it — a scope note,
+ * a caveat, a reason something is unavailable.
+ *
+ * Lived privately in ToolSheets until the auth screens needed the same thing.
+ * Kept as one component rather than copied, so a wording or spacing change can't
+ * apply to only half the places it appears.
+ */
+@Composable
+fun InfoBanner(
+    icon: ImageVector,
+    text: String,
+    color: Color,
+    contentColor: Color = SageDeep,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = color,
+        contentColor = contentColor,
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Icon(icon, null, modifier = Modifier.size(19.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}

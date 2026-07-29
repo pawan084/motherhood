@@ -152,6 +152,81 @@ object AiraApi {
     }
 
     /** The signed-in user. Used at launch to decide whether onboarding is needed. */
+    // ── accounts (optional) ──────────────────────────────────────────────────
+    //
+    // Aira works anonymously; an account exists so care context can follow
+    // someone to another device. Both calls replace the cached session on
+    // success, so everything afterwards is made as the account.
+
+    /** True when this device already holds a session, without minting one. */
+    fun hasSession(ctx: Context): Boolean = cachedToken(ctx) != null
+
+    /**
+     * How much care data is sitting on this device's current session. Used to
+     * warn before signing IN to an existing account, because that switches to
+     * the account's data and leaves anything here behind.
+     *
+     * Returns 0 rather than throwing when there is no session or the backend is
+     * unreachable — a failed count must not block someone from signing in.
+     */
+    suspend fun localCareItemCount(ctx: Context): Int {
+        if (!hasSession(ctx)) return 0
+        return try {
+            val c = care(ctx)
+            c.appointments.size + c.medicinesDue.size + c.reminders.size + c.documentsCount
+        } catch (_: Exception) {
+            0
+        }
+    }
+
+    /**
+     * Create an account, carrying this device's anonymous care data over. The
+     * device token is sent so the server can promote that user in place; without
+     * it everything done before signing up would be stranded.
+     */
+    suspend fun signUp(ctx: Context, email: String, password: String): UserProfile {
+        val body = JSONObject()
+            .put("email", email.trim())
+            .put("password", password)
+            .put("device_token", cachedToken(ctx) ?: JSONObject.NULL)
+        return applySession(ctx, request("POST", "/account/signup", body, token = null))
+    }
+
+    /**
+     * Sign in to an existing account. Deliberately does NOT send the device
+     * token: signing in means "show me my account", and silently folding this
+     * device's notes into it is not reversible.
+     */
+    suspend fun signIn(ctx: Context, email: String, password: String): UserProfile {
+        val body = JSONObject().put("email", email.trim()).put("password", password)
+        return applySession(ctx, request("POST", "/account/login", body, token = null))
+    }
+
+    /** Sign out everywhere: the server bumps token_version, killing every
+     *  issued token, and the local copy is dropped so the next call registers a
+     *  fresh anonymous user. */
+    suspend fun logout(ctx: Context) {
+        try {
+            request("POST", "/account/logout", null, ensureToken(ctx))
+        } finally {
+            // Even if the call fails, this device must stop using the token —
+            // otherwise "sign out" leaves the session working.
+            clearSession(ctx)
+        }
+    }
+
+    private fun applySession(ctx: Context, res: JSONObject): UserProfile {
+        res.optStringOrNull("token")?.let { storeToken(ctx, it) }
+        val o = res.optJSONObject("user") ?: JSONObject()
+        return UserProfile(
+            id = o.optString("id"),
+            name = o.optStringOrNull("name").orEmpty(),
+            journey = o.optStringOrNull("journey").orEmpty(),
+            language = o.optStringOrNull("language") ?: "English",
+            onboarded = o.optBoolean("onboarded", false),
+        )
+    }
+
     suspend fun me(ctx: Context): UserProfile {
         val o = request("GET", "/account/me", null, ensureToken(ctx))
             .optJSONObject("user") ?: JSONObject()

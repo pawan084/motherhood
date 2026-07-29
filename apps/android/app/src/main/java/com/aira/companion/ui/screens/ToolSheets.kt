@@ -114,6 +114,7 @@ import kotlinx.coroutines.delay
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChoiceCard
+import com.aira.companion.ui.components.InfoBanner
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.theme.Amber
@@ -1694,27 +1695,6 @@ private fun SettingLine(
     }
 }
 
-@Composable
-private fun InfoBanner(
-    icon: ImageVector,
-    text: String,
-    color: Color,
-    contentColor: Color = SageDeep,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = color,
-        contentColor = contentColor,
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            Icon(icon, null, modifier = Modifier.size(19.dp))
-            Spacer(Modifier.width(10.dp))
-            Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
+// InfoBanner moved to ui/components/AiraComponents.kt when the auth
+// screens needed it too — it had outgrown being private to this file.
 

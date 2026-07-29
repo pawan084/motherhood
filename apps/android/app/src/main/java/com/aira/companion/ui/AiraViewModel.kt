@@ -10,6 +10,7 @@ import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.AuthMode
 import com.aira.companion.model.ChatMessage
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
@@ -116,6 +117,132 @@ class AiraViewModel : ViewModel() {
 
     fun startOnboarding() {
         _uiState.update { it.copy(stage = AppStage.Onboarding) }
+    }
+
+    // ── accounts (optional) ─────────────────────────────────────────────────
+
+    /**
+     * Open the auth screen. For sign-in we first count what's on this device, so
+     * the screen can warn that signing in switches to the account's data and
+     * leaves local notes behind — rather than discovering it afterwards.
+     */
+    fun openAuth(context: Context?, mode: AuthMode) {
+        _uiState.update {
+            it.copy(
+                stage = AppStage.Auth,
+                // Remember where we came from, so closing returns there rather
+                // than dumping someone mid-use back onto Welcome. Clamped to the
+                // two stages auth can legitimately be opened from: returning to
+                // Starting would land on a screen that draws nothing, since the
+                // splash it belongs to is long gone.
+                authReturnStage = when {
+                    it.stage == AppStage.Auth -> it.authReturnStage
+                    it.stage == AppStage.Main -> AppStage.Main
+                    else -> AppStage.Welcome
+                },
+                authMode = mode,
+                authError = null,
+                localCareItems = 0,
+            )
+        }
+        if (context == null || mode != AuthMode.SignIn) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val n = AiraApi.localCareItemCount(context)
+            _uiState.update { it.copy(localCareItems = n) }
+        }
+    }
+
+    fun setAuthMode(context: Context?, mode: AuthMode) = openAuth(context, mode)
+
+    fun closeAuth() {
+        _uiState.update { it.copy(stage = it.authReturnStage, authError = null) }
+    }
+
+    fun signUp(context: Context?, email: String, password: String) =
+        authenticate(context) { AiraApi.signUp(it, email, password) }
+
+    fun signIn(context: Context?, email: String, password: String) =
+        authenticate(context) { AiraApi.signIn(it, email, password) }
+
+    /**
+     * Shared tail for both: on success land on Today if the account has already
+     * been onboarded, otherwise run onboarding. On failure STAY on the auth
+     * screen with the reason — advancing anyway would be the "said saved,
+     * saved nothing" failure in a new place.
+     */
+    private fun authenticate(
+        context: Context?,
+        call: suspend (Context) -> com.aira.companion.data.UserProfile,
+    ) {
+        if (context == null) {
+            _uiState.update { it.copy(authError = "Not connected — try again in a moment.") }
+            return
+        }
+        _uiState.update { it.copy(authBusy = true, authError = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val user = call(context)
+                _uiState.update {
+                    it.copy(
+                        authBusy = false,
+                        authError = null,
+                        signedIn = true,
+                        language = user.language.ifBlank { it.language },
+                        journey = JourneyType.entries.firstOrNull { j ->
+                            j.name.equals(user.journey, ignoreCase = true) ||
+                                journeyLabel(user.journey) == j.label
+                        } ?: it.journey,
+                        stage = if (user.onboarded) AppStage.Main else AppStage.Onboarding,
+                        destination = MainDestination.Today,
+                    )
+                }
+                if (user.onboarded) {
+                    loadToday(context)
+                    loadJourney(context)
+                    loadCare(context)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(authBusy = false, authError = readableAuthError(e)) }
+            }
+        }
+    }
+
+    /** Server details are written for developers. These are the same facts in
+     *  the words someone staring at the form needs. */
+    private fun readableAuthError(e: Exception): String {
+        val api = e as? com.aira.companion.data.AiraApiException
+        return when (api?.code) {
+            409 -> "An account with that email already exists. Try signing in instead."
+            401 -> "That email and password don't match. Check both and try again."
+            400 -> when {
+                api.message?.contains("password must be", true) == true ->
+                    "Please choose a password of at least 12 characters."
+                else -> "Please check the email address and try again."
+            }
+            else -> "Couldn't reach Aira. Check your connection and try again."
+        }
+    }
+
+    /**
+     * Sign out everywhere and return to Welcome with a clean slate. The whole
+     * UI state is reset — leaving another account's name or care rows on screen
+     * after signing out would be its own kind of lie.
+     */
+    fun signOut(context: Context?) {
+        if (context == null) {
+            notify("Not connected — you're still signed in.")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.logout(context)
+            } catch (_: Exception) {
+                // logout() clears the local token regardless, so the device is
+                // signed out even when the server can't be told.
+            }
+            _uiState.value = AiraUiState(stage = AppStage.Welcome)
+            notify("Signed out.")
+        }
     }
 
     fun answerOnboarding(answer: String) {

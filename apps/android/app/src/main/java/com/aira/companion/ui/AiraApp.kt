@@ -40,11 +40,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.AuthMode
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.screens.AiraChatScreen
+import com.aira.companion.ui.screens.AuthScreen
 import com.aira.companion.ui.screens.CareScreen
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
@@ -88,7 +90,25 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
         // it would only be visible as a flash on the handover.
         AppStage.Starting -> Unit
         AppStage.Tutorial -> TutorialScreen(onFinish = { viewModel.finishTutorial(context) })
-        AppStage.Welcome -> WelcomeScreen(onStart = viewModel::startOnboarding)
+        AppStage.Welcome ->
+            WelcomeScreen(
+                onStart = viewModel::startOnboarding,
+                onCreateAccount = { viewModel.openAuth(context, AuthMode.SignUp) },
+                onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },
+            )
+        AppStage.Auth ->
+            AuthScreen(
+                state = state,
+                onModeChange = { viewModel.setAuthMode(context, it) },
+                onSubmit = { email, password ->
+                    if (state.authMode == AuthMode.SignUp) {
+                        viewModel.signUp(context, email, password)
+                    } else {
+                        viewModel.signIn(context, email, password)
+                    }
+                },
+                onClose = viewModel::closeAuth,
+            )
         AppStage.Onboarding ->
             OnboardingChatScreen(
                 state = state,
@@ -204,6 +224,10 @@ private fun MainExperience(
                         onSetConsent = { f, g -> viewModel.setConsent(context, f, g) },
                         onExport = { exportLauncher.launch("aira-data-export.json") },
                         onDelete = { viewModel.deleteAccount(context) },
+                        signedIn = state.signedIn,
+                        onSignOut = { viewModel.signOut(context) },
+                        onCreateAccount = { viewModel.openAuth(context, AuthMode.SignUp) },
+                        onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },
                     )
             }
         }

@@ -2,11 +2,13 @@ package com.aira.companion
 
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.AuthMode
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.AiraViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -137,6 +139,59 @@ class AiraViewModelTest {
         viewModel.finishTutorial(null)
 
         assertEquals(AppStage.Welcome, viewModel.uiState.value.stage)
+    }
+
+    // ── accounts stay optional ──────────────────────────────────────────────
+
+    @Test
+    fun theAuthScreenIsAlwaysEscapable() {
+        // An account is optional by design. If this screen could trap someone,
+        // it would have become a gate — which is the decision we didn't take.
+        val viewModel = AiraViewModel()
+
+        viewModel.openAuth(null, AuthMode.SignUp)
+        assertEquals(AppStage.Auth, viewModel.uiState.value.stage)
+
+        viewModel.closeAuth()
+        assertEquals(AppStage.Welcome, viewModel.uiState.value.stage)
+    }
+
+    @Test
+    fun failedAuthStaysOnTheScreenWithAReason() {
+        val viewModel = AiraViewModel()
+        viewModel.openAuth(null, AuthMode.SignIn)
+
+        // Null context is the offline path. Advancing anyway would be the
+        // "said saved, saved nothing" defect wearing a different hat.
+        viewModel.signIn(null, "someone@example.com", "a-long-enough-passphrase")
+
+        val state = viewModel.uiState.value
+        assertEquals(AppStage.Auth, state.stage)
+        assertFalse(state.signedIn)
+        assertNotNull(state.authError)
+    }
+
+    @Test
+    fun switchingModeClearsAPreviousError() {
+        val viewModel = AiraViewModel()
+        viewModel.openAuth(null, AuthMode.SignIn)
+        viewModel.signIn(null, "a@b.com", "a-long-enough-passphrase")
+        assertNotNull(viewModel.uiState.value.authError)
+
+        // A sign-up form showing a sign-in failure would be confusing at best.
+        viewModel.setAuthMode(null, AuthMode.SignUp)
+        assertNull(viewModel.uiState.value.authError)
+        assertEquals(AuthMode.SignUp, viewModel.uiState.value.authMode)
+    }
+
+    @Test
+    fun signingOutOfflineKeepsYouSignedIn() {
+        // Without a context there is no way to clear the session, so claiming
+        // "signed out" would be false.
+        val viewModel = AiraViewModel()
+        viewModel.signOut(null)
+        assertEquals("Not connected — you're still signed in.",
+                     viewModel.uiState.value.snackbarMessage)
     }
 
     // ── the actions that used to be toasts ──────────────────────────────────

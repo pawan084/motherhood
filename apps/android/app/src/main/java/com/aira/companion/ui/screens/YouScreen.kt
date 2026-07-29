@@ -43,6 +43,7 @@ import com.aira.companion.data.ConsentFeature
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraCard
+import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
 import com.aira.companion.ui.theme.Ink
@@ -74,6 +75,10 @@ fun YouScreen(
     onSetConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
     onExport: () -> Unit = {},
     onDelete: () -> Unit = {},
+    signedIn: Boolean = false,
+    onSignOut: () -> Unit = {},
+    onCreateAccount: () -> Unit = {},
+    onSignIn: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) { onLoadConsent() }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -234,6 +239,57 @@ fun YouScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
             )
+        }
+
+        // Sign out sits ABOVE the data rights, and deliberately apart from them:
+        // it ends a session, it does not remove anything. Putting it next to
+        // "Delete all my data" would invite the reading that leaving takes your
+        // care with it.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Account")
+        Spacer(modifier = Modifier.height(8.dp))
+        if (signedIn) {
+            AiraCard {
+                Text(
+                    text = "Signing out ends this session on every device. Your care " +
+                        "data stays in your account — sign back in any time to reach it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Sign out")
+                }
+            }
+        } else {
+            // The offer has to live here as well as on Welcome. Someone who has
+            // been using Aira for weeks is exactly who wants their care to
+            // survive a new phone, and they can never reach Welcome again.
+            AiraCard {
+                Text(
+                    text = "You're using Aira without an account, which is fine — " +
+                        "everything works. An account only means your care context " +
+                        "follows you if you change phone.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                PrimaryButton(
+                    label = "Create an account",
+                    onClick = onCreateAccount,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSignIn,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("I already have an account")
+                }
+            }
         }
 
         // The two data rights. legal.py and the privacy page both promise you can

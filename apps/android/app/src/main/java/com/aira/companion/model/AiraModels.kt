@@ -18,9 +18,15 @@ enum class AppStage {
      *  start; a returning user never sees it again. */
     Tutorial,
     Welcome,
+    /** Creating an account or signing in. Reached from Welcome and always
+     *  escapable — an account is optional, so this is never a gate. */
+    Auth,
     Onboarding,
     Main,
 }
+
+/** Which half of the auth screen is showing. */
+enum class AuthMode { SignUp, SignIn }
 
 enum class MainDestination(
     val label: String,
@@ -185,6 +191,20 @@ data class AiraUiState(
     // Data rights, which Android could not exercise at all.
     val exporting: Boolean = false,
     val deleting: Boolean = false,
+    // Accounts. `authError` is shown inline rather than as a snackbar, because a
+    // failed sign-in needs to stay on screen next to the field that caused it.
+    val authMode: AuthMode = AuthMode.SignUp,
+    val authBusy: Boolean = false,
+    val authError: String? = null,
+    /** Care items on this device's anonymous session. Signing IN switches to the
+     *  account's data and leaves these behind, so the screen says so first. */
+    val localCareItems: Int = 0,
+    val signedIn: Boolean = false,
+    /** Where closing the auth screen returns to. Reached from Welcome on first
+     *  run, but also from You later — someone who has been using Aira a while is
+     *  exactly who wants their care preserved, so the offer can't only exist
+     *  before they've used it. */
+    val authReturnStage: AppStage = AppStage.Welcome,
     // Set while a Care Vault file is streaming, so the sheet can show progress
     // instead of looking idle through a 20 MB upload.
     val uploadingDocument: Boolean = false,

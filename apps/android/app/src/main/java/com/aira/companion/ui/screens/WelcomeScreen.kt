@@ -27,8 +27,10 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +54,8 @@ import com.aira.companion.ui.theme.SageMist
 fun WelcomeScreen(
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
+    onCreateAccount: () -> Unit = {},
+    onSignIn: () -> Unit = {},
 ) {
     Box(
         modifier =
@@ -159,13 +163,44 @@ fun WelcomeScreen(
 
             Spacer(modifier = Modifier.height(30.dp))
 
+            // Three ways in, and continuing without an account is the primary
+            // one. Aira is usable anonymously by design — someone trying to
+            // conceive, or after a loss, often won't attach their identity up
+            // front, and burying that choice as a grey link would be a nudge
+            // against the product's own privacy posture.
             PrimaryButton(
                 label = "Start with Aira",
                 onClick = onStart,
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = Icons.Outlined.ArrowForward,
             )
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "No account needed.",
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+
+            Spacer(modifier = Modifier.height(18.dp))
+            OutlinedButton(
+                onClick = onCreateAccount,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(17.dp),
+            ) {
+                Text("Create an account", color = Plum)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = onSignIn,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("I already have an account", color = Plum)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Wellness support—not diagnosis or emergency care.",
                 modifier = Modifier.align(Alignment.CenterHorizontally),
