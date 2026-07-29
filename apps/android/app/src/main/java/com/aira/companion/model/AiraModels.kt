@@ -170,6 +170,9 @@ data class AiraUiState(
      *  hardcoded list of unrelated tools — "Your baby" opened avatar settings —
      *  so they now open the section whose text they are showing. */
     val activeJourneySection: JourneySection? = null,
+    /** True when the tutorial was opened from Settings rather than on first
+     *  run, so finishing it returns to the app instead of to Welcome. */
+    val replayingTutorial: Boolean = false,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
     // The bell's badge is DERIVED — see `updatesCount` — rather than stored.
@@ -317,7 +320,11 @@ fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
                 question = "How should we speak with you?",
                 // Not "or use voice" — spoken conversation isn't wired up and
                 // the composer's mic is disabled.
-                helper = "You can change this at any time.",
+                // Every other prompt says why it's being asked; this one said
+                // only that the answer was reversible, which answers a
+                // different question.
+                helper = "Aira replies in the language you pick. You can change " +
+                    "it at any time.",
                 options = listOf("English", "Hindi", "Hinglish"),
             ),
         )

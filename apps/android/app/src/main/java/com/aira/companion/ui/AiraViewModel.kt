@@ -134,11 +134,30 @@ class AiraViewModel : ViewModel() {
      */
     fun finishTutorial(context: Context?) {
         context?.let { AppPrefs.markTutorialSeen(it) }
-        _uiState.update { it.copy(stage = AppStage.Welcome) }
+        _uiState.update {
+            if (it.replayingTutorial) {
+                it.copy(stage = AppStage.Main, replayingTutorial = false)
+            } else {
+                it.copy(stage = AppStage.Welcome)
+            }
+        }
     }
 
     fun startOnboarding() {
         _uiState.update { it.copy(stage = AppStage.Onboarding) }
+    }
+
+    /**
+     * Show the three intro cards again, from Settings.
+     *
+     * They explained what Aira is, what it does with your data and what it
+     * won't do — and were then unreachable forever, on first run, when someone
+     * is least able to take any of it in. `replayingTutorial` keeps this
+     * distinct from the first-run path so finishing it returns to the app
+     * rather than dropping the user back at the Welcome screen.
+     */
+    fun replayTutorial() {
+        _uiState.update { it.copy(stage = AppStage.Tutorial, replayingTutorial = true) }
     }
 
     // ── accounts (optional) ─────────────────────────────────────────────────
@@ -268,6 +287,28 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Tidy a typed name before it becomes how the app greets someone.
+     *
+     * A phone keyboard's autocorrect turned "Riya" into "Rita I" during device
+     * testing and the app stored it verbatim, so every screen said "Good
+     * morning, Rita I" — the app using someone's name wrongly is worse than not
+     * using it. Collapses runs of whitespace, drops trailing single letters
+     * left behind by a committed suggestion, and caps the length.
+     */
+    internal fun cleanName(raw: String): String {
+        val collapsed = raw.trim().replace(Regex("""\s+"""), " ")
+        val words = collapsed.split(" ").filter { it.isNotBlank() }
+        val kept = if (words.size > 1 && words.last().length == 1 &&
+            words.last().all { it.isLetter() }
+        ) {
+            words.dropLast(1)
+        } else {
+            words
+        }
+        return kept.joinToString(" ").take(60)
+    }
+
     fun answerOnboarding(answer: String) {
         _uiState.update { state ->
             // The prompt list depends on the journey (weeks is pregnancy-only), so
@@ -294,7 +335,7 @@ class AiraViewModel : ViewModel() {
             next = when (prompt.field) {
                 OnboardingField.Journey ->
                     next.copy(journey = JourneyType.entries.firstOrNull { it.label == trimmed })
-                OnboardingField.Name -> next.copy(name = trimmed.take(120))
+                OnboardingField.Name -> next.copy(name = cleanName(trimmed))
                 // Only a plausible pregnancy week; anything else is treated as skipped.
                 OnboardingField.Weeks ->
                     next.copy(weeks = trimmed.toIntOrNull()?.takeIf { it in 1..45 })

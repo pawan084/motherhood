@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
@@ -62,6 +63,10 @@ import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
 
+/** The phrase privacy.DELETE_CONFIRMATION expects, shown to the user rather
+ *  than filled in for them. */
+private const val DELETE_PHRASE = "DELETE MY DATA"
+
 @Composable
 fun YouScreen(
     onOpenTool: (AiraTool) -> Unit,
@@ -88,9 +93,13 @@ fun YouScreen(
     /** Name, journey and language, as the app currently holds them. */
     journeyType: JourneyType? = null,
     onSaveProfile: (name: String, journey: JourneyType?, language: String) -> Unit = { _, _, _ -> },
+    /** Replay the intro. It was shown once on first run — when someone is
+     *  least able to absorb it — and then unreachable forever. */
+    onReplayTutorial: () -> Unit = {},
 ) {
     LaunchedEffect(Unit) { onLoadConsent() }
     var confirmDelete by remember { mutableStateOf(false) }
+    var deleteConfirmation by remember { mutableStateOf("") }
     var editingProfile by remember { mutableStateOf(false) }
     val personalisation = consent.firstOrNull { it.key == "personalization" }
     val partnerAccess = consent.firstOrNull { it.key == "partner_access" }
@@ -162,9 +171,68 @@ fun YouScreen(
             )
         }
 
+        // Sign out sits ABOVE the data rights, and deliberately apart from them:
+        // it ends a session, it does not remove anything. Putting it next to
+        // "Delete all my data" would invite the reading that leaving takes your
+        // care with it.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Account")
+        Spacer(modifier = Modifier.height(8.dp))
+        if (signedIn) {
+            AiraCard {
+                Text(
+                    text = "Signing out ends this session on every device. Your care " +
+                        "data stays in your account — sign back in any time to reach it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedButton(
+                    onClick = onSignOut,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Sign out")
+                }
+            }
+        } else {
+            // The offer has to live here as well as on Welcome. Someone who has
+            // been using Aira for weeks is exactly who wants their care to
+            // survive a new phone, and they can never reach Welcome again.
+            AiraCard {
+                Text(
+                    text = "You're using Aira without an account, which is fine — " +
+                        "everything works. An account only means what you've saved " +
+                        "follows you if you change phone.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                PrimaryButton(
+                    label = "Create an account",
+                    onClick = onCreateAccount,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = onSignIn,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("I already have an account")
+                }
+            }
+        }
+
+        // The two data rights. legal.py and the privacy page both promise you can
+
         Spacer(modifier = Modifier.height(24.dp))
         SectionLabel("Privacy and settings")
 
+        ToolListRow(
+            icon = Icons.Outlined.Info,
+            title = "How Aira works",
+            subtitle = "The three-card introduction, again",
+            onClick = onReplayTutorial,
+        )
         ToolListRow(
             icon = Icons.Outlined.Lock,
             title = "Privacy & consent",
@@ -241,7 +309,17 @@ fun YouScreen(
                             color = Ink,
                         )
                         Text(
-                            text = "When off, nothing Aira remembers shapes its replies",
+                            // Was "When off, nothing Aira remembers shapes its
+                            // replies" — accurate, and abstract enough that
+                            // nobody could tell what turning it off would cost
+                            // them. An example does that in one line.
+                            text = if (personalisation.granted) {
+                                "On — Aira uses what it knows, so \"is this normal?\" " +
+                                    "is answered for where you are"
+                            } else {
+                                "Off — Aira answers every question as if it were " +
+                                    "the first thing you'd asked"
+                            },
                             style = MaterialTheme.typography.bodySmall,
                             color = InkMuted,
                         )
@@ -269,58 +347,6 @@ fun YouScreen(
             )
         }
 
-        // Sign out sits ABOVE the data rights, and deliberately apart from them:
-        // it ends a session, it does not remove anything. Putting it next to
-        // "Delete all my data" would invite the reading that leaving takes your
-        // care with it.
-        Spacer(modifier = Modifier.height(22.dp))
-        SectionLabel("Account")
-        Spacer(modifier = Modifier.height(8.dp))
-        if (signedIn) {
-            AiraCard {
-                Text(
-                    text = "Signing out ends this session on every device. Your care " +
-                        "data stays in your account — sign back in any time to reach it.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InkMuted,
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                OutlinedButton(
-                    onClick = onSignOut,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Sign out")
-                }
-            }
-        } else {
-            // The offer has to live here as well as on Welcome. Someone who has
-            // been using Aira for weeks is exactly who wants their care to
-            // survive a new phone, and they can never reach Welcome again.
-            AiraCard {
-                Text(
-                    text = "You're using Aira without an account, which is fine — " +
-                        "everything works. An account only means what you've saved " +
-                        "follows you if you change phone.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InkMuted,
-                )
-                Spacer(modifier = Modifier.height(14.dp))
-                PrimaryButton(
-                    label = "Create an account",
-                    onClick = onCreateAccount,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
-                    onClick = onSignIn,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("I already have an account")
-                }
-            }
-        }
-
-        // The two data rights. legal.py and the privacy page both promise you can
         // export or delete "at any time"; until now only the web client could,
         // so on Android the promise was unkeepable.
         Spacer(modifier = Modifier.height(22.dp))
@@ -349,27 +375,58 @@ fun YouScreen(
                 Text(if (exporting) "Preparing…" else "Download my data")
             }
             Spacer(modifier = Modifier.height(10.dp))
-            // Two-tap rather than one, matching the web client: an irreversible
-            // erase should not be a single stray press.
-            OutlinedButton(
-                onClick = { if (confirmDelete) onDelete() else confirmDelete = true },
-                enabled = !deleting && !exporting,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Urgent),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.DeleteOutline,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            // Typed confirmation, not a second tap.
+            //
+            // The backend requires the exact phrase "DELETE MY DATA" before it
+            // will erase an account — a deliberate speed bump — and the client
+            // was filling that in on the user's behalf, so the only thing
+            // standing between a stray press and every record being destroyed
+            // was one more stray press in the same place. Typing the words is
+            // the guard the server was asking for.
+            if (!confirmDelete) {
+                OutlinedButton(
+                    onClick = { confirmDelete = true },
+                    enabled = !deleting && !exporting,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Urgent),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DeleteOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (deleting) "Deleting…" else "Delete all my data")
+                }
+            } else {
                 Text(
-                    when {
-                        deleting -> "Deleting…"
-                        confirmDelete -> "Tap again to permanently delete"
-                        else -> "Delete all my data"
-                    },
+                    text = "Type $DELETE_PHRASE to confirm. This cannot be undone.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Urgent,
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = deleteConfirmation,
+                    onValueChange = { deleteConfirmation = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    TextButton(
+                        onClick = { confirmDelete = false; deleteConfirmation = "" },
+                        modifier = Modifier.weight(1f),
+                    ) { Text("Keep my data", color = Plum) }
+                    OutlinedButton(
+                        onClick = onDelete,
+                        enabled = deleteConfirmation.trim() == DELETE_PHRASE && !deleting,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Urgent),
+                    ) {
+                        Text(if (deleting) "Deleting…" else "Delete everything")
+                    }
+                }
             }
         }
     }

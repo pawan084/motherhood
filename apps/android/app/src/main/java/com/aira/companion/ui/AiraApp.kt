@@ -288,6 +288,7 @@ private fun MainExperience(
                         onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },
                         journeyType = state.journey,
                         onSaveProfile = { n, j, l -> viewModel.saveProfile(context, n, j, l) },
+                        onReplayTutorial = viewModel::replayTutorial,
                     )
             }
         }
