@@ -517,7 +517,7 @@ class AiraViewModel : ViewModel() {
         block: suspend (Context) -> Unit,
     ) {
         if (context == null) {
-            notify("Not connected — nothing was saved.")
+            notify("Not saved — Aira isn't connected right now.")
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -526,8 +526,34 @@ class AiraViewModel : ViewModel() {
                 notify(success)
                 if (refreshCare) loadCare(context)
             } catch (e: Exception) {
-                notify("Couldn't save that. ${e.message.orEmpty()}".trim())
+                notify(saveFailureMessage(e))
             }
+        }
+    }
+
+    /**
+     * What went wrong, and what to do about it.
+     *
+     * Every failed write said "Couldn't save that." followed by whatever the
+     * exception's message happened to be — often a raw socket error, sometimes
+     * nothing at all. It named no cause and offered no next step, so the only
+     * information the user got was that something had gone wrong somewhere.
+     * The three cases below are the ones that actually happen, and each has a
+     * different thing for the person to do.
+     */
+    internal fun saveFailureMessage(e: Exception): String {
+        val raw = e.message.orEmpty()
+        return when {
+            e is java.net.UnknownHostException ||
+                e is java.net.ConnectException ||
+                e is java.net.SocketTimeoutException ->
+                "Not saved — Aira can't reach the server. Check your connection and try again."
+            raw.contains("401") || raw.contains("403") ->
+                "Not saved — your session ended. Open Aira again to sign back in."
+            // A 4xx with a message is the server explaining a rule the input
+            // broke, which is the one case worth quoting verbatim.
+            raw.isNotBlank() && raw.length < 120 -> "Not saved — $raw"
+            else -> "Not saved. Try again in a moment."
         }
     }
 

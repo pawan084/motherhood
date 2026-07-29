@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -160,7 +161,10 @@ fun PrimaryButton(
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(54.dp),
+        // heightIn, not height: at a raised system font scale a fixed 54dp
+        // button clips its own label, and raising the font scale is what
+        // someone does when they are struggling to read it in the first place.
+        modifier = modifier.heightIn(min = 54.dp),
         shape = RoundedCornerShape(17.dp),
         colors =
             ButtonDefaults.buttonColors(
@@ -611,7 +615,10 @@ fun EditableRow(
     var value by remember(label) { mutableStateOf(editValue) }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        // 48dp floor. Measured on the device, the shorter rows came out at
+        // 35dp, which drags their edit and remove buttons under the minimum
+        // with them however large the buttons themselves are.
+        modifier = modifier.fillMaxWidth().heightIn(min = 48.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         when {

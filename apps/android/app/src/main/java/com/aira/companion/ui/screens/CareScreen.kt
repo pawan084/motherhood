@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -31,6 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.aira.companion.data.CareData
@@ -185,6 +188,18 @@ fun CareScreen(
                     Checkbox(
                         checked = rem.done,
                         onCheckedChange = { onReminderDone(rem.id, it) },
+                        // Without this the box announces as "checkbox, not
+                        // ticked" and nothing else: it has its own click
+                        // handler, so Compose doesn't fold the row's title into
+                        // it, and the one control that marks a medicine done
+                        // said nothing about which medicine.
+                        modifier = Modifier.semantics {
+                            contentDescription = if (rem.done) {
+                                "${rem.title}, done"
+                            } else {
+                                "Mark ${rem.title} done"
+                            }
+                        },
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -309,7 +324,7 @@ fun CareScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .heightIn(min = 52.dp),
             shape = RoundedCornerShape(16.dp),
         ) {
             Icon(

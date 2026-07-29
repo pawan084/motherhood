@@ -215,7 +215,8 @@ class AiraViewModelTest {
 
         viewModel.setVoice(null, "Aira gentle")
 
-        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+        assertEquals("Not saved — Aira isn't connected right now.",
+            viewModel.uiState.value.snackbarMessage)
         // And the choice is NOT applied locally, so the sheet can't show a
         // selection the server never received.
         assertEquals("Aira warm", viewModel.uiState.value.voicePrefs.voice)
@@ -227,7 +228,8 @@ class AiraViewModelTest {
 
         viewModel.createPartnerInvite(null, appointments = true, reminders = true, healthDetails = false)
 
-        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+        assertEquals("Not saved — Aira isn't connected right now.",
+            viewModel.uiState.value.snackbarMessage)
         assertNull(viewModel.uiState.value.partnerInvite)
     }
 
@@ -243,7 +245,8 @@ class AiraViewModelTest {
 
         viewModel.setReminderDone(null, "rem_123", done = true)
 
-        assertEquals("Not connected — nothing was saved.", viewModel.uiState.value.snackbarMessage)
+        assertEquals("Not saved — Aira isn't connected right now.",
+            viewModel.uiState.value.snackbarMessage)
     }
 
     @Test
@@ -254,4 +257,45 @@ class AiraViewModelTest {
 
         assertNull(viewModel.uiState.value.partnerInvite)
     }
+    // ── what a failed save tells you ─────────────────────────────────────────
+    //
+    // Every failure used to read "Couldn't save that." plus whatever the
+    // exception happened to carry — often a raw socket error, sometimes
+    // nothing. It named no cause and gave no next step, so all the user learned
+    // was that something, somewhere, had gone wrong.
+
+    @Test
+    fun noConnectionSaysSoAndSaysWhatToDo() {
+        val message = AiraViewModel().saveFailureMessage(java.net.UnknownHostException("api"))
+
+        assertTrue(message, message.startsWith("Not saved"))
+        assertTrue(message, message.contains("connection"))
+    }
+
+    @Test
+    fun anExpiredSessionSendsYouToSignInRatherThanRetrying() {
+        // Retrying is the wrong advice here: it will fail identically until the
+        // session is replaced.
+        val message = AiraViewModel().saveFailureMessage(IllegalStateException("HTTP 401"))
+
+        assertTrue(message, message.contains("session"))
+    }
+
+    @Test
+    fun aServerRuleIsQuotedBecauseItExplainsTheFix() {
+        val message = AiraViewModel()
+            .saveFailureMessage(IllegalStateException("password must be at least 12 characters"))
+
+        assertTrue(message, message.contains("at least 12 characters"))
+    }
+
+    @Test
+    fun anUnreadableErrorBecomesPlainEnglish() {
+        // A stack-trace-length message helps nobody; it is replaced rather than
+        // shown.
+        val message = AiraViewModel().saveFailureMessage(IllegalStateException("x".repeat(400)))
+
+        assertEquals("Not saved. Try again in a moment.", message)
+    }
+
 }
