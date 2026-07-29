@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.JourneyData
+import com.aira.companion.model.JourneySection
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
@@ -53,6 +54,7 @@ fun JourneyScreen(
     onOpenTool: (AiraTool) -> Unit,
     modifier: Modifier = Modifier,
     journey: JourneyData? = null,
+    onOpenSection: (JourneySection) -> Unit = {},
 ) {
     // Journey-aware fields, falling back to the static demo copy when offline.
     val weeks = journey?.weeks
@@ -121,39 +123,34 @@ fun JourneyScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(22.dp))
-        SectionLabel("Explore gently")
-        Spacer(modifier = Modifier.height(9.dp))
+        // The section cards.
+        //
+        // These used to be three fixed cards whose titles came from the server
+        // and whose taps went to a hardcoded, unrelated list of tools: "Your
+        // body" opened the care plan and "Your baby" opened the companion and
+        // avatar settings. The title said one thing and the tap did another.
+        //
+        // Now the list is the server's sections, each card opens the section it
+        // is showing, and a journey with no sections renders nothing rather
+        // than inventing three.
+        if (!sections.isNullOrEmpty()) {
+            Spacer(modifier = Modifier.height(22.dp))
+            SectionLabel("Read about")
+            Spacer(modifier = Modifier.height(9.dp))
 
-        JourneyCard(
-            icon = Icons.Outlined.PersonOutline,
-            title = sections?.getOrNull(0)?.title ?: "Your body this week",
-            body = sections?.getOrNull(0)?.text
-                ?: "Energy shifts, skin changes and common discomforts—without alarmist language.",
-            color = SageMist,
-            iconColor = SageDeep,
-            onClick = { onOpenTool(AiraTool.CarePlan) },
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        JourneyCard(
-            icon = Icons.Outlined.FavoriteBorder,
-            title = sections?.getOrNull(1)?.title ?: "Your baby this week",
-            body = sections?.getOrNull(1)?.text
-                ?: "A gentle development story, with clear boundaries between education and medical advice.",
-            color = LilacMist,
-            iconColor = Plum,
-            onClick = { onOpenTool(AiraTool.Companion) },
-        )
-        Spacer(modifier = Modifier.height(10.dp))
-        JourneyCard(
-            icon = Icons.Outlined.Checklist,
-            title = sections?.getOrNull(2)?.title ?: "Prepare for your visit",
-            body = sections?.getOrNull(2)?.text
-                ?: "Review notes and build three useful questions for your care professional.",
-            color = AmberMist,
-            iconColor = Plum,
-            onClick = { onOpenTool(AiraTool.Appointment) },
-        )
+            sections.forEachIndexed { index, section ->
+                if (index > 0) Spacer(modifier = Modifier.height(10.dp))
+                val palette = SECTION_PALETTE[index % SECTION_PALETTE.size]
+                JourneyCard(
+                    icon = palette.icon,
+                    title = section.title,
+                    body = section.text,
+                    color = palette.background,
+                    iconColor = palette.tint,
+                    onClick = { onOpenSection(section) },
+                )
+            }
+        }
 
         Spacer(modifier = Modifier.height(22.dp))
 
@@ -194,6 +191,20 @@ fun JourneyScreen(
         }
     }
 }
+
+/** Colour and icon per section slot, so the cards stay visually distinct
+ *  without any of them claiming to be about a particular subject. */
+private data class SectionPalette(
+    val icon: ImageVector,
+    val background: Color,
+    val tint: Color,
+)
+
+private val SECTION_PALETTE = listOf(
+    SectionPalette(Icons.Outlined.PersonOutline, SageMist, SageDeep),
+    SectionPalette(Icons.Outlined.FavoriteBorder, LilacMist, Plum),
+    SectionPalette(Icons.Outlined.Checklist, AmberMist, Plum),
+)
 
 @Composable
 private fun JourneyCard(

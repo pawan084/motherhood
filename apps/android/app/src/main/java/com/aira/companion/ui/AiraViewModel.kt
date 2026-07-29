@@ -12,6 +12,7 @@ import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
 import com.aira.companion.model.ChatMessage
+import com.aira.companion.model.JourneySection
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.journeyLabel
@@ -59,12 +60,32 @@ class AiraViewModel : ViewModel() {
             }
         }
         viewModelScope.launch(Dispatchers.IO) {
+            // `reached` separates "the server said you have no account" from
+            // "the server said nothing at all". Only the first is a reason to
+            // send someone back to the Welcome screen.
+            var reached = true
             val user = try {
                 AiraApi.me(context)
             } catch (_: Exception) {
+                reached = false
                 null
             }
+            if (!reached && AiraApi.hasSession(context) && AppPrefs.wasOnboarded(context)) {
+                // Offline, but this install has been through onboarding and is
+                // still holding a session. Open the app they know, and let the
+                // screens say they can't load rather than pretending this is a
+                // first run.
+                _uiState.update {
+                    it.copy(
+                        stage = AppStage.Main,
+                        destination = MainDestination.Today,
+                        loadFailed = true,
+                    )
+                }
+                return@launch
+            }
             if (user != null && user.onboarded) {
+                AppPrefs.markOnboarded(context)
                 _uiState.update {
                     it.copy(
                         stage = AppStage.Main,
@@ -240,6 +261,7 @@ class AiraViewModel : ViewModel() {
                 // logout() clears the local token regardless, so the device is
                 // signed out even when the server can't be told.
             }
+            AppPrefs.clearOnboarded(context)
             _uiState.value = AiraUiState(stage = AppStage.Welcome)
             notify("Signed out.")
         }
@@ -317,6 +339,10 @@ class AiraViewModel : ViewModel() {
                     // and a stale week from a changed journey would be worse than none.
                     weeks = snapshot.weeks.takeIf { snapshot.journey == JourneyType.Pregnant },
                 )
+                // Remember locally that this install has an onboarded account,
+                // so a later start with no connection opens the app rather than
+                // the Welcome screen.
+                AppPrefs.markOnboarded(context)
                 // Pull the assembled Today/Journey straight away so the first
                 // screen reflects the name and week just submitted.
                 loadToday(context)
@@ -337,9 +363,28 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val data = AiraApi.today(context)
-                _uiState.update { it.copy(todayData = data) }
+                _uiState.update { it.copy(todayData = data, loadFailed = false) }
             } catch (_: Exception) {
+                // Only claim failure when there is nothing to show. A refresh
+                // that fails over content already on screen is not worth a
+                // banner — the content is still true, just not newer.
+                _uiState.update { it.copy(loadFailed = it.todayData == null) }
             }
+        }
+    }
+
+    /** Retry whatever the current screen needs. */
+    fun retryLoad(context: Context?) {
+        if (context == null) return
+        _uiState.update { it.copy(loadFailed = false) }
+        when (_uiState.value.destination) {
+            MainDestination.Today -> { loadToday(context); loadCare(context) }
+            MainDestination.Journey -> loadJourney(context)
+            MainDestination.Care -> {
+                loadCare(context); loadTimeline(context); loadDocuments(context)
+            }
+            MainDestination.You -> { loadConsent(context); loadPrefs(context) }
+            else -> loadToday(context)
         }
     }
 
@@ -349,8 +394,9 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val data = AiraApi.journey(context)
-                _uiState.update { it.copy(journeyData = data) }
+                _uiState.update { it.copy(journeyData = data, loadFailed = false) }
             } catch (_: Exception) {
+                _uiState.update { it.copy(loadFailed = it.journeyData == null) }
             }
         }
     }
@@ -366,9 +412,11 @@ class AiraViewModel : ViewModel() {
             _uiState.update { it.copy(careLoading = it.careData == null) }
             try {
                 val data = AiraApi.care(context)
-                _uiState.update { it.copy(careData = data, careLoading = false) }
+                _uiState.update { it.copy(careData = data, careLoading = false, loadFailed = false) }
             } catch (_: Exception) {
-                _uiState.update { it.copy(careLoading = false) }
+                _uiState.update {
+                    it.copy(careLoading = false, loadFailed = it.careData == null)
+                }
             }
         }
     }
@@ -649,7 +697,8 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 AiraApi.deleteAccount(context)
-                _uiState.value = AiraUiState(stage = AppStage.Welcome)
+                AppPrefs.clearOnboarded(context)
+            _uiState.value = AiraUiState(stage = AppStage.Welcome)
                 notify("Your data has been deleted.")
             } catch (e: Exception) {
                 _uiState.update { it.copy(deleting = false) }
@@ -727,6 +776,16 @@ class AiraViewModel : ViewModel() {
 
     fun openTool(tool: AiraTool) {
         _uiState.update { it.copy(activeTool = tool, toolsOpen = false) }
+    }
+
+    /** Read one Journey section. Its own destination, rather than borrowing an
+     *  unrelated tool sheet — see JourneySectionSheet. */
+    fun openJourneySection(section: JourneySection) {
+        _uiState.update { it.copy(activeJourneySection = section, activeTool = null) }
+    }
+
+    fun closeJourneySection() {
+        _uiState.update { it.copy(activeJourneySection = null) }
     }
 
     fun closeTool() {

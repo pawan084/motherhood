@@ -154,11 +154,18 @@ data class AiraUiState(
     val language: String = "English",
     val priority: String = "",
     val activeTool: AiraTool? = null,
+    /** The Journey section being read. The three Journey cards used to open a
+     *  hardcoded list of unrelated tools — "Your baby" opened avatar settings —
+     *  so they now open the section whose text they are showing. */
+    val activeJourneySection: JourneySection? = null,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
-    // Starts at zero. This defaulted to 3, so every fresh install showed a red
-    // "3 unread" badge over a notification list nothing had ever written to.
-    val notificationCount: Int = 0,
+    // The bell's badge is DERIVED — see `updatesCount` — rather than stored.
+    // It defaulted to 3, so every fresh install showed a red "3 unread" badge
+    // over an empty list; the fix pinned it to 0, and nothing ever wrote to it
+    // again, so it could never appear even when the list behind it had a
+    // medicine due. A count kept separately from the thing it counts is wrong
+    // in one direction or the other.
     val chatDraft: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val sending: Boolean = false,
@@ -169,6 +176,14 @@ data class AiraUiState(
     // the fixed sample data these screens used to render.
     val careData: CareData? = null,
     val careLoading: Boolean = false,
+    /** The last screen load failed — almost always no connection.
+     *
+     *  Every loader used to swallow its exception, so an offline user got a
+     *  screen that simply never filled in: no spinner, no message, nothing to
+     *  press. The app looked broken rather than disconnected, which is the
+     *  difference between "my phone has no signal" and "this app is broken",
+     *  and only one of those is recoverable by the person holding it. */
+    val loadFailed: Boolean = false,
     /** Check-ins and symptom logs. Both were write-only while the tools said
      *  "Add to timeline" — saved, then never shown again. */
     val timeline: List<CareItem> = emptyList(),
@@ -215,6 +230,18 @@ data class AiraUiState(
     // instead of looking idle through a 20 MB upload.
     val uploadingDocument: Boolean = false,
 )
+
+
+/**
+ * How many things are actually waiting in the updates list.
+ *
+ * Counts exactly what NotificationsTool renders — appointments, medicines due,
+ * and reminders still open — so the badge and the list can never disagree.
+ */
+fun updatesCount(care: CareData?): Int =
+    (care?.appointments?.size ?: 0) +
+        (care?.medicinesDue?.size ?: 0) +
+        (care?.reminders?.count { !it.done } ?: 0)
 
 /** Which piece of the care context a prompt collects. */
 enum class OnboardingField { Journey, Name, Weeks, Language, Priority }

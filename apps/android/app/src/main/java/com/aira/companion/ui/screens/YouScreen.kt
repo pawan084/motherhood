@@ -179,24 +179,17 @@ fun YouScreen(
         )
         ToolListRow(
             icon = Icons.Outlined.Language,
-            title = "Voice & language",
-            // Was hardcoded "English · Aira warm voice" regardless of what the
-            // user had chosen or what the server had stored.
-            subtitle = listOfNotNull(
-                language.ifBlank { null },
-                voice.ifBlank { null },
-            ).joinToString(" · ").ifBlank { "Conversation settings" },
+            // "Voice & language" named a thing this build does not do. The row
+            // showed "English · Aira warm" — a voice that never plays — giving
+            // a stored preference the same billing as a working setting.
+            title = "Language",
+            subtitle = language.ifBlank { "How Aira speaks with you" },
             onClick = { onOpenTool(AiraTool.Voice) },
         )
-        ToolListRow(
-            icon = Icons.Outlined.RecordVoiceOver,
-            title = "Companion mode",
-            // Was "Text, voice or talking avatar" — it advertised two modes the
-            // build doesn't have, on the row that opens the sheet where both are
-            // disabled and labelled as such.
-            subtitle = "Chat today; voice and avatar aren't wired up yet",
-            onClick = { onOpenTool(AiraTool.Companion) },
-        )
+        // The "Companion mode" row is gone. It opened a sheet whose entire
+        // content was an explanation that voice and avatar aren't built —
+        // a settings row whose only function was to apologise for itself.
+        // Restore it when there is a mode to choose.
         ToolListRow(
             icon = Icons.Outlined.Group,
             title = "Partner access",

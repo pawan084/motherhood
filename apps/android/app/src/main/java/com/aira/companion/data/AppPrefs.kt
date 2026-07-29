@@ -17,6 +17,7 @@ import android.content.Context
 object AppPrefs {
     private const val PREFS = "aira_local"
     private const val KEY_TUTORIAL_SEEN = "tutorial_seen"
+    private const val KEY_ONBOARDED = "onboarded"
 
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -31,5 +32,28 @@ object AppPrefs {
 
     fun markTutorialSeen(ctx: Context) {
         prefs(ctx).edit().putBoolean(KEY_TUTORIAL_SEEN, true).apply()
+    }
+
+    /**
+     * True once this install has completed onboarding on some account.
+     *
+     * Exists so that "the server didn't answer" and "you have no account" stop
+     * being the same thing. Startup asked the server who the user was, and any
+     * failure — no signal, aeroplane mode, a dead hotel wifi — dropped through
+     * to the same branch as a fresh install, so a returning user with no
+     * connection was shown the Welcome screen and the tutorial. Their care was
+     * safe on the server the whole time; the app just told them, at the worst
+     * possible moment, that it had never met them.
+     */
+    fun wasOnboarded(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_ONBOARDED, false)
+
+    fun markOnboarded(ctx: Context) {
+        prefs(ctx).edit().putBoolean(KEY_ONBOARDED, true).apply()
+    }
+
+    /** Sign-out returns this install to a genuinely unknown user. */
+    fun clearOnboarded(ctx: Context) {
+        prefs(ctx).edit().remove(KEY_ONBOARDED).apply()
     }
 }

@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -92,12 +91,16 @@ fun AiraChatScreen(
                 ) {
                     // Was unconditional "Safety checked" — a promise about the
                     // safety system that held even when only the deterministic
-                    // keyword floor was running.
+                    // keyword floor was running. Then it read "Keyword-only
+                    // screening", which is accurate and means nothing to the
+                    // person reading it: "keyword" and "screening" describe our
+                    // implementation, not their safety. Say what it means for
+                    // them instead, and keep the detail for the Updates entry.
                     SafetyBadge(
                         text = if (state.screeningDegraded) {
-                            "Keyword-only screening"
+                            "Basic safety checks only"
                         } else {
-                            "Safety checked"
+                            "Every reply is safety checked"
                         },
                     )
                 }
@@ -225,18 +228,14 @@ fun AiraChatScreen(
                     singleLine = true,
                     shape = RoundedCornerShape(20.dp),
                 )
-                // Disabled, not removed. This used to send the literal text
+                // The mic is gone, not disabled. It once sent the literal text
                 // "Start a voice conversation" into the chat as if the user had
-                // typed it, so tapping the mic produced an AI reply about voice
-                // rather than any voice input. There is no speech recognition in
-                // this build; the button says so instead of faking one.
-                IconButton(onClick = {}, enabled = false) {
-                    Icon(
-                        imageVector = Icons.Outlined.Mic,
-                        contentDescription = "Voice input is not available in this build",
-                        tint = InkMuted,
-                    )
-                }
+                // typed it; then it became a greyed-out button that explained
+                // itself when tapped. Both versions occupy the composer with a
+                // promise of speech input that does not exist — and a control
+                // you cannot use is worse than one you never see, because it
+                // reads as something broken about your phone. Bring it back
+                // with the feature.
                 FilledIconButton(
                     onClick = onSend,
                     enabled = state.chatDraft.isNotBlank(),

@@ -670,7 +670,11 @@ object AiraApi {
                                 token: String?): JSONObject = withContext(Dispatchers.IO) {
         val conn = (URL("$base$path").openConnection() as HttpURLConnection).apply {
             requestMethod = method
-            connectTimeout = 15000
+            // 15s to *connect* is a long time to stare at a splash screen with
+            // no signal — the offline notice only appears once this gives up.
+            // A refused or unroutable connection fails immediately; this bound
+            // is for the case where the network accepts and then goes quiet.
+            connectTimeout = 6000
             readTimeout = 20000
             setRequestProperty("Content-Type", "application/json")
             if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)

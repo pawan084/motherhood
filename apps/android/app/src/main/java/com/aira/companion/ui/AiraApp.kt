@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.journeyLabel
+import com.aira.companion.model.updatesCount
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.screens.AiraChatScreen
@@ -50,14 +52,17 @@ import com.aira.companion.ui.screens.AuthScreen
 import com.aira.companion.ui.screens.CareScreen
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
+import com.aira.companion.ui.screens.JourneySectionSheet
 import com.aira.companion.ui.screens.OnboardingChatScreen
 import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
-import com.aira.companion.ui.screens.TutorialScreen
 import com.aira.companion.ui.screens.ToolTraySheet
+import com.aira.companion.ui.screens.TutorialScreen
 import com.aira.companion.ui.screens.UrgentHelpDialog
 import com.aira.companion.ui.screens.WelcomeScreen
 import com.aira.companion.ui.screens.YouScreen
+import com.aira.companion.ui.theme.Amber
+import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -164,7 +169,7 @@ private fun MainExperience(
             topBar = {
                 AiraAppHeader(
                     destination = state.destination,
-                    notificationCount = state.notificationCount,
+                    notificationCount = updatesCount(state.careData),
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
                     onNotifications = { viewModel.openTool(AiraTool.Notifications) },
@@ -179,6 +184,24 @@ private fun MainExperience(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
+            // Offline.
+            //
+            // Every screen loader used to swallow its exception, so a user with
+            // no signal watched a screen that never filled in — indistinguishable
+            // from a broken app, and with nothing to press.
+            //
+            // This REPLACES the screen rather than sitting above it. `loadFailed`
+            // is only set when there is no data at all, and a Today with nothing
+            // in it doesn't degrade quietly: it falls back to "Exploring" and an
+            // empty ring, so an offline pregnant user was shown someone else's
+            // stage. An honest empty screen beats a confident wrong one.
+            if (state.loadFailed) {
+                OfflineNotice(
+                    modifier = Modifier.padding(padding),
+                    onRetry = { viewModel.retryLoad(context) },
+                )
+                return@Scaffold
+            }
             when (state.destination) {
                 MainDestination.Today ->
                     TodayScreen(
@@ -202,6 +225,7 @@ private fun MainExperience(
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier.padding(padding),
                         journey = state.journeyData,
+                        onOpenSection = viewModel::openJourneySection,
                     )
                 MainDestination.Care ->
                     CareScreen(
@@ -291,6 +315,15 @@ private fun MainExperience(
                         ),
                     )
                 },
+            )
+        }
+
+        state.activeJourneySection?.let { section ->
+            JourneySectionSheet(
+                section = section,
+                stageLabel = state.journeyData?.weeks?.let { "Week $it" }
+                    ?: journeyLabel(state.journeyData?.journey),
+                onDismiss = viewModel::closeJourneySection,
             )
         }
 
@@ -413,8 +446,53 @@ private fun destinationSubtitle(
 ): String =
     when (destination) {
         MainDestination.Today, MainDestination.Journey ->
-            if (weeks != null) "Week $weeks" else journeyLabel(journey)
+            // journeyLabel(null) is "Exploring", so an unloaded header announced
+            // a stage the user might not be in — the same fabrication the Today
+            // fallbacks were removed for. Say nothing until something is known.
+            when {
+                weeks != null -> "Week $weeks"
+                !journey.isNullOrBlank() -> journeyLabel(journey)
+                else -> ""
+            }
         MainDestination.Aira -> "Your care companion"
         MainDestination.Care -> "Private care hub"
         MainDestination.You -> "Your care, your control"
     }
+
+
+/**
+ * Shown when a screen has nothing to show because the load failed.
+ *
+ * Deliberately not an error dialog: losing signal is ordinary, especially in a
+ * hospital, and it is not the user's mistake. It names the likely cause,
+ * confirms nothing was lost, and offers one button.
+ */
+@Composable
+private fun OfflineNotice(onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+    ) {
+        Surface(
+            color = AmberMist,
+            contentColor = Amber,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Aira can't reach your care data",
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(
+                    text = "You're probably offline. Nothing you've saved is lost — " +
+                        "it's on the server waiting for you.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                Spacer(modifier = Modifier.size(12.dp))
+                TextButton(onClick = onRetry) { Text("Try again") }
+            }
+        }
+    }
+}

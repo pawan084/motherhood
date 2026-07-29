@@ -147,7 +147,8 @@ private val chatToolItems =
         ChatToolItem(AiraTool.CareVault, "Care Vault", "Prescription or report", Icons.Outlined.FolderOpen),
         ChatToolItem(AiraTool.Reset, "Reset", "Two calm minutes", Icons.Outlined.Waves),
         ChatToolItem(AiraTool.Symptom, "Track", "Log a change", Icons.Outlined.TrackChanges),
-        ChatToolItem(AiraTool.Companion, "Companion", "Voice or avatar mode", Icons.Outlined.RecordVoiceOver),
+        // "Companion — Voice or avatar mode" removed: it offered a choice
+        // between two things that don't exist, from the tray of tools that do.
     )
 
 @OptIn(ExperimentalMaterial3Api::class)
