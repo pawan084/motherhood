@@ -108,13 +108,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero-proof svg { color: var(--aubergine); }
 
 /* The hero's product window — a web app in a browser-ish frame, not a phone. */
-.product-stage { position: relative; min-height: 550px; display: grid; place-items: center; }
+/* The window's width is shared with the floating cards below, which anchor to
+   its edges rather than to the stage's — see .reset-card / .privacy-card. */
+.product-stage { position: relative; min-height: 550px; display: grid; place-items: center; --pw: min(520px, 92%); }
 .stage-aura { position: absolute; border: 1px solid #a98dab30; border-radius: 50%; }
 .stage-aura.a { width: 520px; height: 520px; box-shadow: 0 0 0 55px #ffffff22, 0 0 0 110px #ffffff22; }
 .stage-aura.b { width: 250px; height: 250px; background: #ffffff33; filter: blur(1px); }
 .product-window {
   position: relative; z-index: 3; overflow: hidden;
-  width: min(520px, 92%); border: 1px solid #d9cdd7; border-radius: 26px;
+  width: var(--pw); border: 1px solid #d9cdd7; border-radius: 26px;
   background: #fffdfaf0; box-shadow: 0 35px 90px #41263c2b; transform: rotate(-1deg);
 }
 .product-window > header {
@@ -168,17 +170,28 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   position: absolute; z-index: 5; display: flex; align-items: center; gap: 11px; padding: 13px;
   border: 1px solid #ddd2da; border-radius: 14px; background: #fffdfaf2;
   box-shadow: 0 17px 40px #42273d24;
+  /* Anchored by one edge only, so without an intrinsic width the box shrinks to
+     whatever space is left beside the window and the label wraps one word per
+     line. max-content keeps each card its natural size and lets it overhang. */
+  width: max-content; max-width: 230px;
 }
 .floating-card strong, .floating-card small { display: block; }
 .floating-card strong { font-size: 13px; }
 .floating-card small { color: var(--aubergine); font-size: 11px; font-weight: 800; }
-.reset-card { left: -25px; bottom: 65px; }
+/* Anchored inside the stage's edges. These were offset OUTSIDE it
+   (`left: -25px` / `right: -30px`); since each card is ~200px wide and the
+   overhang was only ~30px, most of the card fell back across the window — the
+   privacy card clipping the "Safety checked" pill to "Saf", the reset card
+   covering the composer's "Message Aira…". Pinning them to the stage edges
+   keeps them fully on screen at every width, and the privacy card now sits
+   below the window header so it can never cover the safety pill again. */
+.reset-card { left: 0; bottom: 78px; }
 .reset-card .breath-mini {
   width: 38px; height: 38px; border-radius: 50%;
   background: radial-gradient(circle, #9d51aa 0 19%, #e9d8ec 20% 50%, #f5ecf5 51%);
 }
 .reset-card > svg { margin-left: 8px; color: var(--aubergine); }
-.privacy-card { right: -30px; top: 55px; color: #346147; }
+.privacy-card { right: 0; top: 118px; color: #346147; }
 .privacy-card > svg { width: 38px; height: 38px; padding: 8px; border-radius: 10px; background: var(--sage-soft); }
 .privacy-card small { color: #758278; }
 
@@ -775,6 +788,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .note-line {
   display: flex; gap: 9px; padding: 13px; border-radius: 12px;
   background: var(--sage-soft); color: #346147; font-size: 13px; line-height: 1.5;
+  /* A flex item won't shrink below its longest unbreakable word by default. The
+     sign-in dialog's `VITE_GOOGLE_CLIENT_ID` was long enough to force the line
+     wider than the modal, collapsing the prose beside it into a one-word column
+     and pushing the rest off the edge. */
+  min-width: 0; overflow-wrap: anywhere;
+}
+.note-line code, .modal-body code {
+  padding: 1px 5px; border-radius: 5px; background: #ffffff9c;
+  font-size: 12px; overflow-wrap: anywhere;
 }
 .note-line.warn { background: #fbf0dd; color: #8a5f21; }
 .note-line.danger { background: #fdeceb; color: #a53b36; }

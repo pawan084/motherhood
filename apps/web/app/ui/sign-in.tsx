@@ -139,11 +139,18 @@ export default function SignIn({
             </>
           ) : (
             <div className="note-line">
-              Google Sign-In isn&apos;t configured for this deployment, so there
-              is nothing to sign in with yet. Set <code>VITE_GOOGLE_CLIENT_ID</code>{" "}
-              here and <code>GOOGLE_CLIENT_ID</code> on the backend to enable it.
-              Your data is safe either way — it&apos;s stored against this browser
-              and you can export it at any time.
+              {/* One <span>, deliberately. `.note-line` is a flex row built for
+                  "icon + text", so every inline child becomes its own flex
+                  column — the <code> tokens split this paragraph into five
+                  columns and shredded it. Wrapping keeps it a single item. */}
+              <span>
+                Google Sign-In isn&apos;t configured for this deployment, so
+                there is nothing to sign in with yet. Set{" "}
+                <code>VITE_GOOGLE_CLIENT_ID</code> here and{" "}
+                <code>GOOGLE_CLIENT_ID</code> on the backend to enable it. Your
+                data is safe either way — it&apos;s stored against this browser
+                and you can export it at any time.
+              </span>
             </div>
           )}
         </div>
