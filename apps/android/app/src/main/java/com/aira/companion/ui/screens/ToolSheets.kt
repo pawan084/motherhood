@@ -1069,16 +1069,20 @@ private fun PrivacyTool(actions: ToolActions, consent: List<ConsentFeature>) {
         InfoBanner(Icons.Outlined.Lock, "Loading your consent settings…", SageMist)
         return
     }
+    // Three states, not two. A switch that governs nothing is the defect this
+    // screen exists to prevent, so an unbuilt feature is disabled with the
+    // reason rather than shown as a control the user can operate.
     consent.forEachIndexed { index, feature ->
         SettingLine(
             title = feature.label,
             subtitle = when {
                 feature.locked -> "Permanently off — health data is never an ad product"
+                !feature.available -> "Not available in this build, so there's nothing to permit yet"
                 feature.granted -> "On"
                 else -> "Off"
             },
             checked = feature.granted,
-            enabled = !feature.locked,
+            enabled = !feature.locked && feature.available,
             onCheckedChange = { actions.setConsent(feature.key, it) },
         )
         if (index < consent.lastIndex) HorizontalDivider(color = OutlineSoft)

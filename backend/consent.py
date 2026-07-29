@@ -22,16 +22,50 @@ router = APIRouter(prefix="/v1", tags=["consent"],
                    dependencies=[Depends(security.require_app_token)])
 _conn = None
 
-# The consent-gated features. `data_for_ads` is listed so the ledger can record
-# that it is permanently denied — Aira never uses health data for advertising.
+# The consent-gated features.
+#
+# Every entry MUST declare exactly one of three things, and `test_consent_is_not
+# _decorative` fails the build if one doesn't:
+#
+#   enforced_by  where the backend actually checks this consent before acting.
+#                Name the call sites; a claim here is a claim the test verifies
+#                is not empty.
+#   available    False when the feature does not exist in this build. The
+#                consent cannot be granted, and both clients grey the row out
+#                and say why.
+#   locked       True for a permanent denial that is a statement of policy
+#                rather than a control the user operates.
+#
+# This registry exists because `partner_access` shipped as a real, working
+# feature whose consent nothing read: a user could switch partner access off and
+# still create invites while accepted partners kept reading her care. A toggle
+# that changes nothing is worse than no toggle, so the rule is now mechanical —
+# a new feature cannot reach the privacy centre without declaring how its
+# consent is honoured.
 FEATURES = {
-    "personalization": {"label": "AI personalisation", "default": True},
-    "avatar": {"label": "Talking avatar", "default": False},
-    "future_baby_story": {"label": "Future-baby story", "default": False},
-    "partner_access": {"label": "Partner access (tasks only)", "default": False},
-    "store_raw_audio": {"label": "Store raw voice audio", "default": False},
+    "personalization": {
+        "label": "AI personalisation", "default": True,
+        "enforced_by": "memory.context_summary",
+    },
+    "partner_access": {
+        "label": "Partner access (tasks only)", "default": False,
+        "enforced_by": "partner.create_invite, partner.accept_invite, partner.shared",
+    },
+    # Not built. Each needs a service this project has no integration for —
+    # speech synthesis and lip-sync, image generation, audio capture — so there
+    # is no code path that could honour a grant. Rather than record consent for
+    # something that cannot happen, the grant is refused and the UI says so.
+    "avatar": {"label": "Talking avatar", "default": False, "available": False},
+    "future_baby_story": {"label": "Future-baby story", "default": False, "available": False},
+    "store_raw_audio": {"label": "Store raw voice audio", "default": False, "available": False},
+    # Listed so the ledger records a permanent denial — Aira never uses health
+    # data for advertising, and there is no code path that could.
     "data_for_ads": {"label": "Health data for ads", "default": False, "locked": True},
 }
+
+
+def is_available(feature: str) -> bool:
+    return FEATURES.get(feature, {}).get("available", True)
 
 
 def init() -> None:
@@ -59,8 +93,11 @@ def _current(uid: str) -> dict:
         if feature in state:
             state[feature] = bool(granted)
     # Locked features can never read as granted regardless of any stray row.
+    # Nor can unavailable ones: a grant written by an older build (when these
+    # were freely grantable) must not keep reading as consent for a feature
+    # that still cannot happen.
     for k, meta in FEATURES.items():
-        if meta.get("locked"):
+        if meta.get("locked") or not meta.get("available", True):
             state[k] = False
     return state
 
@@ -109,7 +146,11 @@ def delete_user(uid: str) -> int:
 def get_consent(uid: str = Depends(current_user)):
     state = _current(uid)
     return {"features": [{"key": k, "label": FEATURES[k]["label"],
-                          "granted": state[k], "locked": FEATURES[k].get("locked", False)}
+                          "granted": state[k],
+                          "locked": FEATURES[k].get("locked", False),
+                          # Clients disable an unavailable row and explain it,
+                          # instead of offering a switch that governs nothing.
+                          "available": FEATURES[k].get("available", True)}
                          for k in FEATURES]}
 
 
@@ -125,6 +166,14 @@ def set_consent(body: ConsentIn, uid: str = Depends(current_user)):
         raise HTTPException(status_code=400, detail="unknown feature")
     if FEATURES[body.feature].get("locked"):
         raise HTTPException(status_code=400, detail="this consent cannot be granted")
+    # Granting consent for a feature that does not exist would put a row in the
+    # ledger saying the user agreed to something that can never happen — a
+    # record that reads like permission and governs nothing. Revoking stays
+    # allowed, so a grant recorded by an older build can always be withdrawn.
+    if body.granted and not is_available(body.feature):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{body.feature} is not available in this build")
     _record(uid, body.feature, body.granted, body.note or "")
     return {"ok": True, "features": get_consent(uid)["features"]}
 

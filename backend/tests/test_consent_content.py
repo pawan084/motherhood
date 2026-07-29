@@ -69,20 +69,23 @@ def test_per_item_approval_still_applies_independently(client, user):
 
 
 def test_require_consent_dependency_blocks_and_allows(client, user):
-    """`require_consent` is the gate for features that collect data only after
-    agreement. Exercised directly since no shipped feature is gated on it yet."""
+    """`require_consent` is the gate for features that act only after agreement.
+
+    Uses `partner_access`, which is gated on exactly this dependency in
+    partner.create_invite — it was previously exercised against an unbuilt
+    feature, which tested the mechanism but nothing that shipped."""
     import fastapi
     uid = user["id"]
-    dep = consent.require_consent("future_baby_story")
+    dep = consent.require_consent("partner_access")
 
-    assert consent.is_granted(uid, "future_baby_story") is False   # default off
+    assert consent.is_granted(uid, "partner_access") is False      # default off
     try:
         dep(uid)
         raise AssertionError("expected a 403 while consent is withheld")
     except fastapi.HTTPException as e:
         assert e.status_code == 403
 
-    client.post("/v1/consent", json={"feature": "future_baby_story", "granted": True},
+    client.post("/v1/consent", json={"feature": "partner_access", "granted": True},
                 headers=user["headers"])
     assert dep(uid) == uid
 

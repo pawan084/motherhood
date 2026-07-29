@@ -133,7 +133,14 @@ export type MemoryItem = {
   id: string; label: string; value: string; approved: boolean;
   source: string; created: number;
 };
-export type ConsentFeature = { key: string; label: string; granted: boolean; locked: boolean };
+export type ConsentFeature = {
+  key: string; label: string; granted: boolean;
+  /** A permanent policy denial (health data for ads) — a statement, not a control. */
+  locked: boolean;
+  /** False when the feature doesn't exist in this build, so the consent governs
+   *  nothing and the server refuses to record a grant for it. */
+  available: boolean;
+};
 /** Voice options must match `prefs.VOICES` on the backend, which 400s anything else. */
 export const VOICES = ["Aira warm", "Aira gentle", "Text only"] as const;
 export type Prefs = { voice: string; spoken_replies: boolean };

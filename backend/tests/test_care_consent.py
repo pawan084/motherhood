@@ -34,13 +34,18 @@ def test_consent_defaults_and_grant(client, user):
     r = client.get("/v1/consent", headers=user["headers"]).json()
     feats = {f["key"]: f for f in r["features"]}
     assert feats["personalization"]["granted"] is True
-    assert feats["future_baby_story"]["granted"] is False
+    assert feats["partner_access"]["granted"] is False
     assert feats["data_for_ads"]["locked"] is True
+    # Unbuilt features are advertised as unavailable rather than as off — see
+    # test_consent_registry.py.
+    assert feats["future_baby_story"]["available"] is False
 
-    client.post("/v1/consent", json={"feature": "future_baby_story", "granted": True},
+    # Round-trip a feature that actually exists; granting one that doesn't is
+    # refused, which is what makes the toggle mean something.
+    client.post("/v1/consent", json={"feature": "partner_access", "granted": True},
                 headers=user["headers"])
     r2 = client.get("/v1/consent", headers=user["headers"]).json()
-    assert {f["key"]: f for f in r2["features"]}["future_baby_story"]["granted"] is True
+    assert {f["key"]: f for f in r2["features"]}["partner_access"]["granted"] is True
 
 
 def test_locked_consent_cannot_be_granted(client, user):

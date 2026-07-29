@@ -368,6 +368,7 @@ object AiraApi {
                     label = o.optString("label"),
                     granted = o.optBoolean("granted", false),
                     locked = o.optBoolean("locked", false),
+                    available = o.optBoolean("available", true),
                 ),
             )
         }
@@ -676,7 +677,11 @@ data class ConsentFeature(
     val key: String,
     val label: String,
     val granted: Boolean,
+    /** A permanent policy denial (health data for ads) — a statement, not a control. */
     val locked: Boolean,
+    /** False when the feature doesn't exist in this build, so the consent
+     *  governs nothing and the server refuses to record a grant for it. */
+    val available: Boolean = true,
 )
 
 /**

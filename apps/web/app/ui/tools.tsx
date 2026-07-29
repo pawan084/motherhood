@@ -341,16 +341,25 @@ function PrivacyTool() {
     <>
       <p>Every change is recorded in an append-only consent ledger, so you can see exactly what you agreed to and when.</p>
       <div className="list-rows">
+        {/* Three states, not two. A switch that governs nothing is the defect
+            this whole screen exists to avoid, so an unbuilt feature is shown
+            greyed with the reason rather than as a flippable control. */}
         {features.map((f) => (
           <div key={f.key}>
             <div style={{ gridColumn: "1 / 3" }}>
               <strong>{f.label}</strong>
-              <small>{f.locked ? "Permanently off — health data is never an ad product." : f.granted ? "On" : "Off"}</small>
+              <small>
+                {f.locked
+                  ? "Permanently off — health data is never an ad product."
+                  : !f.available
+                    ? "Not available in this build, so there's nothing to permit yet."
+                    : f.granted ? "On" : "Off"}
+              </small>
             </div>
             <button
               className={f.granted ? "switch on" : "switch"}
-              disabled={f.locked}
-              aria-label={`Toggle ${f.label}`}
+              disabled={f.locked || !f.available}
+              aria-label={f.available ? `Toggle ${f.label}` : `${f.label} — not available in this build`}
               aria-pressed={f.granted}
               onClick={() => AiraAPI.setConsent(f.key, !f.granted).then(load)}
             ><i /></button>

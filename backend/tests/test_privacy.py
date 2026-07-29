@@ -105,7 +105,7 @@ def test_export_returns_the_users_own_data(client, user):
                                         "priorities": ["Better sleep"], "weeks": 20}, headers=h)
     client.post("/v1/chat/turn", json={"message": "hello Aira"}, headers=h)
     client.post("/v1/memory", json={"label": "Stage", "value": "Week 20"}, headers=h)
-    client.post("/v1/consent", json={"feature": "avatar", "granted": True}, headers=h)
+    client.post("/v1/consent", json={"feature": "partner_access", "granted": True}, headers=h)
     client.post("/v1/feedback", json={"kind": "general", "message": "nice"}, headers=h)
     client.put("/v1/emergency-profile", json={"care_team_phone": "+911140000000"}, headers=h)
 
@@ -119,7 +119,7 @@ def test_export_returns_the_users_own_data(client, user):
     assert data["care"]["emergency_profile"]["care_team_phone"] == "+911140000000"
     assert any(t["text"] == "hello Aira" for t in data["chat"])
     assert any(m["label"] == "Stage" for m in data["memory"])
-    assert data["consent"]["current"]["avatar"] is True
+    assert data["consent"]["current"]["partner_access"] is True
     assert any(f["message"] == "nice" for f in data["feedback"])
     assert "safety" in data and "events" in data
 
