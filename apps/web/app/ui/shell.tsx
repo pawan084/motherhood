@@ -45,9 +45,19 @@ export function Sidebar({
   const name = user?.name || today?.name || "You";
   return (
     <aside className="sidebar">
-      <button className="sidebar-brand" onClick={() => onNavigate("Today")} disabled={locked}>
+      {/* The visible wordmark is "Aira", which is also the name of the chat
+          section right below it — so to a screen reader this button and that
+          nav item announced identically as "Aira, button" while going to two
+          different places. The label says where this one actually goes; the
+          nav item keeps its plain name, matching what's on screen. */}
+      <button
+        className="sidebar-brand"
+        onClick={() => onNavigate("Today")}
+        disabled={locked}
+        aria-label="Aira home — go to Today"
+      >
         <BrandOrb />
-        <span>Aira</span>
+        <span aria-hidden="true">Aira</span>
       </button>
 
       <p className="side-label">Your care</p>

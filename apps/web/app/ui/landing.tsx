@@ -343,7 +343,11 @@ export default function Landing({
 
       <footer className="landing-footer">
         <div>
-          <a className="landing-brand" href="#top"><BrandOrb /> <span>Aira</span></a>
+          {/* The header already has an "Aira home" link to #top; without a
+              distinct label this one announces as a second, unexplained "Aira". */}
+          <a className="landing-brand" href="#top" aria-label="Aira — back to top">
+            <BrandOrb /> <span aria-hidden="true">Aira</span>
+          </a>
           <p>AI-first maternal wellness, designed around the mother.</p>
         </div>
         <div>

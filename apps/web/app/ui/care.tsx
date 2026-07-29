@@ -48,7 +48,12 @@ export default function Care({
           <section className="panel" style={{ padding: 24 }}>
             <div className="section-heading">
               <h3>Appointments</h3>
-              <button onClick={() => openTool("appointment")}><Plus size={13} /> Add</button>
+              {/* Three sections each had a button announcing only as "Add", so a
+                  screen reader gave no way to tell them apart. The visible label
+                  stays short; the accessible one says which list it adds to. */}
+              <button onClick={() => openTool("appointment")} aria-label="Add an appointment">
+                <Plus size={13} /> Add
+              </button>
             </div>
             <div className="list-rows">
               {loading && !care && <div className="skeleton" style={{ height: 56 }} />}
@@ -59,7 +64,14 @@ export default function Care({
                     <strong>{str(a.doctor, "Appointment")}</strong>
                     <small>{[str(a.place), str(a.when)].filter(Boolean).join(" · ") || "Details not set"}</small>
                   </div>
-                  <button className="btn-ghost" onClick={() => openTool("appointment")}>Prepare</button>
+                  {/* Row actions repeat once per item, so the accessible name
+                      carries the item — otherwise a list of appointments is
+                      just "Prepare, Prepare, Prepare". */}
+                  <button
+                    className="btn-ghost"
+                    onClick={() => openTool("appointment")}
+                    aria-label={`Prepare for your visit with ${str(a.doctor, "your care team")}`}
+                  >Prepare</button>
                 </div>
               ))}
               {!loading && !appts.length && (
@@ -71,7 +83,9 @@ export default function Care({
           <section className="panel" style={{ padding: 24 }}>
             <div className="section-heading">
               <h3>Medicines</h3>
-              <button onClick={() => openTool("medicine")}><Plus size={13} /> Add</button>
+              <button onClick={() => openTool("medicine")} aria-label="Add a medicine">
+                <Plus size={13} /> Add
+              </button>
             </div>
             <div className="list-rows">
               {meds.map((m: CareItem) => (
@@ -81,7 +95,11 @@ export default function Care({
                     <strong>{str(m.name, "Medicine")}</strong>
                     <small>{[str(m.dose), str(m.schedule), str(m.time)].filter(Boolean).join(" · ") || "As you set it"}</small>
                   </div>
-                  <button className="btn-ghost" onClick={() => onMarkTaken(m.id)}>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => onMarkTaken(m.id)}
+                    aria-label={`Mark ${str(m.name, "this medicine")} as taken`}
+                  >
                     <Check size={14} /> Taken
                   </button>
                 </div>
@@ -96,7 +114,9 @@ export default function Care({
           <section className="panel" style={{ padding: 24 }}>
             <div className="section-heading">
               <h3>Reminders</h3>
-              <button onClick={() => openTool("reminder")}><Plus size={13} /> Add</button>
+              <button onClick={() => openTool("reminder")} aria-label="Add a reminder">
+                <Plus size={13} /> Add
+              </button>
             </div>
             <div className="list-rows">
               {reminders.map((r: CareItem) => (
@@ -110,6 +130,9 @@ export default function Care({
                     className="btn-ghost"
                     onClick={() => onReminderDone(r.id, !r.done)}
                     aria-pressed={!!r.done}
+                    aria-label={r.done
+                      ? `${str(r.title, "Reminder")} is done — select to reopen it`
+                      : `Mark ${str(r.title, "this reminder")} done`}
                   >
                     {r.done ? <><Check size={14} /> Done</> : "Mark done"}
                   </button>

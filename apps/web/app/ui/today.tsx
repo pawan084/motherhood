@@ -101,7 +101,11 @@ export default function Today({
               <strong>{str(m.name, "Medicine")}</strong>
               <p>{[str(m.dose), str(m.schedule), str(m.time)].filter(Boolean).join(" · ") || "As you set it"}</p>
             </div>
-            <button onClick={() => onMarkTaken(m.id)}>
+            {/* Repeats once per medicine, so the name carries the item. */}
+            <button
+              onClick={() => onMarkTaken(m.id)}
+              aria-label={`Mark ${str(m.name, "this medicine")} as taken`}
+            >
               <Check size={14} /> Mark taken
             </button>
           </div>
@@ -115,7 +119,10 @@ export default function Today({
               <strong>{str(a.doctor, "Appointment")}</strong>
               <p>{[str(a.place), str(a.when)].filter(Boolean).join(" · ") || "Details not set"}</p>
             </div>
-            <button onClick={() => openTool("appointment")}>Prepare</button>
+            <button
+              onClick={() => openTool("appointment")}
+              aria-label={`Prepare for your visit with ${str(a.doctor, "your care team")}`}
+            >Prepare</button>
           </div>
         ))}
 
@@ -130,6 +137,9 @@ export default function Today({
             <button
               onClick={() => onReminderDone(r.id, !r.done)}
               aria-pressed={!!r.done}
+              aria-label={r.done
+                ? `${str(r.title, "Reminder")} is done — select to reopen it`
+                : `Mark ${str(r.title, "this reminder")} done`}
             >
               {r.done ? <><Check size={14} /> Done</> : "Mark done"}
             </button>
