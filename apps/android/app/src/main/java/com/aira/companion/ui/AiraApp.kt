@@ -3,7 +3,6 @@ package com.aira.companion.ui
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +20,6 @@ import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,6 +51,7 @@ import com.aira.companion.ui.screens.JourneyScreen
 import com.aira.companion.ui.screens.OnboardingChatScreen
 import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
+import com.aira.companion.ui.screens.TutorialScreen
 import com.aira.companion.ui.screens.ToolTraySheet
 import com.aira.companion.ui.screens.UrgentHelpDialog
 import com.aira.companion.ui.screens.WelcomeScreen
@@ -84,7 +83,11 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
     LaunchedEffect(Unit) { viewModel.restoreSession(context) }
 
     when (state.stage) {
-        AppStage.Starting -> StartingScreen()
+        // Nothing is drawn for Starting: the system splash is still on screen,
+        // held by MainActivity until this stage ends. Rendering a spinner behind
+        // it would only be visible as a flash on the handover.
+        AppStage.Starting -> Unit
+        AppStage.Tutorial -> TutorialScreen(onFinish = { viewModel.finishTutorial(context) })
         AppStage.Welcome -> WelcomeScreen(onStart = viewModel::startOnboarding)
         AppStage.Onboarding ->
             OnboardingChatScreen(
@@ -102,18 +105,9 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
     }
 }
 
-/** Shown for the moment it takes to resolve the cached session. */
-@Composable
-private fun StartingScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Ivory),
-        contentAlignment = Alignment.Center,
-    ) {
-        CircularProgressIndicator(color = Plum, strokeWidth = 2.dp)
-    }
-}
+// StartingScreen used to live here — a spinner shown while the session resolved.
+// The system splash now covers that window instead, so drawing anything behind it
+// would only ever be seen as a flash at the handover.
 
 @Composable
 private fun MainExperience(

@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
+import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
@@ -88,9 +89,29 @@ class AiraViewModel : ViewModel() {
                 loadJourney(context)
                 loadCare(context)
             } else {
-                _uiState.update { it.copy(stage = AppStage.Welcome) }
+                // Not an onboarded session. Someone new gets the introduction
+                // first; someone who has already seen it (or skipped it) goes
+                // straight to the choice, even if they later signed out.
+                _uiState.update {
+                    it.copy(
+                        stage = if (AppPrefs.tutorialSeen(context)) {
+                            AppStage.Welcome
+                        } else {
+                            AppStage.Tutorial
+                        },
+                    )
+                }
             }
         }
+    }
+
+    /**
+     * Completed or skipped — both count as seen. Re-showing it to someone who
+     * chose to skip is not a second chance to explain, it is ignoring them.
+     */
+    fun finishTutorial(context: Context?) {
+        context?.let { AppPrefs.markTutorialSeen(it) }
+        _uiState.update { it.copy(stage = AppStage.Welcome) }
     }
 
     fun startOnboarding() {

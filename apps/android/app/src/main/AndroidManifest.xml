@@ -13,10 +13,26 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Aira">
+
+        <!--
+          Android 16 ignores an activity's orientation lock on displays of 600dp
+          or wider for apps targeting SDK 36, so `screenOrientation="portrait"`
+          alone holds on phones but not on tablets or unfolded foldables. This
+          opts back in to the restriction.
+
+          Google documents it as TEMPORARY — it will stop working in a later
+          release. The durable answer is responsive layouts; every screen here is
+          currently designed portrait-only, so honouring the lock is the truthful
+          state today. Revisit when large screens are actually supported.
+        -->
+        <property
+            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
+            android:value="true" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Aira.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

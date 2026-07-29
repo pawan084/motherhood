@@ -117,6 +117,28 @@ class AiraViewModelTest {
         assertNull(state.activeTool)
     }
 
+    // ── first run ───────────────────────────────────────────────────────────
+
+    @Test
+    fun theAppStartsOnStartingSoTheSplashHasSomethingToHold() {
+        // MainActivity keeps the system splash on screen for exactly this stage.
+        // If the initial stage ever changed, the splash would vanish instantly
+        // and the first frame would be whatever resolved first.
+        assertEquals(AppStage.Starting, AiraViewModel().uiState.value.stage)
+    }
+
+    @Test
+    fun finishingTheTutorialLeadsToWelcome() {
+        val viewModel = AiraViewModel()
+
+        // Null context is the offline/test path: the seen-flag can't be written,
+        // but the stage must still advance rather than trapping the user on the
+        // tutorial with a button that appears to do nothing.
+        viewModel.finishTutorial(null)
+
+        assertEquals(AppStage.Welcome, viewModel.uiState.value.stage)
+    }
+
     // ── the actions that used to be toasts ──────────────────────────────────
     //
     // With no Context there is no backend, and the honest result is to say

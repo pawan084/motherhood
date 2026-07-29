@@ -10,8 +10,13 @@ import com.aira.companion.data.VoicePrefs
 
 enum class AppStage {
     /** Resolving the cached session against the backend before showing anything,
-     *  so a returning user is not flashed the Welcome screen they already passed. */
+     *  so a returning user is not flashed the Welcome screen they already passed.
+     *  The system splash is held for exactly this stage — see MainActivity. */
     Starting,
+    /** A three-card introduction, shown once per install and skippable. Sits
+     *  before Welcome so someone can decide what Aira is before choosing how to
+     *  start; a returning user never sees it again. */
+    Tutorial,
     Welcome,
     Onboarding,
     Main,
