@@ -72,7 +72,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
         {[0, 1, 2].map((i) => <i key={i} className={i <= step ? "done" : ""} />)}
       </div>
 
-      {error && <div className="banner error">{error}</div>}
+      {error && <div className="banner error" role="alert">{error}</div>}
 
       {step === 0 && (
         <section className="panel onboarding-card">

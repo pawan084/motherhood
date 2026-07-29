@@ -226,7 +226,7 @@ export default function You({
         </section>
       )}
 
-      {note && <div className="banner" style={{ marginTop: 18 }}>{note}</div>}
+      {note && <div className="banner" role="status" style={{ marginTop: 18 }}>{note}</div>}
 
       {/* Account.
           Signing in and out existed nowhere inside the web app: the only way in

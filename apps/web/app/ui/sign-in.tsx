@@ -191,7 +191,7 @@ export default function SignIn({
             </div>
           )}
 
-          {error && <div className="banner error" style={{ marginBottom: 14 }}>{error}</div>}
+          {error && <div className="banner error" role="alert" style={{ marginBottom: 14 }}>{error}</div>}
 
           <form onSubmit={submit}>
             <label className="field">

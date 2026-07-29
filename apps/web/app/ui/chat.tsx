@@ -127,7 +127,12 @@ export default function Chat({
           <span className="online">Screened before every reply</span>
         </div>
 
-        <div className="messages" ref={scrollRef}>
+        {/* A reply arriving is the entire product, and it arrived silently for
+            anyone not watching the screen. `polite` rather than `assertive`:
+            Aira's answers should not cut across whatever is being read. The
+            log is a feed rather than a live-updating status area, so only the
+            appended message gets announced. */}
+        <div className="messages" ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions">
           {log.length === 0 && !sending && (
             <div className="message aira">
               Hi — I&apos;m Aira. Tell me how you&apos;re doing, or ask me anything.
@@ -166,10 +171,15 @@ export default function Chat({
                 </div>
               )
           ))}
-          {sending && <div className="message aira" style={{ opacity: .6 }}>…</div>}
+          {sending && (
+            <div className="message aira" style={{ opacity: .6 }}>
+              <span aria-hidden="true">…</span>
+              <span className="sr-only">Aira is replying</span>
+            </div>
+          )}
         </div>
 
-        {error && <div className="banner error" style={{ margin: "0 14px" }}><AlertTriangle size={15} /> {error}</div>}
+        {error && <div className="banner error" role="alert" style={{ margin: "0 14px" }}><AlertTriangle size={15} /> {error}</div>}
 
         <form className="chat-composer" onSubmit={submit}>
           <button type="button" onClick={() => setToolsOpen(true)} aria-label="Open tools">

@@ -217,6 +217,20 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
 
   return (
     <div className="aira-app">
+      {/* Skip link. The sidebar repeats six nav items plus the urgent control on
+          every screen; without this, reaching the content of the page you just
+          navigated to means tabbing back through the whole thing each time.
+
+          A button that moves focus, NOT an <a href="#main">. The screen lives
+          in the hash (#/app/care), so an in-page anchor overwrites the route:
+          the first version of this navigated the user to "#main" and dropped
+          them off their own screen. */}
+      <button
+        className="skip-link"
+        onClick={() => document.getElementById("main")?.focus()}
+      >
+        Skip to main content
+      </button>
       <Sidebar
         active={screen} onNavigate={setScreen} locked={false} user={user} today={today}
         badge={updates.length} onUrgent={() => openUrgent(null)}
@@ -232,7 +246,10 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           badge={updates.length}
         />
 
-        <div className="page-wrap">
+        {/* There was no main landmark at all, so "jump to the content" — the
+            first thing a screen-reader user reaches for on a page with this
+            much surrounding furniture — had nowhere to land. */}
+        <main className="page-wrap" id="main" tabIndex={-1}>
           {screen === "Today" && (
             <Today
               today={today} care={care} loading={care === null}
@@ -273,7 +290,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onSignedOut={() => window.location.reload()}
             />
           )}
-        </div>
+        </main>
       </div>
 
       <MobileNav active={screen} onNavigate={setScreen} locked={false} badge={updates.length} />

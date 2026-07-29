@@ -90,8 +90,11 @@ export default function ToolSheet({
           <button onClick={close} aria-label={`Close ${info.title}`}><X size={17} /></button>
         </div>
         <div className="modal-body">
-          {error && <div className="banner error"><AlertTriangle size={15} /> {error}</div>}
-          {done && <div className="note-line">{done}</div>}
+          {/* Announced, not just shown. The whole point of these sheets is
+              the outcome — "Check-in saved." was visible-only, so a screen
+              reader user pressed Save and got silence. */}
+          {error && <div className="banner error" role="alert"><AlertTriangle size={15} /> {error}</div>}
+          {done && <div className="note-line" role="status">{done}</div>}
           <Body tool={tool} busy={busy} run={run} close={close} />
         </div>
       </div>
@@ -566,7 +569,7 @@ function PartnerTool({ busy, run }: { busy: boolean; run: RunFn }) {
         <button className={tab === "redeem" ? "selected" : ""} onClick={() => setTab("redeem")}>Redeem</button>
       </div>
 
-      {note && <div className="note-line" style={{ marginBottom: 14 }}>{note}</div>}
+      {note && <div className="note-line" role="status" style={{ marginBottom: 14 }}>{note}</div>}
 
       {tab === "redeem" ? (
         <>
