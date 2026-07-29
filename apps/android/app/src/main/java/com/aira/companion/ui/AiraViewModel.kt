@@ -320,6 +320,106 @@ class AiraViewModel : ViewModel() {
         _uiState.update { it.copy(partnerInvite = null) }
     }
 
+    fun loadPartner(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update {
+                    it.copy(
+                        partnerInvites = AiraApi.partnerInvites(context),
+                        partnerShared = AiraApi.partnerShared(context),
+                    )
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun revokePartnerInvite(context: Context?, inviteId: String) =
+        write(context, "Access revoked.", refreshCare = false) {
+            AiraApi.revokePartnerInvite(it, inviteId)
+            _uiState.update { s -> s.copy(partnerInvites = AiraApi.partnerInvites(it)) }
+        }
+
+    /**
+     * Redeem a code someone shared. Without this the invite flow was one-ended:
+     * a code could be created and sent, and nobody could do anything with it.
+     */
+    fun acceptPartnerInvite(context: Context?, code: String) {
+        if (context == null) {
+            notify("Not connected — the code wasn't checked.")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val who = AiraApi.acceptPartnerInvite(context, code)
+                notify("You can now see what $who shared.")
+                _uiState.update { it.copy(partnerShared = AiraApi.partnerShared(context)) }
+            } catch (e: Exception) {
+                // A wrong or spent code is the common case, not an error state —
+                // say so in the words the user needs rather than an HTTP code.
+                notify(
+                    if (e is com.aira.companion.data.AiraApiException && e.code == 404) {
+                        "That code isn't valid. It may have been used already, or expired."
+                    } else {
+                        "Couldn't check that code. ${e.message.orEmpty()}".trim()
+                    },
+                )
+            }
+        }
+    }
+
+    // ── data rights ─────────────────────────────────────────────────────────
+
+    /**
+     * Write the account export to a location the user picked. The Uri comes from
+     * ACTION_CREATE_DOCUMENT, so the file lands wherever they chose and no
+     * storage permission or FileProvider is involved.
+     */
+    fun exportAccountTo(context: Context?, uri: Uri) {
+        if (context == null) {
+            notify("Not connected — nothing was exported.")
+            return
+        }
+        _uiState.update { it.copy(exporting = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val json = AiraApi.exportAccount(context)
+                context.contentResolver.openOutputStream(uri)?.use {
+                    it.write(json.toByteArray())
+                } ?: throw IllegalStateException("couldn't open that location")
+                _uiState.update { it.copy(exporting = false) }
+                notify("Your data was saved to this device.")
+            } catch (e: Exception) {
+                _uiState.update { it.copy(exporting = false) }
+                notify("Export failed. ${e.message.orEmpty()}".trim())
+            }
+        }
+    }
+
+    /**
+     * Irreversible. On success the token is already dead, so the app returns to
+     * Welcome with cleared state rather than sitting on a session that can only
+     * 401 — and a fresh anonymous user is registered on the next call.
+     */
+    fun deleteAccount(context: Context?) {
+        if (context == null) {
+            notify("Not connected — nothing was deleted.")
+            return
+        }
+        _uiState.update { it.copy(deleting = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.deleteAccount(context)
+                _uiState.value = AiraUiState(stage = AppStage.Welcome)
+                notify("Your data has been deleted.")
+            } catch (e: Exception) {
+                _uiState.update { it.copy(deleting = false) }
+                notify("Deletion failed. ${e.message.orEmpty()}".trim())
+            }
+        }
+    }
+
     fun saveAppointment(context: Context?, doctor: String, place: String, whenText: String) =
         write(context, "Appointment saved.") { AiraApi.addAppointment(it, doctor, place, whenText) }
 

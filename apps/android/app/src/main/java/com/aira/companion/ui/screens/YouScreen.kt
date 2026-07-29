@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
@@ -22,11 +24,14 @@ import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.aira.companion.data.ConsentFeature
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraCard
@@ -47,6 +53,7 @@ import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+import com.aira.companion.ui.theme.Urgent
 
 @Composable
 fun YouScreen(
@@ -57,8 +64,20 @@ fun YouScreen(
     weeks: Int? = null,
     journey: String? = null,
     language: String = "",
+    // The consent ledger, the stored voice, and the two data rights — all of
+    // which this screen either faked or didn't offer at all.
+    consent: List<ConsentFeature> = emptyList(),
+    voice: String = "",
+    exporting: Boolean = false,
+    deleting: Boolean = false,
+    onLoadConsent: () -> Unit = {},
+    onSetConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
+    onExport: () -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
-    var personalisationEnabled by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { onLoadConsent() }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val personalisation = consent.firstOrNull { it.key == "personalization" }
 
     Column(
         modifier =
@@ -120,7 +139,12 @@ fun YouScreen(
         ToolListRow(
             icon = Icons.Outlined.Language,
             title = "Voice & language",
-            subtitle = "English · Aira warm voice",
+            // Was hardcoded "English · Aira warm voice" regardless of what the
+            // user had chosen or what the server had stored.
+            subtitle = listOfNotNull(
+                language.ifBlank { null },
+                voice.ifBlank { null },
+            ).joinToString(" · ").ifBlank { "Conversation settings" },
             onClick = { onOpenTool(AiraTool.Voice) },
         )
         ToolListRow(
@@ -146,38 +170,43 @@ fun YouScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        AiraCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(44.dp)
-                            .background(SageMist, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Person,
-                        contentDescription = null,
-                        tint = SageDeep,
+        // Backed by the consent ledger. This was `remember { mutableStateOf(true) }`
+        // — flipping it changed a local boolean and nothing else, so the backend
+        // went on using remembered context in every reply.
+        if (personalisation != null) {
+            AiraCard {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(44.dp)
+                                .background(SageMist, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Person,
+                            contentDescription = null,
+                            tint = SageDeep,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "AI personalisation",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                        Text(
+                            text = "When off, nothing Aira remembers shapes its replies",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                    Switch(
+                        checked = personalisation.granted,
+                        onCheckedChange = { onSetConsent("personalization", it) },
                     )
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "AI personalisation",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Ink,
-                    )
-                    Text(
-                        text = "Use only approved context in answers",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
-                }
-                Switch(
-                    checked = personalisationEnabled,
-                    onCheckedChange = { personalisationEnabled = it },
-                )
             }
         }
 
@@ -194,6 +223,59 @@ fun YouScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
             )
+        }
+
+        // The two data rights. legal.py and the privacy page both promise you can
+        // export or delete "at any time"; until now only the web client could,
+        // so on Android the promise was unkeepable.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Your data")
+        Spacer(modifier = Modifier.height(8.dp))
+        AiraCard {
+            Text(
+                text = "Export everything Aira holds for you as a JSON file, or erase it. " +
+                    "Deletion is immediate and cannot be undone — it removes your profile, " +
+                    "conversations, care items, memory, consent history and safety records.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            OutlinedButton(
+                onClick = onExport,
+                enabled = !exporting && !deleting,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Download,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (exporting) "Preparing…" else "Download my data")
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            // Two-tap rather than one, matching the web client: an irreversible
+            // erase should not be a single stray press.
+            OutlinedButton(
+                onClick = { if (confirmDelete) onDelete() else confirmDelete = true },
+                enabled = !deleting && !exporting,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Urgent),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DeleteOutline,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    when {
+                        deleting -> "Deleting…"
+                        confirmDelete -> "Tap again to permanently delete"
+                        else -> "Delete all my data"
+                    },
+                )
+            }
         }
     }
 }

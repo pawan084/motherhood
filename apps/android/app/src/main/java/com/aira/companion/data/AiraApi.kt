@@ -43,6 +43,9 @@ object AiraApi {
     // it is streamed rather than after the server has read 20 MB of it.
     private const val MAX_UPLOAD_BYTES = 20L * 1024 * 1024
 
+    // Must match privacy.DELETE_CONFIRMATION exactly; the server 400s otherwise.
+    const val DELETE_CONFIRMATION = "DELETE MY DATA"
+
     // ── identity ────────────────────────────────────────────────────────────
     private fun cachedToken(ctx: Context): String? =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_TOKEN, null)
@@ -415,6 +418,99 @@ object AiraApi {
         )
     }
 
+    /** Invites this user has issued, with their current state. */
+    suspend fun partnerInvites(ctx: Context): List<PartnerInviteRow> {
+        val arr = request("GET", "/v1/partner/invites", null, ensureToken(ctx))
+            .optJSONArray("items")
+        val out = mutableListOf<PartnerInviteRow>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            val o = arr?.optJSONObject(i) ?: continue
+            val scopes = o.optJSONObject("scopes") ?: JSONObject()
+            out.add(
+                PartnerInviteRow(
+                    id = o.optString("id"),
+                    // Only present while the invite is still redeemable — the
+                    // server stops echoing a spent code.
+                    code = o.optStringOrNull("code"),
+                    state = o.optString("state"),
+                    scopeSummary = listOfNotNull(
+                        "Appointments".takeIf { scopes.optBoolean("appointments") },
+                        "Reminders".takeIf { scopes.optBoolean("reminders") },
+                        "Health details".takeIf { scopes.optBoolean("health_details") },
+                    ).joinToString(" · ").ifBlank { "Nothing shared" },
+                ),
+            )
+        }
+        return out
+    }
+
+    suspend fun revokePartnerInvite(ctx: Context, inviteId: String) {
+        request("POST", "/v1/partner/invites/$inviteId/revoke", null, ensureToken(ctx))
+    }
+
+    /** Redeem a code someone shared. Returns whose care you can now see. */
+    suspend fun acceptPartnerInvite(ctx: Context, code: String): String {
+        val o = request(
+            "POST", "/v1/partner/accept",
+            JSONObject().put("code", code.trim()), ensureToken(ctx),
+        )
+        return o.optStringOrNull("shared_by") ?: "your partner"
+    }
+
+    /** What this user can see as somebody else's invited partner. */
+    suspend fun partnerShared(ctx: Context): List<PartnerShare> {
+        val arr = request("GET", "/v1/partner/shared", null, ensureToken(ctx))
+            .optJSONArray("items")
+        val out = mutableListOf<PartnerShare>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            val o = arr?.optJSONObject(i) ?: continue
+            val data = o.optJSONObject("data") ?: JSONObject()
+            out.add(
+                PartnerShare(
+                    inviteId = o.optString("invite_id"),
+                    sharedBy = o.optStringOrNull("shared_by") ?: "your partner",
+                    appointments = data.optJSONArray("appointments").toCareItems(),
+                    reminders = data.optJSONArray("reminders").toCareItems(),
+                    medicines = data.optJSONArray("medicines").toCareItems(),
+                ),
+            )
+        }
+        return out
+    }
+
+    // ── data rights ──────────────────────────────────────────────────────────
+
+    /**
+     * Everything Aira holds for this user, as one JSON document.
+     *
+     * Android had neither this nor deletion, while legal.py and the privacy page
+     * both promise you can export or delete "at any time" — a promise only the
+     * web client could keep.
+     */
+    suspend fun exportAccount(ctx: Context): String =
+        request("GET", "/v1/account/export", null, ensureToken(ctx)).toString(2)
+
+    /**
+     * Irreversible. The confirmation string is required by the server so a leaked
+     * token is not one request away from erasing someone's care history; it must
+     * match privacy.DELETE_CONFIRMATION exactly.
+     *
+     * On success the caller's token is already dead, so the session is cleared
+     * here rather than leaving a token that can only 401.
+     */
+    suspend fun deleteAccount(ctx: Context) {
+        request(
+            "POST", "/v1/account/delete",
+            JSONObject().put("confirm", DELETE_CONFIRMATION), ensureToken(ctx),
+        )
+        clearSession(ctx)
+    }
+
+    /** Forget the cached device token; the next call registers a fresh user. */
+    fun clearSession(ctx: Context) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_TOKEN).apply()
+    }
+
     // ── transport ─────────────────────────────────────────────────────────────
     private suspend fun request(method: String, path: String, body: JSONObject?,
                                 token: String?): JSONObject = withContext(Dispatchers.IO) {
@@ -558,6 +654,23 @@ data class PartnerInvite(
     val id: String,
     val code: String,
     val shareText: String,
+)
+
+/** An issued invite as it appears in the owner's list. */
+data class PartnerInviteRow(
+    val id: String,
+    val code: String?,          // null once spent, revoked or expired
+    val state: String,          // pending | accepted | revoked | expired
+    val scopeSummary: String,
+)
+
+/** Somebody else's care, as far as the scopes they granted allow. */
+data class PartnerShare(
+    val inviteId: String,
+    val sharedBy: String,
+    val appointments: List<CareItem> = emptyList(),
+    val reminders: List<CareItem> = emptyList(),
+    val medicines: List<CareItem> = emptyList(),
 )
 
 /** Flatten `{id, kind, done, ...payload}` into a display row. */

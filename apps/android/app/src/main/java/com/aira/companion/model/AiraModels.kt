@@ -4,6 +4,8 @@ import com.aira.companion.data.CareData
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.PartnerInvite
+import com.aira.companion.data.PartnerInviteRow
+import com.aira.companion.data.PartnerShare
 import com.aira.companion.data.VoicePrefs
 
 enum class AppStage {
@@ -167,6 +169,14 @@ data class AiraUiState(
     // Both used to be toasts that persisted nothing.
     val voicePrefs: VoicePrefs = VoicePrefs(),
     val partnerInvite: PartnerInvite? = null,
+    // Invites this user issued, and care other people have shared with them.
+    // Until these existed a code could be created but never redeemed, listed or
+    // revoked from any client.
+    val partnerInvites: List<PartnerInviteRow> = emptyList(),
+    val partnerShared: List<PartnerShare> = emptyList(),
+    // Data rights, which Android could not exercise at all.
+    val exporting: Boolean = false,
+    val deleting: Boolean = false,
     // Set while a Care Vault file is streaming, so the sheet can show progress
     // instead of looking idle through a 20 MB upload.
     val uploadingDocument: Boolean = false,

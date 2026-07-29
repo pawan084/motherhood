@@ -136,7 +136,9 @@ def today(uid: str = Depends(current_user)):
         "context_line": jc.get("this_week") or "",
         "weeks": ctx["weeks"],
         "next_action": action,
-        "all_clear": True,
+        # No `all_clear` here. It was hardcoded True and read by nobody — a field
+        # that would have been actively wrong the first time a client trusted it,
+        # since it stayed True with medicines due and the safety gate degraded.
         "priorities": ctx["priorities"],
     }
 
@@ -182,19 +184,22 @@ def shared_view(owner_id: str, scopes: dict) -> dict:
     check-ins and documents are never included without it, and even then only
     counts and titles are returned, never note or symptom free text.
     """
+    # `kind` travels with every row: it is the item's type, not content, and the
+    # clients key their icon and title-flattening off it. Leaving it out made
+    # every shared row render as an untyped one.
     out: dict = {}
     if scopes.get("appointments"):
         out["appointments"] = [
-            {k: v for k, v in a.items() if k in ("id", "doctor", "place", "when")}
+            {k: v for k, v in a.items() if k in ("id", "kind", "doctor", "place", "when")}
             for a in _list_items(owner_id, "appointment")
         ]
     if scopes.get("reminders"):
         out["reminders"] = [
-            {k: v for k, v in r.items() if k in ("id", "title", "time", "repeat", "done")}
+            {k: v for k, v in r.items() if k in ("id", "kind", "title", "time", "repeat", "done")}
             for r in _list_items(owner_id, "reminder")
         ]
         out["medicines"] = [
-            {k: v for k, v in m.items() if k in ("id", "name", "dose", "schedule", "time")}
+            {k: v for k, v in m.items() if k in ("id", "kind", "name", "dose", "schedule", "time")}
             for m in _list_items(owner_id, "medicine") if not m.get("done")
         ]
     if scopes.get("health_details"):

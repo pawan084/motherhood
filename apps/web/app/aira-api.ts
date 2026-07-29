@@ -17,6 +17,11 @@ const BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 const APP_TOKEN = import.meta.env.VITE_APP_TOKEN || "";
 const TOKEN_KEY = "aira_session_token";
 
+/** Google client ID, if this deployment has one. Empty means Google Sign-In is
+ *  not configured — the UI must then say so rather than offering a button that
+ *  can only fail (`POST /account/google` 503s without a server-side client ID). */
+export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+
 function getToken(): string | null {
   return typeof localStorage !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null;
 }
@@ -97,7 +102,6 @@ export type TodayData = {
   context_line: string;
   weeks: number | null;
   next_action: NextAction;
-  all_clear: boolean;
   priorities: string[];
 };
 export type JourneySection = { title: string; text: string };
@@ -154,6 +158,37 @@ export async function health(): Promise<{ ok: boolean; llm_configured: boolean }
   const res = await fetch(`${BASE}/health`);
   if (!res.ok) throw new Error(`health ${res.status}`);
   return res.json();
+}
+
+/**
+ * Exchange a Google ID token for an Aira session.
+ *
+ * Sends the current anonymous device token too: the backend promotes that user
+ * in place when it can, so everything they did before signing in — onboarding,
+ * care items, memory — carries over instead of being stranded on an account
+ * they can no longer reach.
+ *
+ * Bypasses `req` because it must NOT call ensureToken(): the whole point is to
+ * replace the session, and the device token is a body field here, not auth.
+ */
+export async function signInWithGoogle(idToken: string): Promise<User> {
+  const res = await fetch(`${BASE}/account/google`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(APP_TOKEN ? { "X-App-Token": APP_TOKEN } : {}),
+    },
+    body: JSON.stringify({ id_token: idToken, device_token: getToken() }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as { detail?: string }).detail
+      || (res.status === 503 ? "Google Sign-In isn't configured on the server."
+                             : `Sign-in failed (${res.status})`));
+  }
+  const data = await res.json();
+  setToken(data.token);
+  return data.user as User;
 }
 
 export const AiraAPI = {

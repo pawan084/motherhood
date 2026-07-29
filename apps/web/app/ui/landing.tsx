@@ -28,7 +28,14 @@ function BrandOrb({ className = "brand-orb compact" }: { className?: string }) {
 // a one-shot handoff that shouldn't linger in a shareable URL.
 export const PRESELECT_KEY = "aira_preselect_journey";
 
-export default function Landing({ enterApp }: { enterApp: () => void }) {
+export default function Landing({
+  enterApp, onSignIn,
+}: {
+  enterApp: () => void;
+  // "Sign in" used to call enterApp, exactly like "Meet Aira" beside it — so
+  // the one button on the page that named a specific action did something else.
+  onSignIn: () => void;
+}) {
   const startJourney = (j: Journey) => {
     try { sessionStorage.setItem(PRESELECT_KEY, j); } catch { /* private mode */ }
     enterApp();
@@ -47,7 +54,7 @@ export default function Landing({ enterApp }: { enterApp: () => void }) {
           <a href="#safety">Safety</a>
         </nav>
         <div>
-          <button className="nav-signin" onClick={enterApp}>Sign in</button>
+          <button className="nav-signin" onClick={onSignIn}>Sign in</button>
           <button className="nav-cta" onClick={enterApp}>Meet Aira <ArrowRight size={15} /></button>
         </div>
       </header>

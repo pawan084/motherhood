@@ -107,6 +107,8 @@ import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.CareData
 import com.aira.companion.data.PartnerInvite
+import com.aira.companion.data.PartnerInviteRow
+import com.aira.companion.data.PartnerShare
 import com.aira.companion.data.VoicePrefs
 import kotlinx.coroutines.delay
 import com.aira.companion.ui.components.AiraCard
@@ -254,6 +256,9 @@ data class ToolActions(
         { _, _, _ -> },
     val clearPartnerInvite: () -> Unit = {},
     val sharePartnerInvite: (text: String) -> Unit = {},
+    val loadPartner: () -> Unit = {},
+    val revokePartnerInvite: (id: String) -> Unit = {},
+    val acceptPartnerInvite: (code: String) -> Unit = {},
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -269,6 +274,8 @@ fun DynamicToolSheet(
     consent: List<ConsentFeature> = emptyList(),
     voicePrefs: VoicePrefs = VoicePrefs(),
     partnerInvite: PartnerInvite? = null,
+    partnerInvites: List<PartnerInviteRow> = emptyList(),
+    partnerShared: List<PartnerShare> = emptyList(),
     uploading: Boolean = false,
 ) {
     // The picked document's Uri is KEPT now. It used to be dropped on the floor
@@ -325,7 +332,8 @@ fun DynamicToolSheet(
                 AiraTool.Privacy -> PrivacyTool(actions, consent)
                 AiraTool.Memory -> MemoryTool(actions, memory)
                 AiraTool.Voice -> VoiceTool(voicePrefs, actions)
-                AiraTool.Partner -> PartnerTool(partnerInvite, actions)
+                AiraTool.Partner ->
+                    PartnerTool(partnerInvite, partnerInvites, partnerShared, actions)
                 AiraTool.Support -> SupportTool(actions, onUrgentHelp, onDismiss)
                 AiraTool.Emergency -> EmergencyProfileTool(actions, onDismiss)
             }
@@ -1193,6 +1201,115 @@ private fun VoiceTool(
 @Composable
 private fun PartnerTool(
     invite: PartnerInvite?,
+    invites: List<PartnerInviteRow>,
+    shared: List<PartnerShare>,
+    actions: ToolActions,
+) {
+    LaunchedEffect(Unit) { actions.loadPartner() }
+    var tab by remember { mutableStateOf("Share") }
+    ChoiceChips(listOf("Share", "Redeem"), tab) { tab = it }
+    Spacer(Modifier.height(16.dp))
+    if (tab == "Redeem") {
+        RedeemPartnerCode(shared, actions)
+        return
+    }
+    PartnerShareTab(invite, invites, actions)
+}
+
+/**
+ * The receiving end of an invite. This did not exist: the backend has had
+ * POST /v1/partner/accept all along, but no client called it, so a code could be
+ * created and shared and then had nowhere to go.
+ */
+@Composable
+private fun RedeemPartnerCode(
+    shared: List<PartnerShare>,
+    actions: ToolActions,
+) {
+    var code by remember { mutableStateOf("") }
+    OutlinedTextField(
+        value = code,
+        onValueChange = { code = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Invite code") },
+        singleLine = true,
+        shape = RoundedCornerShape(17.dp),
+    )
+    Spacer(Modifier.height(12.dp))
+    PrimaryButton(
+        label = "Redeem code",
+        onClick = { actions.acceptPartnerInvite(code.trim()); code = "" },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = code.isNotBlank(),
+    )
+    Spacer(Modifier.height(18.dp))
+
+    if (shared.isEmpty()) {
+        InfoBanner(
+            Icons.Outlined.Group,
+            "Nobody has shared their care with you yet. A code works once and " +
+                "expires after 7 days.",
+            SageMist,
+        )
+        return
+    }
+    shared.forEach { share ->
+        SectionLabel("Shared by ${share.sharedBy}")
+        Spacer(Modifier.height(8.dp))
+        val rows = share.appointments + share.medicines + share.reminders
+        if (rows.isEmpty()) {
+            Text(
+                "Nothing to show yet — they've shared access, but haven't added " +
+                    "anything in the scopes they granted.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+        }
+        rows.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = when (item.kind) {
+                        "appointment" -> Icons.Outlined.CalendarMonth
+                        "medicine" -> Icons.Outlined.Medication
+                        else -> Icons.Outlined.AccessTime
+                    },
+                    contentDescription = null,
+                    tint = SageDeep,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(item.title, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    if (item.subtitle.isNotBlank()) {
+                        Text(
+                            item.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        InfoBanner(
+            Icons.Outlined.Lock,
+            "This is read-only, and only what ${share.sharedBy} chose to share. " +
+                "They can revoke it at any time.",
+            SageMist,
+        )
+        Spacer(Modifier.height(14.dp))
+    }
+}
+
+@Composable
+private fun PartnerShareTab(
+    invite: PartnerInvite?,
+    invites: List<PartnerInviteRow>,
     actions: ToolActions,
 ) {
     var appointment by remember { mutableStateOf(true) }
@@ -1255,6 +1372,45 @@ private fun PartnerTool(
             onClick = actions.clearPartnerInvite,
             modifier = Modifier.fillMaxWidth(),
         ) { Text("Create a different invite", color = Plum) }
+    }
+
+    // Issued invites, with the revoke the backend has always supported and no
+    // client ever called. Without this an accepted invite could not be taken
+    // back from the app that created it.
+    if (invites.isNotEmpty()) {
+        Spacer(Modifier.height(22.dp))
+        SectionLabel("Invites you've issued")
+        Spacer(Modifier.height(6.dp))
+        invites.forEach { row ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = row.code ?: "Code hidden",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "${row.state.replaceFirstChar { it.uppercase() }} · ${row.scopeSummary}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                }
+                // Revoking an expired or already-revoked invite would be a no-op
+                // dressed as an action, so the control is only offered when it
+                // can actually change something.
+                if (row.state == "pending" || row.state == "accepted") {
+                    TextButton(onClick = { actions.revokePartnerInvite(row.id) }) {
+                        Text("Revoke", color = Urgent)
+                    }
+                }
+            }
+        }
     }
 }
 

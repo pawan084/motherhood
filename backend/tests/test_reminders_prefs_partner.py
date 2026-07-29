@@ -104,6 +104,25 @@ def test_invite_accept_and_scoped_share(client, user):
     assert "symptom_count" not in data
 
 
+def test_shared_rows_carry_kind_so_clients_can_type_them(client, user):
+    """`kind` is the item's type, not its content, and the clients key their icon
+    and title-flattening off it. The scope filter dropped it, so every shared row
+    arrived untyped and rendered identically whatever it was."""
+    owner = user["headers"]
+    client.post("/v1/care/appointments", json={"doctor": "Dr Rao"}, headers=owner)
+    client.post("/v1/care/medicines", json={"name": "Iron"}, headers=owner)
+    client.post("/v1/care/reminders", json={"title": "Walk"}, headers=owner)
+    inv = client.post("/v1/partner/invite",
+                      json={"appointments": True, "reminders": True}, headers=owner).json()
+    partner_h = _register(client)
+    client.post("/v1/partner/accept", json={"code": inv["code"]}, headers=partner_h)
+
+    data = client.get("/v1/partner/shared", headers=partner_h).json()["items"][0]["data"]
+    assert data["appointments"][0]["kind"] == "appointment"
+    assert data["medicines"][0]["kind"] == "medicine"
+    assert data["reminders"][0]["kind"] == "reminder"
+
+
 def test_health_details_scope_yields_counts_not_text(client, user):
     owner = user["headers"]
     client.post("/v1/care/symptom", json={"what": "a very private symptom note"},

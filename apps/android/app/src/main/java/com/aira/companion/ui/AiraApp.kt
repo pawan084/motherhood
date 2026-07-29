@@ -1,6 +1,8 @@
 package com.aira.companion.ui
 
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,10 +129,15 @@ private fun MainExperience(
             MainDestination.Today -> { viewModel.loadToday(context); viewModel.loadCare(context) }
             MainDestination.Journey -> viewModel.loadJourney(context)
             MainDestination.Care -> viewModel.loadCare(context)
-            MainDestination.You -> viewModel.loadConsent(context)
+            MainDestination.You -> { viewModel.loadConsent(context); viewModel.loadPrefs(context) }
             else -> {}
         }
     }
+    // The export writes to a location the user picks, so no storage permission
+    // and no FileProvider are involved.
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri -> if (uri != null) viewModel.exportAccountTo(context, uri) }
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -195,6 +202,14 @@ private fun MainExperience(
                         weeks = state.todayData?.weeks,
                         journey = state.todayData?.journey,
                         language = state.language,
+                        consent = state.consent,
+                        voice = state.voicePrefs.voice,
+                        exporting = state.exporting,
+                        deleting = state.deleting,
+                        onLoadConsent = { viewModel.loadConsent(context) },
+                        onSetConsent = { f, g -> viewModel.setConsent(context, f, g) },
+                        onExport = { exportLauncher.launch("aira-data-export.json") },
+                        onDelete = { viewModel.deleteAccount(context) },
                     )
             }
         }
@@ -229,6 +244,9 @@ private fun MainExperience(
                     viewModel.createPartnerInvite(context, appts, rem, health)
                 },
                 clearPartnerInvite = viewModel::clearPartnerInvite,
+                loadPartner = { viewModel.loadPartner(context) },
+                revokePartnerInvite = { viewModel.revokePartnerInvite(context, it) },
+                acceptPartnerInvite = { viewModel.acceptPartnerInvite(context, it) },
                 // The user shares the code themselves — Aira never sends an
                 // email or SMS, so no contact detail for a partner is collected.
                 sharePartnerInvite = { text ->
@@ -260,6 +278,8 @@ private fun MainExperience(
                 consent = state.consent,
                 voicePrefs = state.voicePrefs,
                 partnerInvite = state.partnerInvite,
+                partnerInvites = state.partnerInvites,
+                partnerShared = state.partnerShared,
                 uploading = state.uploadingDocument,
             )
         }
