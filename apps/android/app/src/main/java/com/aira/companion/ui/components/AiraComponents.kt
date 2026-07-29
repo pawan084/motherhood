@@ -617,6 +617,10 @@ fun EditableRow(
      *  document type, and a box pre-filled with the wrong value invites you to
      *  overwrite the wrong thing. */
     editValue: String = label,
+    /** When set, the pencil hands off instead of editing in place. A reminder
+     *  has a time and a repeat as well as a name, and renaming it inline would
+     *  quietly offer only a third of what needs changing. */
+    onEditInstead: (() -> Unit)? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     var editing by remember(label) { mutableStateOf(false) }
@@ -675,7 +679,7 @@ fun EditableRow(
                 // drawing rather than the control. On the one pair of buttons
                 // that sit side by side and where the wrong one deletes.
                 IconButton(
-                    onClick = { editing = true },
+                    onClick = { onEditInstead?.invoke() ?: run { editing = true } },
                     modifier = Modifier
                         .size(44.dp)
                         .semantics { contentDescription = "Edit $label" },

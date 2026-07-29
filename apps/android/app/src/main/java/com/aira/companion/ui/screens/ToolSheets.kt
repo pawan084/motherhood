@@ -106,6 +106,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aira.companion.data.CareData
+import com.aira.companion.data.CareItem
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.PartnerInvite
@@ -255,6 +256,8 @@ data class ToolActions(
     val saveMedicine: (name: String, dose: String, time: String) -> Unit = { _, _, _ -> },
     val saveAppointment: (doctor: String, place: String, whenText: String, at: Long?) -> Unit =
         { _, _, _, _ -> },
+    val updateReminder: (id: String, title: String, time: String, repeat: String) -> Unit =
+        { _, _, _, _ -> },
     val saveCheckIn: (feeling: String, sleepHours: Double, note: String) -> Unit = { _, _, _ -> },
     val saveSymptom: (what: String, severity: String, started: String) -> Unit = { _, _, _ -> },
     val markMedicineTaken: (id: String) -> Unit = {},
@@ -295,6 +298,7 @@ fun DynamicToolSheet(
     partnerInvites: List<PartnerInviteRow> = emptyList(),
     partnerShared: List<PartnerShare> = emptyList(),
     uploading: Boolean = false,
+    editingReminder: CareItem? = null,
 ) {
     // The picked document's Uri is KEPT now. It used to be dropped on the floor
     // here ("Document selected securely."), which is why "Save to Care Vault"
@@ -323,13 +327,24 @@ fun DynamicToolSheet(
                     .padding(horizontal = 20.dp)
                     .padding(top = 14.dp, bottom = 34.dp),
         ) {
-            ToolHeader(tool = tool, onDismiss = onDismiss)
+            ToolHeader(
+                tool = tool,
+                onDismiss = onDismiss,
+                // The same sheet does both jobs, so it has to say which one it
+                // is doing. "Create a reminder" over a prefilled form invites
+                // you to think you're making a second one.
+                titleOverride = if (tool == AiraTool.Reminder && editingReminder != null) {
+                    "Edit reminder"
+                } else {
+                    null
+                },
+            )
             Spacer(modifier = Modifier.height(20.dp))
 
             when (tool) {
                 AiraTool.Notifications -> NotificationsTool(care)
                 AiraTool.CheckIn -> CheckInTool(actions, onDismiss)
-                AiraTool.Reminder -> ReminderTool(actions, onDismiss)
+                AiraTool.Reminder -> ReminderTool(actions, onDismiss, editingReminder)
                 AiraTool.Medicines -> MedicinesTool(actions, care, onDismiss)
                 AiraTool.Appointment -> AppointmentTool(actions, care, onDismiss)
                 AiraTool.CareVault ->
@@ -363,12 +378,13 @@ fun DynamicToolSheet(
 private fun ToolHeader(
     tool: AiraTool,
     onDismiss: () -> Unit,
+    titleOverride: String? = null,
 ) {
     Row(verticalAlignment = Alignment.Top) {
         Column(modifier = Modifier.weight(1f)) {
             SectionLabel(tool.eyebrow)
             Text(
-                text = tool.title,
+                text = titleOverride ?: tool.title,
                 style = MaterialTheme.typography.headlineMedium,
                 color = Ink,
             )
@@ -472,12 +488,22 @@ private fun CheckInTool(actions: ToolActions, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun ReminderTool(actions: ToolActions, onDismiss: () -> Unit) {
+private fun ReminderTool(
+    actions: ToolActions,
+    onDismiss: () -> Unit,
+    /** The reminder being changed, or null when creating one. Same sheet for
+     *  both: editing a reminder asks exactly the questions creating one does,
+     *  and a second screen that asked them differently would be a second place
+     *  to get them wrong. */
+    editing: CareItem? = null,
+) {
     // Empty, not "Prenatal vitamin" — that prefilled a pregnancy supplement for
     // every user, including postpartum and trying-to-conceive.
-    var title by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("8:00 PM") }
-    var repeat by remember { mutableStateOf(true) }
+    var title by remember(editing?.id) { mutableStateOf(editing?.title.orEmpty()) }
+    var time by remember(editing?.id) { mutableStateOf(editing?.time ?: "8:00 PM") }
+    var repeat by remember(editing?.id) {
+        mutableStateOf(editing?.repeat?.equals("Daily", ignoreCase = true) ?: true)
+    }
 
     OutlinedTextField(
         value = title,
@@ -491,7 +517,10 @@ private fun ReminderTool(actions: ToolActions, onDismiss: () -> Unit) {
     Text("Time", style = MaterialTheme.typography.titleSmall, color = Ink)
     Spacer(Modifier.height(8.dp))
     ChoiceChips(
-        options = listOf("8:00 AM", "2:00 PM", "8:00 PM"),
+        // The stored time is included even when it isn't one of the presets, so
+        // opening an edit sheet can't silently move a reminder to 8pm just
+        // because the original time wasn't on the list.
+        options = (listOf("8:00 AM", "2:00 PM", "8:00 PM") + time).distinct(),
         selected = time,
         onSelect = { time = it },
     )
@@ -504,9 +533,14 @@ private fun ReminderTool(actions: ToolActions, onDismiss: () -> Unit) {
     )
     Spacer(Modifier.height(18.dp))
     PrimaryButton(
-        label = "Create reminder",
+        label = if (editing != null) "Save changes" else "Create reminder",
         onClick = {
-            actions.saveReminder(title.trim(), time, if (repeat) "Daily" else "Once")
+            val repeatText = if (repeat) "Daily" else "Once"
+            if (editing != null) {
+                actions.updateReminder(editing.id, title.trim(), time, repeatText)
+            } else {
+                actions.saveReminder(title.trim(), time, repeatText)
+            }
             onDismiss()
         },
         modifier = Modifier.fillMaxWidth(),

@@ -265,6 +265,7 @@ private fun MainExperience(
                             viewModel.renameCareItem(context, id, field, value)
                         },
                         onDelete = { viewModel.deleteCareItem(context, it) },
+                        onEditReminder = viewModel::editReminder,
                     )
                 MainDestination.You ->
                     YouScreen(
@@ -303,6 +304,9 @@ private fun MainExperience(
         val toolActions = remember(context) {
             ToolActions(
                 saveReminder = { t, time, repeat -> viewModel.saveReminder(context, t, time, repeat) },
+                updateReminder = { id, t, time, repeat ->
+                    viewModel.updateReminder(context, id, t, time, repeat)
+                },
                 saveMedicine = { n, d, t -> viewModel.saveMedicine(context, n, d, t) },
                 saveAppointment = { doc, p, w, at -> viewModel.saveAppointment(context, doc, p, w, at) },
                 saveCheckIn = { f, s, n -> viewModel.saveCheckIn(context, f, s, n) },
@@ -356,6 +360,7 @@ private fun MainExperience(
                 tool = tool,
                 onDismiss = {
                     viewModel.clearPartnerInvite()   // the code is single-use
+                    viewModel.closeReminderEditor()
                     viewModel.closeTool()
                 },
                 onNotify = viewModel::notify,
@@ -369,6 +374,7 @@ private fun MainExperience(
                 partnerInvites = state.partnerInvites,
                 partnerShared = state.partnerShared,
                 uploading = state.uploadingDocument,
+                editingReminder = state.editingReminder,
             )
         }
 

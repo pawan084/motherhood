@@ -92,6 +92,8 @@ fun CareScreen(
     // (id, field, value) — the field differs per kind, so the caller picks it.
     onRename: (String, String, String) -> Unit = { _, _, _ -> },
     onDelete: (String) -> Unit = {},
+    /** Opens the full reminder sheet rather than an inline rename. */
+    onEditReminder: (CareItem) -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -236,6 +238,10 @@ fun CareScreen(
                     onRename = { onRename(rem.id, "title", it) },
                     onDelete = { onDelete(rem.id) },
                     modifier = Modifier.padding(vertical = 2.dp),
+                    // The full sheet, because a reminder's time is the field
+                    // most worth changing and now the one with consequences —
+                    // it decides when the notification arrives.
+                    onEditInstead = { onEditReminder(rem) },
                 ) {
                     Checkbox(
                         checked = rem.done,

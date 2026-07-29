@@ -387,6 +387,14 @@ object AiraApi {
         request("PATCH", "/v1/care/items/$id", JSONObject().put(field, value), ensureToken(ctx))
     }
 
+    /** Change several fields at once — editing a reminder's title, time and
+     *  repeat is one action to the user and should be one request. */
+    suspend fun updateCareItem(ctx: Context, id: String, fields: Map<String, String>) {
+        val body = JSONObject()
+        fields.forEach { (k, v) -> body.put(k, v) }
+        request("PATCH", "/v1/care/items/$id", body, ensureToken(ctx))
+    }
+
     /**
      * Remove a care item for good. The one that matters is a medicine the care
      * team has stopped — until this existed it went on being listed as due.
@@ -846,6 +854,12 @@ data class CareItem(
     val at: Double? = null,
     /** Medicines only: whether a dose has been recorded since local midnight. */
     val takenToday: Boolean = false,
+    /** Reminders: the fields as stored, so an editor can prefill from the data
+     *  rather than parsing back out of the "8:00 PM · Daily" line we built for
+     *  display. Re-deriving structure from your own formatting is how an editor
+     *  ends up silently changing what it didn't understand. */
+    val time: String? = null,
+    val repeat: String? = null,
 )
 
 data class CareData(
@@ -967,6 +981,8 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 subtitle = subtitle,
                 at = o.optDoubleOrNull("at"),
                 takenToday = o.optBoolean("taken_today", false),
+                time = o.optStringOrNull("time"),
+                repeat = o.optStringOrNull("repeat"),
             ),
         )
     }

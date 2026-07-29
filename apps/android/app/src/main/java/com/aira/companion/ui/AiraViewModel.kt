@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
+import com.aira.companion.data.CareItem
 import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
@@ -919,6 +920,25 @@ class AiraViewModel : ViewModel() {
     fun openJourneySection(section: JourneySection) {
         _uiState.update { it.copy(activeJourneySection = section, activeTool = null) }
     }
+
+    /** Open the reminder sheet on an existing reminder. */
+    fun editReminder(item: CareItem) {
+        _uiState.update { it.copy(editingReminder = item, activeTool = AiraTool.Reminder) }
+    }
+
+    fun closeReminderEditor() {
+        _uiState.update { it.copy(editingReminder = null) }
+    }
+
+    /** Save an edited reminder, then reschedule — the notification has to move
+     *  with the time, or the edit is cosmetic. */
+    fun updateReminder(context: Context?, id: String, title: String, time: String, repeat: String) =
+        write(context, "Reminder updated.") {
+            AiraApi.updateCareItem(
+                it, id,
+                mapOf("title" to title, "time" to time, "repeat" to repeat),
+            )
+        }
 
     fun closeJourneySection() {
         _uiState.update { it.copy(activeJourneySection = null) }

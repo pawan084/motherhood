@@ -170,6 +170,11 @@ data class AiraUiState(
      *  hardcoded list of unrelated tools — "Your baby" opened avatar settings —
      *  so they now open the section whose text they are showing. */
     val activeJourneySection: JourneySection? = null,
+    /** The reminder being edited. Reminders were create-only beyond their
+     *  title, which mattered little while they were inert notes and matters a
+     *  lot now that they fire: a wrong time pinged you at the wrong hour and
+     *  the only fix was deleting and re-creating it. */
+    val editingReminder: CareItem? = null,
     /** True when the tutorial was opened from Settings rather than on first
      *  run, so finishing it returns to the app instead of to Welcome. */
     val replayingTutorial: Boolean = false,
