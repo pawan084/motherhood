@@ -6,9 +6,12 @@
 // 900ms timer — the sheets looked functional and persisted nothing. Each tool
 // here either calls a real endpoint or plainly says it isn't wired up yet.
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, Brain, CalendarDays, Clock, FileText, Heart, LifeBuoy, LockKeyhole, Pill, ScanLine, Siren, Trash2, Wind, X, type LucideIcon } from "lucide-react";
-import { AiraAPI, telHref, type ConsentFeature, type EmergencyProfile, type MemoryItem } from "../aira-api";
+import { useCallback, useEffect, useState } from "react";
+import { AlertTriangle, Brain, CalendarDays, Clock, FileText, Heart, LifeBuoy, LockKeyhole, Pill, ScanLine, Siren, Trash2, Users, Wind, X, type LucideIcon } from "lucide-react";
+import {
+  AiraAPI, telHref, type ConsentFeature, type EmergencyProfile, type MemoryItem,
+  type PartnerInvite, type PartnerInviteRow, type PartnerScopes, type PartnerShare,
+} from "../aira-api";
 import { formatDate, type ToolName } from "./types";
 
 const META: Record<ToolName, { title: string; eyebrow: string; icon: LucideIcon }> = {
@@ -24,6 +27,7 @@ const META: Record<ToolName, { title: string; eyebrow: string; icon: LucideIcon 
   careplan: { title: "Your care plan", eyebrow: "This week", icon: FileText },
   support: { title: "Help & feedback", eyebrow: "Human support", icon: LifeBuoy },
   emergency: { title: "Emergency profile", eyebrow: "Available offline", icon: Siren },
+  partner: { title: "Partner access", eyebrow: "Share, or redeem a code", icon: Users },
 };
 
 export default function ToolSheet({
@@ -95,6 +99,7 @@ function Body({ tool, busy, run, close }: {
     case "support": return <SupportTool busy={busy} run={run} />;
     case "wellness": return <WellnessTool close={close} />;
     case "careplan": return <CarePlanTool />;
+    case "partner": return <PartnerTool busy={busy} run={run} />;
   }
 }
 
@@ -475,6 +480,225 @@ function WellnessTool({ close }: { close: () => void }) {
           {ticking ? "Pause" : finished ? "Again" : "Begin"}
         </button>
         <button className="btn-ghost" onClick={close}>Done</button>
+      </div>
+    </>
+  );
+}
+
+/**
+ * Partner access — the web half of a feature that shipped Android-only, so a
+ * mother on the web could not share anything and a partner on the web could not
+ * redeem a code sent from a phone.
+ *
+ * Gated on `partner_access` consent, which defaults to off and which the backend
+ * now enforces on every read. Turning it off is a real kill-switch: accepted
+ * partners stop seeing anything on their next request, and turning it back on
+ * restores exactly what was there.
+ */
+function PartnerTool({ busy, run }: { busy: boolean; run: RunFn }) {
+  const [tab, setTab] = useState<"share" | "redeem">("share");
+  const [consent, setConsent] = useState<ConsentFeature[] | null>(null);
+  const [invites, setInvites] = useState<PartnerInviteRow[]>([]);
+  const [shared, setShared] = useState<PartnerShare[]>([]);
+  const [invite, setInvite] = useState<PartnerInvite | null>(null);
+  const [scopes, setScopes] = useState<PartnerScopes>({
+    appointments: true, reminders: true, health_details: false,
+  });
+  const [code, setCode] = useState("");
+  const [note, setNote] = useState("");
+
+  const load = useCallback(() => {
+    AiraAPI.consent().then((r) => setConsent(r.features)).catch(() => undefined);
+    AiraAPI.partnerInvites().then((r) => setInvites(r.items)).catch(() => undefined);
+    AiraAPI.partnerShared().then((r) => setShared(r.items)).catch(() => undefined);
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const access = consent?.find((c) => c.key === "partner_access");
+  const granted = !!access?.granted;
+
+  const redeem = async () => {
+    setNote("");
+    try {
+      const r = await AiraAPI.acceptPartnerInvite(code);
+      setCode("");
+      setNote(`You can now see what ${r.shared_by} shared.`);
+      load();
+    } catch (e) {
+      // A wrong or spent code is the ordinary case, not a system error.
+      setNote(e instanceof Error && /not valid/i.test(e.message)
+        ? "That code isn't valid. It may have been used already, or expired."
+        : e instanceof Error ? e.message : "Couldn't check that code.");
+    }
+  };
+
+  return (
+    <>
+      <div className="choice-row" style={{ marginBottom: 16 }}>
+        <button className={tab === "share" ? "selected" : ""} onClick={() => setTab("share")}>Share</button>
+        <button className={tab === "redeem" ? "selected" : ""} onClick={() => setTab("redeem")}>Redeem</button>
+      </div>
+
+      {note && <div className="note-line" style={{ marginBottom: 14 }}>{note}</div>}
+
+      {tab === "redeem" ? (
+        <>
+          <label className="field">
+            <span>Invite code</span>
+            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Paste the code you were sent" />
+          </label>
+          <button className="btn-primary" disabled={!code.trim()} onClick={redeem}>Redeem code</button>
+
+          {shared.length === 0 ? (
+            <p style={{ marginTop: 18, color: "var(--muted)", fontSize: 13 }}>
+              Nobody has shared their care with you yet. A code works once and expires after 7 days.
+            </p>
+          ) : shared.map((s) => {
+            const rows = [
+              ...(s.data.appointments ?? []), ...(s.data.medicines ?? []), ...(s.data.reminders ?? []),
+            ];
+            const counts = [
+              s.data.symptom_count != null && `${s.data.symptom_count} symptoms logged`,
+              s.data.checkin_count != null && `${s.data.checkin_count} check-ins`,
+              s.data.documents_count != null && `${s.data.documents_count} documents`,
+            ].filter(Boolean) as string[];
+            return (
+              <section key={s.invite_id} style={{ marginTop: 20 }}>
+                <p className="eyebrow">Shared by {s.shared_by}</p>
+                <div className="list-rows">
+                  {rows.map((r) => (
+                    <div key={String(r.id)} style={{ gridTemplateColumns: "1fr" }}>
+                      <div>
+                        <strong>{String(r.title ?? r.doctor ?? r.name ?? "Item")}</strong>
+                        <small>{[r.place, r.when, r.time, r.dose, r.repeat]
+                          .filter((v) => typeof v === "string" && v).join(" · ") || String(r.kind ?? "")}</small>
+                      </div>
+                    </div>
+                  ))}
+                  {rows.length === 0 && (
+                    <p className="empty-row">
+                      Nothing to show yet in the scopes they granted.
+                    </p>
+                  )}
+                </div>
+                {counts.length > 0 && (
+                  <div className="note-line" style={{ marginTop: 12 }}>
+                    <strong>Health details:</strong> {counts.join(" · ")}. Counts only —
+                    Aira never shares what was written in them.
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </>
+      ) : !consent ? (
+        <div className="skeleton" style={{ height: 100 }} />
+      ) : !granted ? (
+        <>
+          <div className="note-line">
+            Partner access is off. Sharing any part of your care with another
+            person is something you turn on deliberately — and turning it back
+            off cuts off everyone you&apos;ve shared with, straight away.
+          </div>
+          <button
+            className="btn-primary" style={{ marginTop: 14 }} disabled={busy}
+            onClick={() => run(async () => {
+              await AiraAPI.setConsent("partner_access", true);
+              load();
+            }, "Partner access is on.")}
+          >
+            Turn on partner access
+          </button>
+          {invites.length > 0 && <IssuedInvites invites={invites} busy={busy} run={run} reload={load} />}
+        </>
+      ) : invite ? (
+        <>
+          <p style={{ margin: "0 0 10px", fontWeight: 650 }}>Share this code</p>
+          <p style={{
+            margin: 0, padding: "20px 0", textAlign: "center", borderRadius: 16,
+            background: "var(--lilac-mist, #f2ecf5)", fontFamily: "var(--serif)",
+            fontSize: 30, color: "var(--aubergine)",
+          }}>{invite.code}</p>
+          <button
+            className="btn-ghost" style={{ marginTop: 12, width: "100%" }}
+            onClick={() => { navigator.clipboard?.writeText(invite.code); setNote("Code copied."); }}
+          >Copy code</button>
+          <button className="btn-ghost" style={{ marginTop: 8, width: "100%" }}
+                  onClick={() => setInvite(null)}>Create a different invite</button>
+          <IssuedInvites invites={invites} busy={busy} run={run} reload={load} />
+        </>
+      ) : (
+        <>
+          <div className="note-line">
+            Health details stay private unless you share them — and even then a
+            partner sees counts, never the text of a symptom log or check-in note.
+          </div>
+          {([
+            ["appointments", "Appointment tasks", "Time, location and preparation"],
+            ["reminders", "Care reminders", "Medicines and practical support"],
+            ["health_details", "Health details", "Off by default"],
+          ] as const).map(([key, label, detail]) => (
+            <div className="control-row" key={key}>
+              <div><strong>{label}</strong><small>{detail}</small></div>
+              <button
+                className={scopes[key] ? "switch on" : "switch"}
+                aria-label={`Toggle ${label}`} aria-pressed={scopes[key]}
+                onClick={() => setScopes((s) => ({ ...s, [key]: !s[key] }))}
+              ><i /></button>
+            </div>
+          ))}
+          <button
+            className="btn-primary" style={{ marginTop: 16 }}
+            disabled={busy || !(scopes.appointments || scopes.reminders || scopes.health_details)}
+            onClick={() => run(async () => {
+              setInvite(await AiraAPI.createPartnerInvite(scopes));
+              load();
+            }, "Invite ready to share.")}
+          >Create invite</button>
+          <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 12 }}>
+            The invite works once and expires in 7 days. You can revoke it at any
+            time, including after it&apos;s been accepted.
+          </p>
+          <IssuedInvites invites={invites} busy={busy} run={run} reload={load} />
+        </>
+      )}
+    </>
+  );
+}
+
+/** Shown whether or not access is currently on — withdrawing consent must not
+ *  hide someone's own audit trail from them. */
+function IssuedInvites({
+  invites, busy, run, reload,
+}: { invites: PartnerInviteRow[]; busy: boolean; run: RunFn; reload: () => void }) {
+  if (!invites.length) return null;
+  return (
+    <>
+      <p style={{ margin: "22px 0 6px", fontWeight: 650, color: "var(--ink)" }}>
+        Invites you&apos;ve issued
+      </p>
+      <div className="list-rows">
+        {invites.map((i) => (
+          <div key={i.id} style={{ gridTemplateColumns: "1fr auto" }}>
+            <div>
+              <strong>{i.code ?? "Code hidden"}</strong>
+              <small style={{ textTransform: "capitalize" }}>
+                {i.state} · expires {formatDate(i.expires)}
+              </small>
+            </div>
+            {/* Revoking an expired or already-revoked invite is a no-op dressed
+                as an action, so it's only offered when it can change something. */}
+            {(i.state === "pending" || i.state === "accepted") && (
+              <button
+                className="btn-ghost" disabled={busy}
+                onClick={() => run(async () => {
+                  await AiraAPI.revokePartnerInvite(i.id);
+                  reload();
+                }, "Access revoked.")}
+              >Revoke</button>
+            )}
+          </div>
+        ))}
       </div>
     </>
   );

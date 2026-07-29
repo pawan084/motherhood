@@ -8,7 +8,7 @@
 // setting, which is what it used to be.
 
 import { useEffect, useState } from "react";
-import { Brain, Download, LockKeyhole, LifeBuoy, Trash2, Users } from "lucide-react";
+import { Brain, Download, LockKeyhole, LifeBuoy, Siren, Trash2, Users } from "lucide-react";
 import {
   AiraAPI, clearSession, downloadJson, VOICES,
   type ConsentFeature, type Journey, type Prefs, type User,
@@ -37,6 +37,7 @@ export default function You({
   const [prefs, setPrefs] = useState<Prefs | null>(null);
 
   const personalisation = consent.find((c) => c.key === "personalization");
+  const partnerAccess = consent.find((c) => c.key === "partner_access");
 
   useEffect(() => { AiraAPI.prefs().then(setPrefs).catch(() => undefined); }, []);
 
@@ -149,8 +150,20 @@ export default function You({
           <span><strong>Help &amp; feedback</strong><small>Report an answer that worried you</small></span>
         </button>
         <button onClick={() => openTool("emergency")}>
-          <span className="icon-box lilac"><Users size={18} /></span>
+          <span className="icon-box lilac"><Siren size={18} /></span>
           <span><strong>Emergency profile</strong><small>Care team and trusted contact</small></span>
+        </button>
+        {/* The partner feature shipped Android-only, so a mother on the web
+            could not share anything and a partner on the web could not redeem
+            a code she sent from her phone. */}
+        <button onClick={() => openTool("partner")}>
+          <span className="icon-box lilac"><Users size={18} /></span>
+          <span>
+            <strong>Partner access</strong>
+            <small>
+              {partnerAccess?.granted ? "On — share or revoke" : "Off — nothing is shared"}
+            </small>
+          </span>
         </button>
       </div>
 

@@ -472,6 +472,12 @@ object AiraApi {
                     appointments = data.optJSONArray("appointments").toCareItems(),
                     reminders = data.optJSONArray("reminders").toCareItems(),
                     medicines = data.optJSONArray("medicines").toCareItems(),
+                    // Only present when the `health_details` scope was granted.
+                    // These were being fetched and thrown away, so granting that
+                    // scope showed the partner nothing at all.
+                    symptomCount = data.optIntOrNull("symptom_count"),
+                    checkinCount = data.optIntOrNull("checkin_count"),
+                    documentsCount = data.optIntOrNull("documents_count"),
                 ),
             )
         }
@@ -664,13 +670,22 @@ data class PartnerInviteRow(
     val scopeSummary: String,
 )
 
-/** Somebody else's care, as far as the scopes they granted allow. */
+/**
+ * Somebody else's care, as far as the scopes they granted allow.
+ *
+ * The three counts are null unless `health_details` was granted, and they are
+ * counts by design — the server never sends the text of a symptom log or a
+ * private check-in note to a partner, whatever scope is set.
+ */
 data class PartnerShare(
     val inviteId: String,
     val sharedBy: String,
     val appointments: List<CareItem> = emptyList(),
     val reminders: List<CareItem> = emptyList(),
     val medicines: List<CareItem> = emptyList(),
+    val symptomCount: Int? = null,
+    val checkinCount: Int? = null,
+    val documentsCount: Int? = null,
 )
 
 /** Flatten `{id, kind, done, ...payload}` into a display row. */

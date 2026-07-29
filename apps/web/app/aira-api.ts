@@ -137,6 +137,39 @@ export type ConsentFeature = { key: string; label: string; granted: boolean; loc
 /** Voice options must match `prefs.VOICES` on the backend, which 400s anything else. */
 export const VOICES = ["Aira warm", "Aira gentle", "Text only"] as const;
 export type Prefs = { voice: string; spoken_replies: boolean };
+
+export type PartnerScopes = {
+  appointments: boolean;
+  reminders: boolean;
+  /** Off by default. Even granted, this yields counts — never the text of a
+   *  symptom log or a private check-in note. */
+  health_details: boolean;
+};
+export type PartnerInvite = {
+  id: string; code: string; scopes: PartnerScopes; expires: number; share_text: string;
+};
+export type PartnerInviteRow = {
+  id: string;
+  /** Present only while the invite is still redeemable — the server stops
+   *  echoing a spent code. */
+  code?: string;
+  scopes: PartnerScopes;
+  state: "pending" | "accepted" | "revoked" | "expired";
+  created: number; expires: number; accepted: number | null;
+};
+export type PartnerShare = {
+  invite_id: string;
+  shared_by: string;
+  scopes: PartnerScopes;
+  data: {
+    appointments?: CareItem[];
+    reminders?: CareItem[];
+    medicines?: CareItem[];
+    symptom_count?: number;
+    checkin_count?: number;
+    documents_count?: number;
+  };
+};
 export type ChatHistoryItem = { ts: number; role: string; text: string; safety_level: string };
 export type EmergencyProfile = {
   stage?: string | null; name?: string | null;
@@ -267,6 +300,20 @@ export const AiraAPI = {
   setMemoryApproved: (id: string, approved: boolean) =>
     req<{ ok: boolean }>(`/v1/memory/${id}`, { method: "PATCH", body: JSON.stringify({ approved }) }),
   forgetMemory: (id: string) => req<{ ok: boolean }>(`/v1/memory/${id}`, { method: "DELETE" }),
+
+  // Partner access. Gated server-side on `partner_access` consent, which
+  // defaults to off — creating an invite 403s until the user turns it on, and
+  // turning it back off cuts every accepted partner off on their next request.
+  partnerInvites: () => req<{ items: PartnerInviteRow[] }>("/v1/partner/invites"),
+  createPartnerInvite: (scopes: PartnerScopes) =>
+    req<PartnerInvite>("/v1/partner/invite", { method: "POST", body: JSON.stringify(scopes) }),
+  revokePartnerInvite: (id: string) =>
+    req<{ ok: boolean }>(`/v1/partner/invites/${id}/revoke`, { method: "POST" }),
+  acceptPartnerInvite: (code: string) =>
+    req<{ ok: boolean; shared_by: string }>("/v1/partner/accept", {
+      method: "POST", body: JSON.stringify({ code: code.trim() }),
+    }),
+  partnerShared: () => req<{ items: PartnerShare[] }>("/v1/partner/shared"),
 
   // Voice preference. Stored for real, but spoken replies don't exist in this
   // build — the UI says so rather than implying the setting does something now.

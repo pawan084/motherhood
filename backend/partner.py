@@ -27,6 +27,18 @@ second person see someone's maternal health context:
 Acceptance links the partner's own account to the owner's; the partner sees
 `/partner/shared` and nothing else. There is no partner write path at all — an
 invited partner can never modify the owner's care data.
+
+CONSENT. Every read path here is gated on the owner's `partner_access` consent,
+which defaults to OFF — sharing maternal health context with a second person is
+an explicit opt-in, not something that happens because a button existed. The
+gate is checked live on every request rather than only at invite time, so
+turning the consent off in the privacy centre immediately stops all partner
+reads, including from partners who already accepted.
+
+Revoking consent PAUSES rather than destroys: the invite rows survive, so
+turning it back on restores exactly the access that was there before. Permanent
+removal is what per-invite revoke is for. Two controls, two meanings — a
+privacy switch that quietly deleted things would be its own kind of surprise.
 """
 import hmac
 import json
@@ -39,6 +51,7 @@ from pydantic import BaseModel
 
 import accounts
 import care
+import consent
 import db
 import security
 from accounts import current_user
@@ -147,11 +160,15 @@ class InviteIn(BaseModel):
     health_details: bool = False
 
 
-@router.post("/partner/invite")
+@router.post("/partner/invite",
+             dependencies=[Depends(consent.require_consent("partner_access"))])
 def create_invite(body: InviteIn, uid: str = Depends(current_user)):
     """Issue a single-use invite code. The caller shares it however they like —
     the backend deliberately does not send email or SMS, so no contact detail
-    for a third party is ever collected or stored."""
+    for a third party is ever collected or stored.
+
+    403s unless `partner_access` consent is granted. It defaults to off, so the
+    first invite a user creates is preceded by an explicit decision to share."""
     init()
     scopes = _clean_scopes(body.model_dump())
     now = time.time()
@@ -218,6 +235,12 @@ def accept_invite(body: AcceptIn, uid: str = Depends(current_user)):
     inv = dict(zip(_COLS, match))
     if inv["owner_id"] == uid:
         raise HTTPException(status_code=400, detail="you cannot accept your own invite")
+    # The OWNER's consent, not the caller's — the person whose data would be
+    # shared is the one who has to have agreed to share it. Checked here as well
+    # as at creation because consent can be withdrawn while a code is in flight.
+    if not consent.is_granted(inv["owner_id"], "partner_access"):
+        raise HTTPException(status_code=403,
+                            detail="that invite is no longer active")
     cur = _conn.execute("UPDATE partner_invites SET accepted_by=?, accepted=? "
                         "WHERE id=? AND accepted_by IS NULL AND revoked=0",
                         (uid, now, inv["id"]))
@@ -245,6 +268,11 @@ def shared(uid: str = Depends(current_user)):
     out = []
     for row in rows:
         inv = dict(zip(_COLS, row))
+        # Live consent check per owner, so revoking `partner_access` cuts a
+        # partner off on their very next request rather than at some later
+        # refresh. This is the difference between a privacy switch and a label.
+        if not consent.is_granted(inv["owner_id"], "partner_access"):
+            continue
         scopes = _clean_scopes(json.loads(inv["scopes"] or "{}"))
         owner = accounts.get_user(inv["owner_id"]) or {}
         out.append({

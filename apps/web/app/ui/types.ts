@@ -17,11 +17,12 @@ export type ToolName =
   | "privacy"
   | "careplan"
   | "support"
-  | "emergency";
+  | "emergency"
+  | "partner";
 
 const TOOL_NAMES: ToolName[] = [
   "checkin", "reminder", "medicine", "appointment", "upload", "wellness",
-  "symptom", "memory", "privacy", "careplan", "support", "emergency",
+  "symptom", "memory", "privacy", "careplan", "support", "emergency", "partner",
 ];
 
 /** The backend's action_card.tool is a free string from the model's JSON, so a

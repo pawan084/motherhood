@@ -333,7 +333,7 @@ fun DynamicToolSheet(
                 AiraTool.Memory -> MemoryTool(actions, memory)
                 AiraTool.Voice -> VoiceTool(voicePrefs, actions)
                 AiraTool.Partner ->
-                    PartnerTool(partnerInvite, partnerInvites, partnerShared, actions)
+                    PartnerTool(partnerInvite, partnerInvites, partnerShared, consent, actions)
                 AiraTool.Support -> SupportTool(actions, onUrgentHelp, onDismiss)
                 AiraTool.Emergency -> EmergencyProfileTool(actions, onDismiss)
             }
@@ -1203,9 +1203,10 @@ private fun PartnerTool(
     invite: PartnerInvite?,
     invites: List<PartnerInviteRow>,
     shared: List<PartnerShare>,
+    consent: List<ConsentFeature>,
     actions: ToolActions,
 ) {
-    LaunchedEffect(Unit) { actions.loadPartner() }
+    LaunchedEffect(Unit) { actions.loadPartner(); actions.loadConsent() }
     var tab by remember { mutableStateOf("Share") }
     ChoiceChips(listOf("Share", "Redeem"), tab) { tab = it }
     Spacer(Modifier.height(16.dp))
@@ -1213,7 +1214,7 @@ private fun PartnerTool(
         RedeemPartnerCode(shared, actions)
         return
     }
-    PartnerShareTab(invite, invites, actions)
+    PartnerShareTab(invite, invites, consent, actions)
 }
 
 /**
@@ -1295,6 +1296,33 @@ private fun RedeemPartnerCode(
                 }
             }
         }
+        // The `health_details` scope. These arrive as counts and never as text —
+        // the server does not send a partner the body of a symptom log or a
+        // private check-in note whatever scope is set. They were being fetched
+        // and dropped, so granting the scope changed nothing on screen.
+        val counts = listOfNotNull(
+            share.symptomCount?.let { "$it symptom${if (it == 1) "" else "s"} logged" },
+            share.checkinCount?.let { "$it check-in${if (it == 1) "" else "s"}" },
+            share.documentsCount?.let { "$it document${if (it == 1) "" else "s"}" },
+        )
+        if (counts.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            AiraCard(containerColor = LilacMist) {
+                Text("Health details", style = MaterialTheme.typography.titleSmall, color = Ink)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    counts.joinToString(" · "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Counts only — Aira never shares what was written in them.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+        }
         Spacer(Modifier.height(10.dp))
         InfoBanner(
             Icons.Outlined.Lock,
@@ -1310,11 +1338,39 @@ private fun RedeemPartnerCode(
 private fun PartnerShareTab(
     invite: PartnerInvite?,
     invites: List<PartnerInviteRow>,
+    consent: List<ConsentFeature>,
     actions: ToolActions,
 ) {
     var appointment by remember { mutableStateOf(true) }
     var reminders by remember { mutableStateOf(true) }
     var healthDetails by remember { mutableStateOf(false) }
+
+    // `partner_access` defaults to off and the backend now enforces it on every
+    // read, so this is the actual switch rather than a label: with it off,
+    // invites can't be created and anyone who already accepted sees nothing.
+    val access = consent.firstOrNull { it.key == "partner_access" }
+    if (access != null && !access.granted) {
+        InfoBanner(
+            icon = Icons.Outlined.Lock,
+            text = "Partner access is off. Sharing any part of your care with " +
+                "another person is something you turn on deliberately — and " +
+                "turning it back off cuts off everyone you've shared with, " +
+                "straight away.",
+            color = SageMist,
+        )
+        Spacer(Modifier.height(14.dp))
+        PrimaryButton(
+            label = "Turn on partner access",
+            onClick = { actions.setConsent("partner_access", true) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        // Existing invites stay visible and revocable even with access off, so
+        // withdrawing consent never locks someone out of their own audit trail.
+        if (invites.isNotEmpty()) {
+            IssuedInvites(invites, actions)
+        }
+        return
+    }
 
     if (invite == null) {
         InfoBanner(
@@ -1374,40 +1430,53 @@ private fun PartnerShareTab(
         ) { Text("Create a different invite", color = Plum) }
     }
 
-    // Issued invites, with the revoke the backend has always supported and no
-    // client ever called. Without this an accepted invite could not be taken
-    // back from the app that created it.
     if (invites.isNotEmpty()) {
-        Spacer(Modifier.height(22.dp))
-        SectionLabel("Invites you've issued")
-        Spacer(Modifier.height(6.dp))
-        invites.forEach { row ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 9.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = row.code ?: "Code hidden",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Ink,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "${row.state.replaceFirstChar { it.uppercase() }} · ${row.scopeSummary}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
-                }
-                // Revoking an expired or already-revoked invite would be a no-op
-                // dressed as an action, so the control is only offered when it
-                // can actually change something.
-                if (row.state == "pending" || row.state == "accepted") {
-                    TextButton(onClick = { actions.revokePartnerInvite(row.id) }) {
-                        Text("Revoke", color = Urgent)
-                    }
+        IssuedInvites(invites, actions)
+    }
+}
+
+/**
+ * Issued invites, with the revoke the backend has always supported and no client
+ * ever called. Without this an accepted invite could not be taken back from the
+ * app that created it.
+ *
+ * Shown whether or not partner access is currently on, because withdrawing
+ * consent must not hide someone's own audit trail from them.
+ */
+@Composable
+private fun IssuedInvites(
+    invites: List<PartnerInviteRow>,
+    actions: ToolActions,
+) {
+    Spacer(Modifier.height(22.dp))
+    SectionLabel("Invites you've issued")
+    Spacer(Modifier.height(6.dp))
+    invites.forEach { row ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = row.code ?: "Code hidden",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${row.state.replaceFirstChar { it.uppercase() }} · ${row.scopeSummary}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+            // Revoking an expired or already-revoked invite would be a no-op
+            // dressed as an action, so the control is only offered when it can
+            // actually change something.
+            if (row.state == "pending" || row.state == "accepted") {
+                TextButton(onClick = { actions.revokePartnerInvite(row.id) }) {
+                    Text("Revoke", color = Urgent)
                 }
             }
         }
