@@ -274,6 +274,7 @@ object AiraApi {
         return CareData(
             appointments = o.optJSONArray("appointments").toCareItems(),
             medicinesDue = o.optJSONArray("medicines_due").toCareItems(),
+            medicines = o.optJSONArray("medicines").toCareItems(),
             reminders = o.optJSONArray("reminders").toCareItems(),
             documentsCount = o.optInt("documents_count", 0),
             planTotal = plan.optInt("total", 0),
@@ -843,11 +844,17 @@ data class CareItem(
     /** Unix seconds, for the kinds that have a real moment — appointments.
      *  Null where the user never picked one, which is allowed. */
     val at: Double? = null,
+    /** Medicines only: whether a dose has been recorded since local midnight. */
+    val takenToday: Boolean = false,
 )
 
 data class CareData(
     val appointments: List<CareItem> = emptyList(),
     val medicinesDue: List<CareItem> = emptyList(),
+    /** Every medicine, taken or not — `medicinesDue` is only the outstanding
+     *  ones. The list used to show what was due and nothing else, so a medicine
+     *  taken today simply disappeared for the rest of the day. */
+    val medicines: List<CareItem> = emptyList(),
     val reminders: List<CareItem> = emptyList(),
     val documentsCount: Int = 0,
     val planTotal: Int = 0,
@@ -959,6 +966,7 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 title = title,
                 subtitle = subtitle,
                 at = o.optDoubleOrNull("at"),
+                takenToday = o.optBoolean("taken_today", false),
             ),
         )
     }

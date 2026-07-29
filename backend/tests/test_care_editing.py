@@ -250,3 +250,67 @@ def test_the_date_can_be_corrected_like_any_other_field(client, user):
     r = client.patch(f"/v1/care/items/{iid}", json={"at": 5000}, headers=h)
     assert r.status_code == 200, r.text
     assert client.get("/v1/care", headers=h).json()["appointments"][0]["at"] == 5000
+
+
+# ── a dose is an event, not a flag ──────────────────────────────────────────
+
+
+def _add_medicine(client, headers, name="Prenatal vitamin"):
+    r = client.post("/v1/care/medicines", json={"name": name, "time": "9:00 AM"},
+                    headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()["id"]
+
+
+def test_a_daily_medicine_survives_being_taken(client, user):
+    """The one that mattered. Marking taken used to set done=1, and /care
+    filtered done medicines out of medicines_due — so the first tap on a daily
+    prenatal vitamin removed it from the list for good and the app quietly
+    stopped prompting for a medication meant to be taken every day."""
+    h = user["headers"]
+    iid = _add_medicine(client, h)
+
+    client.post(f"/v1/care/medicines/{iid}/taken", headers=h)
+
+    care = client.get("/v1/care", headers=h).json()
+    # Not due again until tomorrow...
+    assert care["medicines_due"] == []
+    # ...but still a medicine this person takes.
+    assert [m["name"] for m in care["medicines"]] == ["Prenatal vitamin"]
+    assert care["medicines"][0]["taken_today"] is True
+
+
+def test_takingItAgainRecordsASecondDose(client, user):
+    h = user["headers"]
+    iid = _add_medicine(client, h)
+
+    client.post(f"/v1/care/medicines/{iid}/taken", headers=h)
+    r = client.post(f"/v1/care/medicines/{iid}/taken", headers=h)
+
+    assert len(r.json()["taken"]) == 2
+
+
+def test_aMedicineNeverTakenIsDueAndHasNoHistory(client, user):
+    h = user["headers"]
+    _add_medicine(client, h)
+
+    care = client.get("/v1/care", headers=h).json()
+    assert len(care["medicines_due"]) == 1
+    assert care["medicines"][0]["taken_today"] is False
+    assert care["medicines"][0]["last_taken"] is None
+
+
+def test_yesterdaysDoseDoesNotCountAsToday(client, user):
+    """Local midnight, not a rolling 24 hours: someone taking a tablet at 8am
+    wants a fresh prompt the next morning, not one sliding an hour later daily."""
+    import care as care_module
+
+    yesterday = {"taken": [__import__("time").time() - 26 * 3600]}
+    assert care_module._taken_today(yesterday) is False
+
+
+def test_takingAMedicineThatIsNotYoursIs404(client, user):
+    other = _register(client)
+    iid = _add_medicine(client, user["headers"])
+
+    assert client.post(f"/v1/care/medicines/{iid}/taken", headers=other).status_code == 404

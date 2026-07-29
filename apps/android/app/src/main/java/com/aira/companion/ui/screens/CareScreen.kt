@@ -104,7 +104,11 @@ fun CareScreen(
     val pastAppointments = allAppointments
         .filter { it.at != null && it.at < nowSeconds }
         .sortedByDescending { it.at }
-    val medicines = care?.medicinesDue.orEmpty()
+    // Every medicine, not only the outstanding ones. Showing `medicinesDue`
+    // alone meant a medicine taken today vanished from the screen until
+    // tomorrow — so the list answered "what's left?" but never "what do I
+    // take?", and there was no way to see you'd already taken it.
+    val medicines = care?.medicines.orEmpty().ifEmpty { care?.medicinesDue.orEmpty() }
     val reminders = care?.reminders.orEmpty()
     val stillLoading = loading && care == null
 
@@ -173,8 +177,13 @@ fun CareScreen(
             title = "Medicines",
             addLabel = "Add",
             onAdd = { onOpenTool(AiraTool.Medicines) },
-            empty = if (stillLoading) "Loading…" else "Nothing due right now.",
+            empty = if (stillLoading) "Loading…" else "Nothing added yet.",
             isEmpty = medicines.isEmpty(),
+            count = if (medicines.isNotEmpty()) {
+                "${medicines.count { it.takenToday }} of ${medicines.size} taken today"
+            } else {
+                null
+            },
             // Aira organises what a care team prescribed; it never decides it.
             footnote = "Aira can organise reminders but never starts, stops or " +
                 "changes any medication.",
@@ -188,8 +197,19 @@ fun CareScreen(
                     onRename = onRename,
                     onDelete = onDelete,
                     trailing = {
-                        TextButton(onClick = { onMarkTaken(med.id) }) {
-                            Text("Taken", color = Plum)
+                        // Taken today reads as a state, not a spent button.
+                        // "Take again" stays available because doses get
+                        // missed, doubled and re-taken, and an app that refuses
+                        // to record what actually happened is worse than one
+                        // that trusts the person holding the tablets.
+                        if (med.takenToday) {
+                            TextButton(onClick = { onMarkTaken(med.id) }) {
+                                Text("Taken today", color = SageDeep)
+                            }
+                        } else {
+                            TextButton(onClick = { onMarkTaken(med.id) }) {
+                                Text("Mark taken", color = Plum)
+                            }
                         }
                     },
                 )

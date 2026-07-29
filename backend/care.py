@@ -6,6 +6,7 @@ Everything is scoped to `current_user`. Journey-specific content comes from
 content.py, so a postpartum user never sees pregnancy-week cards — the single
 biggest correctness gap in the prototypes, fixed at the source.
 """
+import datetime
 import json
 import logging
 import time
@@ -169,7 +170,16 @@ def care(uid: str = Depends(current_user)):
     docs = _list_items(uid, "document")
     return {
         "appointments": appts,
-        "medicines_due": [m for m in meds if not m.get("done")],
+        # Due means "not yet taken today", not "never marked done". See
+        # mark_taken: the old flag retired a daily medicine on first use.
+        "medicines_due": [m for m in meds if not _taken_today(m)],
+        # Every medicine with its dose history, so a client can show what was
+        # taken and when rather than only what is outstanding.
+        "medicines": [
+            {**m, "taken_today": _taken_today(m),
+             "last_taken": max((float(t) for t in (m.get("taken") or [])), default=None)}
+            for m in meds
+        ],
         "documents_count": len(docs),
         "reminders": _list_items(uid, "reminder"),
         "care_plan": _care_plan(uid),
@@ -286,15 +296,52 @@ def add_medicine(body: MedicineIn, uid: str = Depends(current_user)):
     return _add_item(uid, "medicine", body.model_dump())
 
 
+# How many dose timestamps to keep. Enough to show a week and answer "did I
+# take it yesterday?" without the row growing without limit.
+MAX_DOSE_HISTORY = 60
+
+
 @router.post("/care/medicines/{item_id}/taken")
 def mark_taken(item_id: str, uid: str = Depends(current_user)):
+    """Record a dose. Does NOT retire the medicine.
+
+    This used to set done=1, and `/care` filtered done medicines out of
+    `medicines_due` — so the first time someone tapped "Taken" on a daily
+    prenatal vitamin it vanished from the list permanently and the app silently
+    stopped prompting for a medication they were meant to take every day. The
+    one thing a medicine list exists to do, undone by using it once.
+
+    A dose is an event, so it is stored as one. What's due is now a question
+    about today rather than a permanent flag.
+    """
     init()
-    cur = _conn.execute("UPDATE care_items SET done=1 WHERE id=? AND user_id=? AND kind='medicine'",
-                        (item_id, uid))
-    _conn.commit()
-    if getattr(cur, "rowcount", 0) == 0:
+    row = _conn.execute("SELECT data FROM care_items WHERE id=? AND user_id=? AND kind='medicine'",
+                        (item_id, uid)).fetchone()
+    if not row:
         raise HTTPException(status_code=404, detail="not found")
-    return {"ok": True}
+    data = json.loads(row[0] or "{}")
+    taken = [float(t) for t in (data.get("taken") or [])]
+    taken.append(time.time())
+    data["taken"] = taken[-MAX_DOSE_HISTORY:]
+    _conn.execute("UPDATE care_items SET data=? WHERE id=? AND user_id=?",
+                  (json.dumps(data), item_id, uid))
+    _conn.commit()
+    return {"ok": True, "taken": data["taken"]}
+
+
+def _taken_today(medicine: dict, now: float | None = None) -> bool:
+    """Whether a dose was recorded since local midnight.
+
+    Local, not "within 24 hours": someone taking a tablet at 8am wants a fresh
+    prompt the next morning, not one that slides an hour later each day.
+    """
+    stamps = medicine.get("taken") or []
+    if not stamps:
+        return False
+    now = now if now is not None else time.time()
+    midnight = datetime.datetime.fromtimestamp(now).replace(
+        hour=0, minute=0, second=0, microsecond=0).timestamp()
+    return max(float(t) for t in stamps) >= midnight
 
 
 class AppointmentIn(BaseModel):
