@@ -388,6 +388,41 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    private fun nowSeconds(): Double = System.currentTimeMillis() / 1000.0
+
+    /**
+     * Pull this conversation back from the server.
+     *
+     * The turns have been stored since chat existed and nothing ever read them,
+     * so the app threw the conversation away every time it closed while the
+     * backend still had it. Replaces the in-memory log rather than appending,
+     * so returning to the tab twice can't double it.
+     */
+    fun loadChatHistory(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val turns = AiraApi.chatHistory(context)
+                if (turns.isEmpty()) return@launch
+                _uiState.update { state ->
+                    state.copy(
+                        messages = turns.mapIndexed { index, t ->
+                            ChatMessage(
+                                id = -(index.toLong() + 1),
+                                fromAira = t.fromAira,
+                                text = t.text,
+                                trustLabel = t.safetyLevel,
+                                at = t.at,
+                            )
+                        },
+                    )
+                }
+            } catch (_: Exception) {
+                // The greeting already on screen is a fine place to start from.
+            }
+        }
+    }
+
     /** Load journey-aware Journey content (best-effort). */
     fun loadJourney(context: Context?) {
         if (context == null) return
@@ -839,7 +874,9 @@ class AiraViewModel : ViewModel() {
         }
         _uiState.update {
             it.copy(
-                messages = it.messages + ChatMessage(System.nanoTime(), fromAira = false, text = text),
+                messages = it.messages + ChatMessage(
+                    System.nanoTime(), fromAira = false, text = text, at = nowSeconds(),
+                ),
                 sending = true,
             )
         }
@@ -871,6 +908,7 @@ class AiraViewModel : ViewModel() {
                                 fromAira = true,
                                 text = res.reply ?: "I'm here with you.",
                                 trustLabel = res.trustLabel,
+                                at = nowSeconds(),
                             ),
                         )
                     }
@@ -896,6 +934,7 @@ class AiraViewModel : ViewModel() {
                         text = "I've understood that. I can help organise the next step, or show " +
                             "you when contacting your care team would be safer.",
                         trustLabel = "wellness",
+                        at = nowSeconds(),
                     ),
                 )
             }

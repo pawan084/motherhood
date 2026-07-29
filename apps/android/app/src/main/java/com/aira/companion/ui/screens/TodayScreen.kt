@@ -1,5 +1,6 @@
 package com.aira.companion.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,10 +19,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.TrackChanges
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -31,7 +35,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.MainDestination
@@ -47,6 +57,7 @@ import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Lilac
+import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageDeep
@@ -58,6 +69,9 @@ fun TodayScreen(
     onOpenTool: (AiraTool) -> Unit,
     modifier: Modifier = Modifier,
     today: TodayData? = null,
+    /** Appointments, medicines due and open reminders — the same count the
+     *  bell badges, so the two can't disagree. */
+    waiting: Int = 0,
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -88,6 +102,7 @@ fun TodayScreen(
     // "Loaded" means the server answered. Until it does, the screen says it is
     // still loading rather than asserting anything about the user's care.
     val loaded = today != null
+    val plumRing = Plum
     Column(
         modifier =
             modifier
@@ -114,18 +129,18 @@ fun TodayScreen(
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(
-                text = headerText,
+                // Date and greeting on one line. They were two stacked blocks
+                // with a 16dp gap, and together with a headlineLarge headline
+                // they pushed the actual next action off a 720x1604 screen —
+                // the one thing Today exists to show was below the fold.
+                text = listOfNotNull(headerText, name?.let { "Good morning, $it" })
+                    .joinToString(" · "),
                 style = MaterialTheme.typography.labelMedium,
                 color = InkMuted,
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = if (name != null) "Good morning, $name" else "Good morning",
-            style = MaterialTheme.typography.bodyLarge,
-            color = InkMuted,
-        )
+        Spacer(modifier = Modifier.height(12.dp))
         // The headline says where you are, not how you're doing.
         //
         // It was "You're on track." — unconditional, so it claimed a state the
@@ -139,15 +154,20 @@ fun TodayScreen(
                 contextLine != null -> contextLine
                 else -> "Here's your day."
             },
-            style = MaterialTheme.typography.headlineLarge,
+            style = MaterialTheme.typography.headlineMedium,
             color = Ink,
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = if (loaded) {
-                "Nothing urgent needs your attention right now."
-            } else {
-                "Aira is fetching your care. Nothing here is your data yet."
+            // Was "Nothing urgent needs your attention right now" — true, and
+            // an answer to a question nobody asked. When there IS something
+            // waiting, say what and how much; the count comes from the same
+            // data the bell badges.
+            text = when {
+                !loaded -> "Aira is fetching your care. Nothing here is your data yet."
+                waiting > 0 -> "$waiting thing${if (waiting == 1) "" else "s"} " +
+                    "${if (waiting == 1) "needs" else "need"} you today."
+                else -> "Nothing needs you right now."
             },
             style = MaterialTheme.typography.bodyMedium,
             color = InkMuted,
@@ -170,7 +190,31 @@ fun TodayScreen(
                                 .background(
                                     brush = Brush.radialGradient(listOf(Lilac, Paper)),
                                     shape = CircleShape,
-                                ),
+                                )
+                                // The ring was a circle with a number inside it —
+                                // shaped like a progress indicator, showing no
+                                // progress. For a pregnancy it now draws the
+                                // fraction of ~40 weeks elapsed, so the shape
+                                // means what its shape implies. Nothing is drawn
+                                // for other journeys, which have no fixed length
+                                // and would need an arc that lies to have one.
+                                .drawBehind {
+                                    val fraction = weeks?.let { (it / 40f).coerceIn(0f, 1f) }
+                                        ?: return@drawBehind
+                                    val stroke = 5.dp.toPx()
+                                    drawArc(
+                                        color = plumRing,
+                                        startAngle = -90f,
+                                        sweepAngle = 360f * fraction,
+                                        useCenter = false,
+                                        topLeft = Offset(stroke / 2, stroke / 2),
+                                        size = Size(
+                                            this.size.width - stroke,
+                                            this.size.height - stroke,
+                                        ),
+                                        style = Stroke(width = stroke, cap = StrokeCap.Round),
+                                    )
+                                },
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -306,6 +350,39 @@ fun TodayScreen(
             }
         }
 
+        // Quick add.
+        //
+        // Recording something took four taps from here — Aira, the tool tray,
+        // the tool, then save — for the three things people add most often, and
+        // the ones they add at the worst moments. A check-in at 3am should not
+        // require finding a menu.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Add something")
+        Spacer(modifier = Modifier.height(10.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            QuickAdd(
+                icon = Icons.Outlined.FavoriteBorder,
+                label = "Check in",
+                onClick = { onOpenTool(AiraTool.CheckIn) },
+                modifier = Modifier.weight(1f),
+            )
+            QuickAdd(
+                icon = Icons.Outlined.AccessTime,
+                label = "Reminder",
+                onClick = { onOpenTool(AiraTool.Reminder) },
+                modifier = Modifier.weight(1f),
+            )
+            QuickAdd(
+                icon = Icons.Outlined.TrackChanges,
+                label = "Symptom",
+                onClick = { onOpenTool(AiraTool.Symptom) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
 
         Surface(
@@ -382,6 +459,37 @@ fun TodayScreen(
                     contentDescription = null,
                 )
             }
+        }
+    }
+}
+
+
+/** One quick-add tile: an icon, a word, and the sheet it opens. */
+@Composable
+private fun QuickAdd(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        color = Paper,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, OutlineSoft),
+        onClick = onClick,
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(imageVector = icon, contentDescription = null, tint = Plum)
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = Ink,
+            )
         }
     }
 }

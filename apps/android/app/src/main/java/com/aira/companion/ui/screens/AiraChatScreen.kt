@@ -107,7 +107,16 @@ fun AiraChatScreen(
             }
 
             items(state.messages, key = { it.id }) { message ->
-                ChatBubble(text = message.text, fromAira = message.fromAira)
+                ChatBubble(text = message.text, fromAira = message.fromAira, at = message.at)
+            }
+
+            // Waiting for a reply showed nothing at all — no spinner, no
+            // placeholder — so a slow network was indistinguishable from a
+            // message that never sent.
+            if (state.sending) {
+                item {
+                    ChatBubble(text = "Aira is typing…", fromAira = true)
+                }
             }
 
             item {

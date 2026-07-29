@@ -146,6 +146,7 @@ private fun MainExperience(
         when (state.destination) {
             // Today shows medicines/appointments too, so it needs Care as well.
             MainDestination.Today -> { viewModel.loadToday(context); viewModel.loadCare(context) }
+            MainDestination.Aira -> viewModel.loadChatHistory(context)
             MainDestination.Journey -> viewModel.loadJourney(context)
             MainDestination.Care -> {
                 viewModel.loadCare(context)
@@ -209,6 +210,7 @@ private fun MainExperience(
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier.padding(padding),
                         today = state.todayData,
+                        waiting = updatesCount(state.careData),
                     )
                 MainDestination.Aira ->
                     AiraChatScreen(

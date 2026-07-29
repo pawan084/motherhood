@@ -87,6 +87,10 @@ data class ChatMessage(
     val text: String,
     // "wellness" | "watchful" for an Aira reply from the safety-gated backend; null otherwise.
     val trustLabel: String? = null,
+    /** Unix seconds. Messages carried no time at all, so a conversation could
+     *  not be placed against the day it happened — which matters once history
+     *  survives a restart and yesterday's worry sits above today's. */
+    val at: Double? = null,
 )
 
 data class OnboardingAnswer(

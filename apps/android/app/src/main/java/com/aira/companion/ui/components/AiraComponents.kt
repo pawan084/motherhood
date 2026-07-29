@@ -282,6 +282,11 @@ fun ChatBubble(
     text: String,
     fromAira: Boolean,
     modifier: Modifier = Modifier,
+    /** Unix seconds, when known. Rendered under the bubble so a conversation
+     *  can be placed against the day it happened — which only started to matter
+     *  once history survived a restart and last night's worry sat above this
+     *  morning's question. */
+    at: Double? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -320,12 +325,38 @@ fun ChatBubble(
                 },
             shadowElevation = if (fromAira) 1.dp else 0.dp,
         ) {
-            Text(
-                text = text,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (at != null && at > 0) {
+                    Spacer(modifier = Modifier.height(5.dp))
+                    Text(
+                        text = formatMessageTime(at),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (fromAira) InkMuted else Paper.copy(alpha = 0.75f),
+                    )
+                }
+            }
         }
+    }
+}
+
+/**
+ * A message time a person would say out loud: "14:32" for today, "Yesterday
+ * 22:10" before that, then the date. Absolute rather than "3 hours ago",
+ * because the useful question about a 3am message is which night it was.
+ */
+private fun formatMessageTime(epochSeconds: Double): String {
+    val at = java.time.Instant.ofEpochMilli((epochSeconds * 1000).toLong())
+        .atZone(java.time.ZoneId.systemDefault())
+    val time = at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+    val today = java.time.LocalDate.now()
+    return when (at.toLocalDate()) {
+        today -> time
+        today.minusDays(1) -> "Yesterday $time"
+        else -> at.format(java.time.format.DateTimeFormatter.ofPattern("d MMM, HH:mm"))
     }
 }
 

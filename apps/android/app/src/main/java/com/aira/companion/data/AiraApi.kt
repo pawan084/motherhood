@@ -97,6 +97,33 @@ object AiraApi {
         request("POST", "/v1/onboarding", body, token)
     }
 
+    /**
+     * Everything said in this conversation before now.
+     *
+     * The backend has stored every turn since chat existed and no client ever
+     * asked for them, so closing the app threw the conversation away while the
+     * server kept it. In an app people use to work out whether something is
+     * worth calling about, last night's exchange is exactly the thing they want
+     * to find again in the morning.
+     */
+    suspend fun chatHistory(ctx: Context, limit: Int = 50): List<ChatTurn> {
+        val arr = request("GET", "/v1/chat/history?limit=$limit", null, ensureToken(ctx))
+            .optJSONArray("items") ?: return emptyList()
+        val out = ArrayList<ChatTurn>(arr.length())
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            out.add(
+                ChatTurn(
+                    at = o.optDouble("ts", 0.0),
+                    fromAira = o.optString("role") != "user",
+                    text = o.optString("text"),
+                    safetyLevel = o.optStringOrNull("safety_level"),
+                ),
+            )
+        }
+        return out
+    }
+
     suspend fun emergencyProfile(ctx: Context): JSONObject =
         request("GET", "/v1/emergency-profile", null, ensureToken(ctx))
 
@@ -713,6 +740,14 @@ object AiraApi {
 class AiraApiException(val code: Int, message: String) : Exception(message)
 
 /** Parsed chat-turn result. A red turn has [urgent] = true, [reply] = null. */
+/** One stored turn from GET /v1/chat/history. */
+data class ChatTurn(
+    val at: Double,
+    val fromAira: Boolean,
+    val text: String,
+    val safetyLevel: String?,
+)
+
 data class TurnResult(
     val level: String,
     /** True when the LLM classifier was unavailable and only the deterministic
