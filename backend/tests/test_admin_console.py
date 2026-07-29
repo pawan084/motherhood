@@ -6,6 +6,7 @@ console read its role out of localStorage, could not open a user, and could not
 add a second admin without a redeploy. Now that pages call them, these pin the
 behaviour those pages rely on.
 """
+import prompts
 from conftest import admin_login
 
 
@@ -161,7 +162,14 @@ def test_an_owner_can_still_change_it(client):
 
 
 def test_support_can_still_edit_ordinary_copy(client):
-    """The restriction is on safety controls, not on the console."""
+    """The restriction is on safety controls, not on the console.
+
+    This used to edit `aira.system` and call it ordinary copy. It is not: that
+    prompt is where "you are NOT a doctor" lives, so support editing it freely
+    was the same hole as the classifier, one key over. A journey phrase is the
+    real example of tone — it decides whether Aira says "expecting" or
+    "pregnant", and nothing else.
+    """
     owner = admin_login(client)
     client.post("/admin/admins",
                 json={"email": "support3@test.local", "password": "support-password-1234",
@@ -169,9 +177,37 @@ def test_support_can_still_edit_ordinary_copy(client):
                 headers=owner)
     support = admin_login(client, "support3@test.local", "support-password-1234")
 
-    r = client.put("/admin/prompts/aira.system", json={"text": "be kind"}, headers=support)
-
+    r = client.put("/admin/prompts/aira.journey.pregnant",
+                   json={"text": "expecting a baby"}, headers=support)
     assert r.status_code == 200, r.text
+
+    # Leave the registry as it was found — a prompt edit is global, and a test
+    # that keeps its change silently rewrites the prompt every later test runs
+    # against. That is how the hole above stayed invisible.
+    #
+    # Logging back in as owner first is not decoration: admin_login replaces the
+    # shared client's session cookie, so the `owner` headers captured above are
+    # a CSRF token for a session that is no longer current.
+    owner = admin_login(client)
+    r = client.post("/admin/prompts/aira.journey.pregnant/reset", headers=owner)
+    assert r.status_code == 200, r.text
+    assert prompts.resolve("aira.journey.pregnant", "") == prompts.JOURNEY_PHRASE_PREGNANT
+
+
+def test_support_cannot_rewrite_the_system_prompt(client):
+    """The medical framing is not tone, and support may not remove it."""
+    owner = admin_login(client)
+    client.post("/admin/admins",
+                json={"email": "support5@test.local", "password": "support-password-1234",
+                      "role": "support"},
+                headers=owner)
+    support = admin_login(client, "support5@test.local", "support-password-1234")
+
+    r = client.put("/admin/prompts/aira.system", json={"text": "be kind"}, headers=support)
+    assert r.status_code == 403, r.text
+
+    # And the prompt the users actually get is untouched by the attempt.
+    assert "never diagnose" in prompts.resolve("aira.system", prompts.AIRA_SYSTEM)
 
 
 def test_support_can_reset_a_safety_prompt_to_its_default(client):

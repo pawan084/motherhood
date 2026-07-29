@@ -34,10 +34,19 @@ export default function Privacy() {
       <p>
         Aira keeps a small amount of care context so it doesn&apos;t ask you the
         same thing every day — your journey, goals, appointments and medicines.
-        Every item is listed under <strong>You → What Aira remembers</strong>,
-        where you can stop it being used in answers or delete it outright. If
-        you turn AI personalisation off, nothing remembered reaches a reply at
-        all.
+        Every saved item is listed under{" "}
+        <strong>You → What Aira remembers</strong>, where you can stop it being
+        used in answers or delete it outright. Turning AI personalisation off
+        stops every one of those saved items reaching a reply.
+      </p>
+      <p>
+        Two things are outside that switch, and we would rather say so than
+        leave you to discover it: the conversation you are having — Aira reads
+        back the recent messages on screen so it can follow you — and the
+        journey you chose at the start, which decides both how Aira answers and
+        how your messages are screened for urgency. Neither is drawn from your
+        saved items. If you want them gone, deleting your account removes
+        everything — see <em>Export or delete</em> below.
       </p>
 
       <h2>Messages are screened before Aira answers</h2>
@@ -59,8 +68,10 @@ export default function Privacy() {
 
       <h2>Export or delete, whenever you want</h2>
       <p>
-        <strong>You → Your data</strong> gives you both. Export downloads
-        everything Aira holds for you as a single JSON file. Deletion is
+        <strong>You → Your data</strong> gives you both. Export downloads a zip:
+        your records as JSON, plus every document you uploaded as the original
+        file — an export that listed your scans without containing them would
+        not be your data. Deletion is
         immediate and irreversible: it removes your profile, conversations, care
         items, memory, consent history and safety records, and the deletion has
         to be confirmed before it runs.

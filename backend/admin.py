@@ -386,7 +386,16 @@ class PromptIn(BaseModel):
 # with the same two clicks as fixing a typo. The keyword floor would still
 # apply, but the classifier is precisely the layer that catches what a word
 # list cannot.
-SAFETY_CRITICAL_PROMPTS = {"aira.safety_classifier"}
+# `aira.system` joined it for the same reason, found the same way. It is not
+# tone — it is the only place that says "You are NOT a doctor and you never
+# diagnose, prescribe, or tell someone to start/stop/change any medication",
+# that the care team stays in view, and that nothing is presented as medical
+# advice. A support admin could replace the whole thing with "be kind" (a test
+# in this repo did exactly that, and called it ordinary copy) and every GREEN
+# and AMBER reply would lose those constraints at once, invisibly — the gate
+# still fires on RED, so nothing looks broken. Tone still belongs to support
+# via the journey phrases and the content entries; the medical framing does not.
+SAFETY_CRITICAL_PROMPTS = {"aira.safety_classifier", "aira.system"}
 
 
 def _guard_prompt_key(key: str, admin: dict) -> None:

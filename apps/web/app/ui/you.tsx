@@ -188,8 +188,10 @@ export default function You({
           <div>
             <strong>AI personalisation</strong>
             <small>
-              When off, nothing Aira remembers is used to shape replies. Your saved
-              items are kept so you can review or delete them yourself.
+              When off, nothing saved under &ldquo;What Aira remembers&rdquo; shapes
+              a reply — though Aira still follows this conversation and knows your
+              journey. Your saved items are kept so you can review or delete them
+              yourself.
             </small>
           </div>
           <button

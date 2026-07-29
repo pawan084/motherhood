@@ -325,16 +325,21 @@ fun YouScreen(
                             color = Ink,
                         )
                         Text(
-                            // Was "When off, nothing Aira remembers shapes its
-                            // replies" — accurate, and abstract enough that
-                            // nobody could tell what turning it off would cost
-                            // them. An example does that in one line.
+                            // The off-state line used to read "Aira answers every
+                            // question as if it were the first thing you'd asked".
+                            // Concrete, which was the point — but untrue. The
+                            // switch gates the saved items under "What Aira
+                            // remembers"; the conversation on screen and your
+                            // journey still reach the reply, which is why the app
+                            // is still usable with it off. Promising more privacy
+                            // than the code delivers is the worse failure of the
+                            // two, so this says exactly where the line falls.
                             text = if (personalisation.granted) {
-                                "On — Aira uses what it knows, so \"is this normal?\" " +
-                                    "is answered for where you are"
+                                "On — what Aira remembers about you shapes answers, so " +
+                                    "\"is this normal?\" is answered for where you are"
                             } else {
-                                "Off — Aira answers every question as if it were " +
-                                    "the first thing you'd asked"
+                                "Off — nothing saved under \"What Aira remembers\" is used. " +
+                                    "Aira still follows this conversation and knows your journey"
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = InkMuted,
