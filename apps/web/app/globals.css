@@ -885,6 +885,75 @@ textarea:focus-visible, [tabindex]:focus-visible {
   background: var(--red); color: #fff; font-size: 15px; font-weight: 750; text-decoration: none;
 }
 
+/* ── First run: tutorial, then how to start ──────────────────────────────── */
+/* Both take the whole viewport with no sidebar and no exit into the app: they
+   come before setup, so there is nowhere to arrive at yet. Centred rather than
+   left-aligned like the app screens, because these are read, not operated. */
+.tutorial, .start-choice {
+  min-height: 100vh; display: grid; place-items: center;
+  padding: 40px 20px; background: var(--pearl);
+}
+.tutorial-card-wrap { width: 100%; max-width: 620px; }
+.tutorial-card {
+  padding: 44px 40px; border: 1px solid var(--line); border-radius: 26px;
+  background: var(--paper); box-shadow: 0 18px 44px #4a234b0f;
+}
+.tutorial-card.lilac { background: linear-gradient(170deg, var(--lilac-soft), var(--paper) 62%); }
+.tutorial-card.sage { background: linear-gradient(170deg, var(--sage-soft), var(--paper) 62%); }
+.tutorial-orb {
+  display: block; width: 46px; height: 46px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #fff 4%, var(--lilac) 42%, var(--aubergine));
+  box-shadow: 0 8px 20px #4a234b2e;
+}
+.tutorial-icon {
+  display: grid; place-items: center; width: 46px; height: 46px; border-radius: 15px;
+  background: #fff; border: 1px solid var(--line); color: var(--aubergine);
+}
+.tutorial-eyebrow {
+  margin: 22px 0 10px; color: var(--aubergine-2);
+  font-size: 12px; font-weight: 750; letter-spacing: .14em;
+}
+.tutorial-card h2 {
+  margin: 0 0 12px; font-family: var(--serif); font-weight: 500;
+  font-size: clamp(27px, 3.6vw, 36px); letter-spacing: -.025em; text-wrap: balance;
+}
+.tutorial-body { margin: 0; color: #4c454b; font-size: 16px; line-height: 1.72; }
+.tutorial-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 16px; margin-top: 26px;
+}
+.tutorial-dots { display: flex; gap: 7px; }
+.tutorial-dots .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #dbd0d9;
+  transition: width .18s ease, background .18s ease;
+}
+.tutorial-dots .dot.on { width: 22px; border-radius: 4px; background: var(--aubergine); }
+.tutorial-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+
+.start-choice-inner { width: 100%; max-width: 560px; text-align: center; }
+.start-choice-inner .tutorial-orb { margin: 0 auto; }
+.start-choice-inner .landing-eyebrow { justify-content: center; margin-top: 24px; }
+.start-choice-inner h1 {
+  margin: 12px 0 14px; font-family: var(--serif); font-weight: 500;
+  font-size: clamp(29px, 4vw, 40px); letter-spacing: -.03em; text-wrap: balance;
+}
+.start-choice-sub { margin: 0 auto; max-width: 46ch; color: var(--muted); line-height: 1.7; }
+/* One column: the three paths are equal choices, and a row would rank them by
+   position. "Continue without an account" is the default and stays first. */
+.start-choice-actions {
+  display: flex; flex-direction: column; gap: 11px; margin: 30px auto 0; max-width: 340px;
+}
+.start-choice-actions > button { width: 100%; justify-content: center; padding: 14px 20px; }
+.start-choice-note { margin-top: 26px; color: #8a828a; font-size: 13px; }
+
+@media (max-width: 560px) {
+  .tutorial-card { padding: 32px 24px; }
+  .tutorial-foot { flex-direction: column-reverse; align-items: stretch; }
+  .tutorial-actions { margin-left: 0; }
+  .tutorial-actions > button { flex: 1; justify-content: center; }
+  .tutorial-dots { justify-content: center; }
+}
+
 /* ── Onboarding (chat-led, full width) ───────────────────────────────────── */
 .onboarding-wrap { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
 .onboarding-progress { display: flex; gap: 6px; margin-bottom: 28px; }

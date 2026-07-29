@@ -70,15 +70,19 @@ function loadGsi(): Promise<void> {
 }
 
 export default function SignIn({
-  close, onSignedIn,
+  close, onSignedIn, mode: initialMode = "signup",
 }: {
   close: () => void;
   onSignedIn: (user: User) => void;
+  /** Which tab to open on. The first-run choice offers "Create an account" and
+   *  "Sign in" as separate buttons, and landing on the wrong tab would make one
+   *  of them do something other than what it said. */
+  mode?: "signup" | "signin";
 }) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [mode, setMode] = useState<"signup" | "signin">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   // Only fetched for the sign-in path, and only used to warn. Starts at null so

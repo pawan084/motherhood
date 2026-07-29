@@ -20,6 +20,9 @@ import Care from "./care";
 import Updates, { buildUpdates } from "./updates";
 import You from "./you";
 import SignIn from "./sign-in";
+import StartChoice from "./start-choice";
+import Tutorial, { tutorialSeen } from "./tutorial";
+import { firstRunStep } from "./first-run";
 import ToolSheet from "./tools";
 import Urgent from "./urgent";
 import Onboarding from "./onboarding";
@@ -52,6 +55,19 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   const [urgent, setUrgent] = useState<{ open: boolean; payload: UrgentHelp | null }>(
     { open: false, payload: null });
   const [signingIn, setSigningIn] = useState(false);
+  // Which tab the dialog opens on. "Create an account" and "Sign in" are two
+  // different intentions and opening both on the same tab makes one of the
+  // buttons a lie about what happens next.
+  const [authMode, setAuthMode] = useState<"signup" | "signin">("signup");
+  // First run, in order: tutorial, then how to start, then the chat that asks
+  // about their journey. Both are read once at mount rather than in an effect,
+  // so the first paint is already the right screen and nobody sees a flash of
+  // the chat they were supposed to be introduced to first.
+  const [showTutorial, setShowTutorial] = useState(() => !tutorialSeen());
+  // Not persisted, on purpose. The tutorial teaches and is worth showing once;
+  // this is a decision, and someone who closed the tab before finishing setup
+  // should get the offer again rather than be silently kept anonymous.
+  const [startChosen, setStartChosen] = useState(false);
 
   // Leaving a screen closes whatever was open on top of it.
   //
@@ -154,7 +170,13 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     [care, emergency, degraded, markTaken, setScreen],
   );
 
-  if (loading) {
+  // One decision, made in one place and unit-tested — see first-run.ts.
+  const step = firstRunStep({
+    loading, bootError: !!bootError, onboarded,
+    tutorialSeen: !showTutorial, startChosen,
+  });
+
+  if (step === "loading") {
     return (
       <div className="aira-app">
         <div className="workspace" style={{ marginLeft: 0, display: "grid", placeItems: "center", minHeight: "100vh" }}>
@@ -164,7 +186,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     );
   }
 
-  if (bootError) {
+  if (step === "error") {
     return (
       <div className="aira-app">
         <div className="workspace" style={{ marginLeft: 0 }}>
@@ -188,8 +210,48 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     );
   }
 
+  // First run, in order — and only for someone who has not finished setup.
+  //
+  // These sit AFTER the loading gate deliberately. Deciding before `me` has
+  // answered would show the tutorial to a returning user for as long as the
+  // request takes, which is the flash Android holds its splash screen to avoid.
+  if (step === "tutorial") {
+    return <Tutorial onFinish={() => setShowTutorial(false)} />;
+  }
+
+  if (step === "start-choice") {
+    return (
+      <>
+        <StartChoice
+          onContinue={() => setStartChosen(true)}
+          onCreateAccount={() => { setAuthMode("signup"); setSigningIn(true); }}
+          onSignIn={() => { setAuthMode("signin"); setSigningIn(true); }}
+        />
+        {signingIn && (
+          <SignIn
+            mode={authMode}
+            close={() => setSigningIn(false)}
+            // An account that has already been through setup goes straight to
+            // Today; a brand-new one still needs the journey questions. Either
+            // way the choice has been made, so this screen is done.
+            onSignedIn={(u) => {
+              setSigningIn(false);
+              setStartChosen(true);
+              setUser(u);
+              if (u.onboarded) {
+                refresh();
+                reloadJourney();
+                AiraAPI.consent().then((r) => setConsent(r.features)).catch(() => undefined);
+              }
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   // Onboarding takes the whole workspace — no sidebar to wander off into.
-  if (!onboarded) {
+  if (step === "onboarding") {
     return (
       <div className="aira-app">
         <div className="workspace" style={{ marginLeft: 0 }}>
