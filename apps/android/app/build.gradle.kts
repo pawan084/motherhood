@@ -95,6 +95,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Reminder delivery. A reminder that never fires is a note, and this app
+    // called them reminders on four screens while delivering nothing.
+    implementation("androidx.work:work-runtime-ktx:2.10.0")
+
     testImplementation("junit:junit:4.13.2")
     // android.jar's org.json is stubbed in unit tests, so JSONObject would throw
     // "not mocked". This puts a real implementation on the unit-test classpath.

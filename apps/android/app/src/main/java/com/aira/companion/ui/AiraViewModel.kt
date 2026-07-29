@@ -8,6 +8,7 @@ import com.aira.companion.data.AiraApi
 import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
+import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
@@ -448,6 +449,11 @@ class AiraViewModel : ViewModel() {
             try {
                 val data = AiraApi.care(context)
                 _uiState.update { it.copy(careData = data, careLoading = false, loadFailed = false) }
+                // The server's list is the source of truth for what should
+                // fire, so scheduling follows every load rather than only
+                // creation — a reminder added on the web arrives here too, and
+                // one deleted there stops arriving.
+                ReminderScheduler.syncAll(context, data.reminders)
             } catch (_: Exception) {
                 _uiState.update {
                     it.copy(careLoading = false, loadFailed = it.careData == null)
@@ -484,8 +490,29 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    /** After the OS permission dialog: schedule what's already saved, or say
+     *  plainly that reminders won't arrive. */
+    fun onNotificationPermissionResult(context: Context?, granted: Boolean) {
+        if (context == null) return
+        if (granted) {
+            _uiState.value.careData?.reminders?.let { ReminderScheduler.syncAll(context, it) }
+        } else {
+            notify("Reminders are saved, but Aira can't notify you without permission.")
+        }
+    }
+
     fun saveReminder(context: Context?, title: String, time: String, repeat: String) =
-        write(context, "Reminder saved.") { AiraApi.addReminder(it, title, time, repeat) }
+        write(
+            context,
+            // Says whether it will actually arrive. Notifications can be off at
+            // the OS level, and a "Reminder saved." that quietly never fires is
+            // the failure this whole feature exists to prevent.
+            if (context != null && ReminderScheduler.canNotify(context)) {
+                "Reminder saved. Aira will notify you."
+            } else {
+                "Reminder saved. Turn on notifications to be reminded."
+            },
+        ) { AiraApi.addReminder(it, title, time, repeat) }
 
     fun saveMedicine(context: Context?, name: String, dose: String, time: String) =
         write(context, "Medicine added.") { AiraApi.addMedicine(it, name, dose, time) }

@@ -1,6 +1,8 @@
 package com.aira.companion.ui
 
+import android.Manifest
 import android.content.Intent
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -45,6 +47,7 @@ import com.aira.companion.model.AuthMode
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.updatesCount
+import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.screens.AiraChatScreen
@@ -162,6 +165,24 @@ private fun MainExperience(
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
     ) { uri -> if (uri != null) viewModel.exportAccountTo(context, uri) }
+
+    // Notification permission, asked at the moment it means something.
+    //
+    // Not at launch: a permission dialog before the user knows what the app is
+    // gets declined, and on Android 13+ a decline is close to final. It is
+    // requested when the reminder sheet opens — the one point where the answer
+    // has an obvious consequence the person is already thinking about.
+    val notificationPermission = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted -> viewModel.onNotificationPermissionResult(context, granted) }
+    LaunchedEffect(state.activeTool) {
+        if (state.activeTool == AiraTool.Reminder &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            !ReminderScheduler.canNotify(context)
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),

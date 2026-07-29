@@ -404,19 +404,23 @@ fun TodayScreen(
                     // "Caught up" is a claim about the user's care, so it needs
                     // the server to have actually said so.
                     Text(
-                        text = if (loaded) {
-                            "You’re caught up for today."
-                        } else {
-                            "Aira can’t reach its backend."
+                        // Was an unconditional "You're caught up for today.",
+                        // which sat directly under a header saying four things
+                        // needed attention. Two claims about the same state,
+                        // one screen apart, disagreeing.
+                        text = when {
+                            !loaded -> "Aira can’t reach its backend."
+                            waiting > 0 -> "Your care is up to date."
+                            else -> "You’re caught up for today."
                         },
                         style = MaterialTheme.typography.titleSmall,
                         color = Ink,
                     )
                     Text(
-                        text = if (loaded) {
-                            "Aira will surface something only when it matters."
-                        } else {
-                            "This screen can’t tell you what needs attention until it connects."
+                        text = when {
+                            !loaded -> "This screen can’t tell you what needs attention until it connects."
+                            waiting > 0 -> "Everything waiting is listed in Care."
+                            else -> "Aira will surface something only when it matters."
                         },
                         style = MaterialTheme.typography.bodySmall,
                         color = InkMuted,
@@ -449,7 +453,7 @@ fun TodayScreen(
                         style = MaterialTheme.typography.titleMedium,
                     )
                     Text(
-                        text = "Ask anything, by text or voice",
+                        text = "Ask anything",
                         style = MaterialTheme.typography.bodySmall,
                         color = Paper.copy(alpha = 0.72f),
                     )

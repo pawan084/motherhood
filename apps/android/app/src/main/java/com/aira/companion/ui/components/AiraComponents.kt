@@ -61,6 +61,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -643,18 +645,41 @@ fun EditableRow(
 
             else -> {
                 content()
-                IconButton(onClick = { editing = true }) {
+                // 44dp targets around an 18dp glyph. Measured on the device
+                // these were 18dp square — the size of the icon itself — well
+                // under the 48dp Android asks for, on the pair of controls that
+                // sit closest together and where the wrong one deletes.
+                // 44dp targets around an 18dp glyph, with the label on the
+                // BUTTON rather than the icon.
+                //
+                // Measured on the device these reported 18dp square — the size
+                // of the glyph — because the accessibility node carrying the
+                // description was the Icon inside the button, so both the
+                // finger target and the node a screen reader aims at were the
+                // drawing rather than the control. On the one pair of buttons
+                // that sit side by side and where the wrong one deletes.
+                IconButton(
+                    onClick = { editing = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Edit $label" },
+                ) {
                     Icon(
                         Icons.Outlined.Edit,
-                        contentDescription = "Edit $label",
+                        contentDescription = null,
                         tint = InkMuted,
                         modifier = Modifier.size(18.dp),
                     )
                 }
-                IconButton(onClick = { confirming = true }) {
+                IconButton(
+                    onClick = { confirming = true },
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Remove $label" },
+                ) {
                     Icon(
                         Icons.Outlined.DeleteOutline,
-                        contentDescription = "Remove $label",
+                        contentDescription = null,
                         tint = InkMuted,
                         modifier = Modifier.size(18.dp),
                     )
