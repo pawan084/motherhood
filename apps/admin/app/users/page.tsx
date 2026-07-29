@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import Shell from "@/components/Shell";
 import { api, type UserRow } from "@/lib/api";
 
@@ -64,7 +65,16 @@ export default function UsersPage() {
             <tbody>
               {data.items.map((u) => (
                 <tr key={u.id} className="border-b border-line/60">
-                  <td className="td">{u.name || "—"}</td>
+                  <td className="td">
+                    {/* The list could never be opened — GET /admin/users/{id}
+                        existed with no page behind it. */}
+                    <Link
+                      href={`/users/${encodeURIComponent(u.id)}`}
+                      className="font-medium text-aubergine hover:underline"
+                    >
+                      {u.name || "View user"}
+                    </Link>
+                  </td>
                   <td className="td">{u.email || <span className="text-ink-muted">anon device</span>}</td>
                   <td className="td text-ink-muted">{u.kind}</td>
                   <td className="td text-ink-muted">{u.journey}</td>
