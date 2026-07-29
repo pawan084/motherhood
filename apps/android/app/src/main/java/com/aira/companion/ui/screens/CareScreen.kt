@@ -20,7 +20,10 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.LocalHospital
 import androidx.compose.material.icons.outlined.Medication
+import androidx.compose.material.icons.outlined.MonitorHeart
+import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,10 +31,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.aira.companion.data.CareData
+import com.aira.companion.data.CareItem
 import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
+import com.aira.companion.ui.components.EditableRow
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
@@ -56,6 +62,15 @@ fun CareScreen(
     care: CareData? = null,
     loading: Boolean = false,
     onMarkTaken: (String) -> Unit = {},
+    // Check-ins and symptom logs, and the Care Vault's actual contents. Both
+    // were written and never read back: the tools said "Added to your timeline"
+    // and the Vault reported a count with no way to see what was counted.
+    timeline: List<CareItem> = emptyList(),
+    documents: List<CareItem> = emptyList(),
+    onReminderDone: (String, Boolean) -> Unit = { _, _ -> },
+    // (id, field, value) — the field differs per kind, so the caller picks it.
+    onRename: (String, String, String) -> Unit = { _, _, _ -> },
+    onDelete: (String) -> Unit = {},
 ) {
     val nextAppointment = care?.appointments?.firstOrNull()
     val medicinesDue = care?.medicinesDue.orEmpty()
@@ -117,6 +132,15 @@ fun CareScreen(
                     )
                 }
             }
+            if (nextAppointment != null) {
+                EditableRow(
+                    label = nextAppointment.title,
+                    onRename = { onRename(nextAppointment.id, "doctor", it) },
+                    onDelete = { onDelete(nextAppointment.id) },
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
             Spacer(modifier = Modifier.height(16.dp))
             PrimaryButton(
                 label = if (nextAppointment != null) "Prepare questions" else "Add an appointment",
@@ -129,11 +153,11 @@ fun CareScreen(
             Spacer(modifier = Modifier.height(20.dp))
             SectionLabel("Due now")
             medicinesDue.forEach { med ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 9.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                EditableRow(
+                    label = med.title,
+                    onRename = { onRename(med.id, "name", it) },
+                    onDelete = { onDelete(med.id) },
+                    modifier = Modifier.padding(vertical = 9.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Medication,
@@ -152,6 +176,57 @@ fun CareScreen(
                         }
                     }
                     TextButton(onClick = { onMarkTaken(med.id) }) { Text("Taken", color = Plum) }
+                }
+            }
+        }
+
+        // Reminders, with the way to create one.
+        //
+        // Reminders could only be added from the chat tool tray, so the Care
+        // screen listed a "care plan" total for something the screen itself
+        // gave no way to add to. The list was invisible here too — only its
+        // count reached this screen.
+        Spacer(modifier = Modifier.height(22.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            SectionLabel("Reminders", modifier = Modifier.weight(1f))
+            TextButton(onClick = { onOpenTool(AiraTool.Reminder) }) { Text("Add", color = Plum) }
+        }
+        if (reminders.isEmpty()) {
+            Text(
+                text = if (loading && care == null) "Loading…" else "Nothing to remember yet.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+        } else {
+            reminders.forEach { rem ->
+                EditableRow(
+                    label = rem.title,
+                    onRename = { onRename(rem.id, "title", it) },
+                    onDelete = { onDelete(rem.id) },
+                    modifier = Modifier.padding(vertical = 4.dp),
+                ) {
+                    Checkbox(
+                        checked = rem.done,
+                        onCheckedChange = { onReminderDone(rem.id, it) },
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = rem.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = if (rem.done) InkMuted else Ink,
+                            textDecoration = if (rem.done) TextDecoration.LineThrough else null,
+                        )
+                        if (rem.subtitle.isNotBlank()) {
+                            Text(
+                                rem.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -177,6 +252,31 @@ fun CareScreen(
             },
             onClick = { onOpenTool(AiraTool.CareVault) },
         )
+        // The files themselves. The Vault reported "3 documents stored
+        // privately" and then offered no way to see which three — for a folder
+        // holding someone's scans and prescriptions, a count is not a listing.
+        documents.forEach { doc ->
+            EditableRow(
+                label = doc.title,
+                // A document's filename is fixed at upload; what a person can
+                // correct is what kind of document they said it was.
+                editValue = doc.subtitle.ifBlank { "Other" },
+                onRename = { onRename(doc.id, "type", it) },
+                onDelete = { onDelete(doc.id) },
+                modifier = Modifier.padding(start = 46.dp, top = 2.dp, bottom = 2.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(doc.title, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    if (doc.subtitle.isNotBlank()) {
+                        Text(
+                            doc.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+            }
+        }
         ToolListRow(
             icon = Icons.Outlined.Description,
             title = "Care plan",
@@ -196,6 +296,58 @@ fun CareScreen(
             onClick = { onOpenTool(AiraTool.Support) },
             accent = SageDeep,
         )
+
+        // The timeline.
+        //
+        // The check-in and symptom tools both closed with "Added to your
+        // timeline", and no timeline existed on any screen. Someone tracking a
+        // symptom across a week — the reason to log one at all — could not see
+        // what they had logged, in the app that asked them to log it.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Your timeline")
+        if (timeline.isEmpty()) {
+            Text(
+                text = "Check-ins and symptoms you log will appear here.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+        } else {
+            timeline.forEach { entry ->
+                EditableRow(
+                    label = entry.title,
+                    onRename = {
+                        onRename(entry.id, if (entry.kind == "symptom") "what" else "feeling", it)
+                    },
+                    onDelete = { onDelete(entry.id) },
+                    modifier = Modifier.padding(vertical = 6.dp),
+                ) {
+                    Icon(
+                        imageVector = if (entry.kind == "symptom") {
+                            Icons.Outlined.MonitorHeart
+                        } else {
+                            Icons.Outlined.Mood
+                        },
+                        contentDescription = null,
+                        tint = SageDeep,
+                    )
+                    Spacer(modifier = Modifier.width(11.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = entry.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                        if (entry.subtitle.isNotBlank()) {
+                            Text(
+                                entry.subtitle,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(18.dp))
 

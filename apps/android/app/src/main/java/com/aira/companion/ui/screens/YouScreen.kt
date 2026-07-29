@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -25,11 +26,14 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,8 +45,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.model.AiraTool
+import com.aira.companion.model.JourneyType
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.ui.components.AiraCard
+import com.aira.companion.ui.components.ChoiceCard
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
@@ -79,9 +85,13 @@ fun YouScreen(
     onSignOut: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onSignIn: () -> Unit = {},
+    /** Name, journey and language, as the app currently holds them. */
+    journeyType: JourneyType? = null,
+    onSaveProfile: (name: String, journey: JourneyType?, language: String) -> Unit = { _, _, _ -> },
 ) {
     LaunchedEffect(Unit) { onLoadConsent() }
     var confirmDelete by remember { mutableStateOf(false) }
+    var editingProfile by remember { mutableStateOf(false) }
     val personalisation = consent.firstOrNull { it.key == "personalization" }
     val partnerAccess = consent.firstOrNull { it.key == "partner_access" }
 
@@ -110,7 +120,7 @@ fun YouScreen(
                 )
             }
             Spacer(modifier = Modifier.width(15.dp))
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     name.ifBlank { "You" },
                     style = MaterialTheme.typography.headlineMedium,
@@ -125,6 +135,31 @@ fun YouScreen(
                     color = InkMuted,
                 )
             }
+            TextButton(onClick = { editingProfile = !editingProfile }) {
+                Text(if (editingProfile) "Close" else "Edit", color = Plum)
+            }
+        }
+
+        // Editing the profile.
+        //
+        // /account/profile has always existed and Android never called it, so
+        // the onboarding answers were permanent. In an app built around a
+        // journey that changes — trying to conceive, then pregnant, then
+        // postpartum — someone whose situation had moved on kept being shown
+        // content for where they used to be, with deleting their account as the
+        // only way to correct it. A pregnancy that ends is the case that makes
+        // this urgent rather than tidy.
+        if (editingProfile) {
+            Spacer(modifier = Modifier.height(16.dp))
+            ProfileEditor(
+                initialName = name,
+                initialJourney = journeyType,
+                initialLanguage = language,
+                onSave = { n, j, l ->
+                    onSaveProfile(n, j, l)
+                    editingProfile = false
+                },
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -344,5 +379,76 @@ fun YouScreen(
                 )
             }
         }
+    }
+}
+
+/**
+ * Change name, journey and language after onboarding.
+ *
+ * Deliberately not a full re-run of onboarding: the pregnancy-week question is
+ * left out because weeks move on their own, and re-asking it here would invite
+ * a stale number to be re-committed as if it were current.
+ */
+@Composable
+private fun ProfileEditor(
+    initialName: String,
+    initialJourney: JourneyType?,
+    initialLanguage: String,
+    onSave: (String, JourneyType?, String) -> Unit,
+) {
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    var journey by remember(initialJourney) { mutableStateOf(initialJourney) }
+    var language by remember(initialLanguage) {
+        mutableStateOf(initialLanguage.ifBlank { "English" })
+    }
+
+    AiraCard {
+        SectionLabel("What Aira calls you")
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Your name") },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+        SectionLabel("Where you are now")
+        JourneyType.entries.forEach { option ->
+            Spacer(modifier = Modifier.height(8.dp))
+            ChoiceCard(
+                title = option.label,
+                subtitle = option.supportingText,
+                selected = journey == option,
+                onClick = { journey = option },
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        SectionLabel("Language")
+        Row(modifier = Modifier.fillMaxWidth()) {
+            listOf("English", "Hindi", "Hinglish").forEach { option ->
+                FilterChip(
+                    selected = language == option,
+                    onClick = { language = option },
+                    label = { Text(option) },
+                    modifier = Modifier.padding(end = 8.dp),
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(18.dp))
+        PrimaryButton(
+            label = "Save profile",
+            onClick = { onSave(name, journey, language) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = "Changing your journey changes what Today and Journey show you.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }

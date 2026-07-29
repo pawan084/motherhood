@@ -326,6 +326,59 @@ object AiraApi {
             .optJSONArray("items").toCareItems()
 
     /**
+     * Check-ins and symptom logs, newest first — the "timeline" the tools have
+     * always named. Both kinds were write-only: saved, then never shown again.
+     */
+    suspend fun timeline(ctx: Context): List<CareItem> =
+        request("GET", "/v1/care/timeline", null, ensureToken(ctx))
+            .optJSONArray("items").toCareItems()
+
+    /**
+     * Correct one field on a care item. Every kind used to be create-only, so a
+     * typo in a doctor's name was permanent.
+     */
+    suspend fun updateCareItem(ctx: Context, id: String, field: String, value: String) {
+        request("PATCH", "/v1/care/items/$id", JSONObject().put(field, value), ensureToken(ctx))
+    }
+
+    /**
+     * Remove a care item for good. The one that matters is a medicine the care
+     * team has stopped — until this existed it went on being listed as due.
+     */
+    suspend fun deleteCareItem(ctx: Context, id: String) {
+        request("DELETE", "/v1/care/items/$id", null, ensureToken(ctx))
+    }
+
+    /**
+     * Change name, journey or language after onboarding.
+     *
+     * Android never called this, so onboarding answers were permanent — and in
+     * an app whose whole premise is a journey that changes (trying to conceive →
+     * pregnant → postpartum), someone whose situation moved on had no way to say
+     * so and kept getting content for where they used to be.
+     */
+    suspend fun updateProfile(
+        ctx: Context,
+        name: String? = null,
+        journey: String? = null,
+        language: String? = null,
+    ): UserProfile {
+        val body = JSONObject()
+            .put("name", name ?: JSONObject.NULL)
+            .put("journey", journey ?: JSONObject.NULL)
+            .put("language", language ?: JSONObject.NULL)
+        val o = request("PATCH", "/account/profile", body, ensureToken(ctx))
+            .optJSONObject("user") ?: JSONObject()
+        return UserProfile(
+            id = o.optString("id"),
+            name = o.optStringOrNull("name").orEmpty(),
+            journey = o.optStringOrNull("journey").orEmpty(),
+            language = o.optStringOrNull("language") ?: "English",
+            onboarded = o.optBoolean("onboarded", false),
+        )
+    }
+
+    /**
      * Upload a picked document to the Care Vault.
      *
      * This previously did not exist: the picker's result Uri was discarded and
@@ -803,7 +856,7 @@ data class PartnerShare(
 )
 
 /** Flatten `{id, kind, done, ...payload}` into a display row. */
-private fun JSONArray?.toCareItems(): List<CareItem> {
+internal fun JSONArray?.toCareItems(): List<CareItem> {
     if (this == null) return emptyList()
     val out = ArrayList<CareItem>(length())
     for (i in 0 until length()) {
@@ -813,6 +866,9 @@ private fun JSONArray?.toCareItems(): List<CareItem> {
             ?: o.optStringOrNull("name")
             ?: o.optStringOrNull("doctor")
             ?: o.optStringOrNull("what")
+            // A check-in's subject is how the person felt. Without this the
+            // timeline labelled every one of them "Checkin".
+            ?: o.optStringOrNull("feeling")
             ?: o.optString("kind").replaceFirstChar { it.uppercase() }
         val subtitle = listOfNotNull(
             o.optStringOrNull("dose"),
@@ -822,6 +878,15 @@ private fun JSONArray?.toCareItems(): List<CareItem> {
             o.optStringOrNull("time"),
             o.optStringOrNull("repeat"),
             o.optStringOrNull("severity"),
+            o.optStringOrNull("started"),
+            o.optStringOrNull("pattern"),
+            o.optDoubleOrNull("sleep_hours")?.let { h ->
+                if (h == h.toInt().toDouble()) "${h.toInt()}h sleep" else "${h}h sleep"
+            },
+            o.optStringOrNull("note"),
+            // Documents carry a filename as `name`, so `type` is what tells the
+            // list a row is a prescription rather than a scan.
+            o.optStringOrNull("type"),
         ).joinToString(" · ")
         out.add(
             CareItem(
@@ -852,6 +917,9 @@ private fun JSONObject.optIntOrNull(key: String): Int? =
  */
 internal fun JSONObject.optStringOrNull(key: String): String? =
     if (has(key) && !isNull(key)) optString(key).ifBlank { null } else null
+
+internal fun JSONObject.optDoubleOrNull(key: String): Double? =
+    if (has(key) && !isNull(key)) optDouble(key).takeIf { !it.isNaN() } else null
 
 private fun JSONArray?.toStringList(): List<String> {
     if (this == null) return emptyList()

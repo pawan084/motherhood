@@ -37,7 +37,12 @@ function RowActions({
 }) {
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [value, setValue] = useState(label);
+  // Seed from the field being edited, not from the row's label. A check-in is
+  // labelled "this check-in" for the confirm prompt, and seeding from that
+  // opened an editor pre-filled with "this check-in" — one Save away from
+  // overwriting the person's actual entry with the UI's own placeholder.
+  const seed = typeof item[field] === "string" ? (item[field] as string) : label;
+  const [value, setValue] = useState(seed);
 
   if (editing) {
     return (
@@ -50,7 +55,7 @@ function RowActions({
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && value.trim()) { onRename(item.id, field, value.trim()); setEditing(false); }
-            if (e.key === "Escape") { setValue(label); setEditing(false); }
+            if (e.key === "Escape") { setValue(seed); setEditing(false); }
           }}
         />
         <button
@@ -58,7 +63,7 @@ function RowActions({
           onClick={() => { onRename(item.id, field, value.trim()); setEditing(false); }}
         >Save</button>
         <button className="btn-ghost" aria-label="Cancel editing"
-                onClick={() => { setValue(label); setEditing(false); }}><X size={14} /></button>
+                onClick={() => { setValue(seed); setEditing(false); }}><X size={14} /></button>
       </span>
     );
   }
@@ -266,7 +271,11 @@ export default function Care({
                   <RowActions
                     item={t}
                     label={t.kind === "symptom" ? str(t.what, "Symptom") : "this check-in"}
-                    field={t.kind === "symptom" ? "what" : "note"}
+                    // Edit what the row is titled by. Pointing a check-in's
+                    // editor at `note` opened a box showing the feeling and
+                    // saved it over the note — quietly losing one field and
+                    // leaving the other unchanged.
+                    field={t.kind === "symptom" ? "what" : "feeling"}
                     onRename={onRename}
                     onDelete={onDelete}
                   />

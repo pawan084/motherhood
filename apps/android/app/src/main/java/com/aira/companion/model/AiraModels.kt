@@ -1,6 +1,7 @@
 package com.aira.companion.model
 
 import com.aira.companion.data.CareData
+import com.aira.companion.data.CareItem
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.PartnerInvite
@@ -168,6 +169,11 @@ data class AiraUiState(
     // the fixed sample data these screens used to render.
     val careData: CareData? = null,
     val careLoading: Boolean = false,
+    /** Check-ins and symptom logs. Both were write-only while the tools said
+     *  "Add to timeline" — saved, then never shown again. */
+    val timeline: List<CareItem> = emptyList(),
+    /** The Care Vault listed only a count; the files themselves were invisible. */
+    val documents: List<CareItem> = emptyList(),
     val memory: List<MemoryItem> = emptyList(),
     val consent: List<ConsentFeature> = emptyList(),
     // Populated from the backend's urgent handoff / emergency profile so the

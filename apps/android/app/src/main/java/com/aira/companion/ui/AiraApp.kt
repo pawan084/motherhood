@@ -142,7 +142,11 @@ private fun MainExperience(
             // Today shows medicines/appointments too, so it needs Care as well.
             MainDestination.Today -> { viewModel.loadToday(context); viewModel.loadCare(context) }
             MainDestination.Journey -> viewModel.loadJourney(context)
-            MainDestination.Care -> viewModel.loadCare(context)
+            MainDestination.Care -> {
+                viewModel.loadCare(context)
+                viewModel.loadTimeline(context)
+                viewModel.loadDocuments(context)
+            }
             MainDestination.You -> { viewModel.loadConsent(context); viewModel.loadPrefs(context) }
             else -> {}
         }
@@ -207,6 +211,13 @@ private fun MainExperience(
                         care = state.careData,
                         loading = state.careLoading,
                         onMarkTaken = { viewModel.markMedicineTaken(context, it) },
+                        timeline = state.timeline,
+                        documents = state.documents,
+                        onReminderDone = { id, done -> viewModel.setReminderDone(context, id, done) },
+                        onRename = { id, field, value ->
+                            viewModel.renameCareItem(context, id, field, value)
+                        },
+                        onDelete = { viewModel.deleteCareItem(context, it) },
                     )
                 MainDestination.You ->
                     YouScreen(
@@ -228,6 +239,8 @@ private fun MainExperience(
                         onSignOut = { viewModel.signOut(context) },
                         onCreateAccount = { viewModel.openAuth(context, AuthMode.SignUp) },
                         onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },
+                        journeyType = state.journey,
+                        onSaveProfile = { n, j, l -> viewModel.saveProfile(context, n, j, l) },
                     )
             }
         }

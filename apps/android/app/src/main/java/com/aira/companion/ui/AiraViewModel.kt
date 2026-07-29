@@ -415,6 +415,86 @@ class AiraViewModel : ViewModel() {
             AiraApi.setReminderDone(it, id, done)
         }
 
+    // ── correcting and removing ─────────────────────────────────────────────
+    //
+    // Every care kind used to be create-only. A typo was permanent, a cancelled
+    // appointment stayed on Today forever, and a medicine the care team had
+    // stopped went on reading as due — the last is a safety problem, not an
+    // annoyance.
+
+    fun renameCareItem(context: Context?, id: String, field: String, value: String) =
+        write(context, "Updated.") {
+            AiraApi.updateCareItem(it, id, field, value)
+            refreshTimelineAndDocs(it)
+        }
+
+    fun deleteCareItem(context: Context?, id: String) =
+        write(context, "Removed.") {
+            AiraApi.deleteCareItem(it, id)
+            refreshTimelineAndDocs(it)
+        }
+
+    /** Check-ins and symptom logs — read back for the first time. */
+    fun loadTimeline(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(timeline = AiraApi.timeline(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    fun loadDocuments(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                _uiState.update { it.copy(documents = AiraApi.documents(context)) }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private suspend fun refreshTimelineAndDocs(ctx: Context) {
+        // An edit or delete can land on any kind, and the caller doesn't know
+        // which — cheaper to refresh both lists than to make every call site
+        // reason about it.
+        runCatching { _uiState.update { it.copy(timeline = AiraApi.timeline(ctx)) } }
+        runCatching { _uiState.update { it.copy(documents = AiraApi.documents(ctx)) } }
+    }
+
+    /**
+     * Change name, journey or language after onboarding.
+     *
+     * Android never called /account/profile, so onboarding answers were
+     * permanent. In an app whose premise is a journey that changes, someone who
+     * moved from trying to conceive to pregnant kept getting content for where
+     * they used to be, with deleting their account as the only way out.
+     */
+    fun saveProfile(context: Context?, name: String, journey: JourneyType?, language: String) =
+        write(context, "Profile saved.", refreshCare = false) { ctx ->
+            val user = AiraApi.updateProfile(
+                ctx,
+                name = name.trim().ifBlank { null },
+                journey = apiJourney(journey),
+                language = language,
+            )
+            _uiState.update {
+                it.copy(
+                    name = user.name,
+                    language = user.language.ifBlank { it.language },
+                    journey = JourneyType.entries.firstOrNull { j ->
+                        j.name.equals(user.journey, ignoreCase = true)
+                    } ?: it.journey,
+                )
+            }
+            // Journey drives what Today and Journey render, so both have to be
+            // refetched or the screens keep describing the old stage.
+            loadToday(ctx)
+            loadJourney(ctx)
+            loadCare(ctx)
+        }
+
     /**
      * Stream a picked document into the Care Vault.
      *

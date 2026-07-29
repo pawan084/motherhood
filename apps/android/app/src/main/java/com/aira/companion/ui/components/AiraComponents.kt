@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,11 +24,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Book
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
@@ -36,13 +40,20 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -67,6 +78,7 @@ import com.aira.companion.ui.theme.PlumSoft
 import com.aira.companion.ui.theme.Sage
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+import com.aira.companion.ui.theme.Urgent
 
 @Composable
 fun BrandOrb(
@@ -516,6 +528,95 @@ fun InfoBanner(
             Icon(icon, null, modifier = Modifier.size(19.dp))
             Spacer(Modifier.width(10.dp))
             Text(text, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+/**
+ * A care row that can be corrected or removed.
+ *
+ * Every care kind used to be create-only, so a typo in a doctor's name was
+ * permanent and a cancelled appointment sat on Today forever. Editing is limited
+ * to the row's main label — the field people actually mistype — with the full
+ * form still reachable through the tool sheet.
+ *
+ * The edit and confirm states *replace* the row rather than sitting beside it.
+ * Sharing the line put the field, Save and Cancel in the space left over after
+ * the label, which on a 360dp screen pushed Save off the right edge — an editor
+ * you can open and cannot commit.
+ *
+ * Removing asks first. These rows sit close together, the action can't be undone,
+ * and one of them is somebody's medication.
+ */
+@Composable
+fun EditableRow(
+    label: String,
+    onRename: (String) -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+    /** What the edit field starts with, when that isn't the row's own label —
+     *  a document row is titled by its filename but what you can correct is the
+     *  document type, and a box pre-filled with the wrong value invites you to
+     *  overwrite the wrong thing. */
+    editValue: String = label,
+    content: @Composable RowScope.() -> Unit,
+) {
+    var editing by remember(label) { mutableStateOf(false) }
+    var confirming by remember(label) { mutableStateOf(false) }
+    var value by remember(label) { mutableStateOf(editValue) }
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        when {
+            editing -> {
+                OutlinedTextField(
+                    value = value,
+                    onValueChange = { value = it },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                )
+                TextButton(
+                    onClick = { onRename(value.trim()); editing = false },
+                    enabled = value.isNotBlank(),
+                ) { Text("Save", color = Plum) }
+                IconButton(onClick = { value = editValue; editing = false }) {
+                    Icon(Icons.Filled.Close, contentDescription = "Cancel editing", tint = InkMuted)
+                }
+            }
+
+            confirming -> {
+                Text(
+                    text = "Remove $label?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = onDelete) { Text("Remove", color = Urgent) }
+                TextButton(onClick = { confirming = false }) { Text("Keep", color = Plum) }
+            }
+
+            else -> {
+                content()
+                IconButton(onClick = { editing = true }) {
+                    Icon(
+                        Icons.Outlined.Edit,
+                        contentDescription = "Edit $label",
+                        tint = InkMuted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                IconButton(onClick = { confirming = true }) {
+                    Icon(
+                        Icons.Outlined.DeleteOutline,
+                        contentDescription = "Remove $label",
+                        tint = InkMuted,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
         }
     }
 }
