@@ -89,6 +89,11 @@ export default function Landing({
           <div className="product-stage" aria-label="Aira product preview">
             <div className="stage-aura a" aria-hidden="true" />
             <div className="stage-aura b" aria-hidden="true" />
+            {/* The floating cards live in here, beside the window rather than
+                loose in the stage. Anchored to the stage they were positioned
+                against a box ~30px wider than the window itself, so "pinned to
+                the edge" still meant "lying across the mock" — see globals.css. */}
+            <div className="window-anchor">
             <article className="product-window">
               <header>
                 <div>
@@ -142,6 +147,7 @@ export default function Landing({
                 <strong>Private care context</strong>
                 <small>You stay in control</small>
               </div>
+            </div>
             </div>
           </div>
         </section>

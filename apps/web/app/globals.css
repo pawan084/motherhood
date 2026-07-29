@@ -110,7 +110,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* The hero's product window — a web app in a browser-ish frame, not a phone. */
 /* The window's width is shared with the floating cards below, which anchor to
    its edges rather than to the stage's — see .reset-card / .privacy-card. */
-.product-stage { position: relative; min-height: 550px; display: grid; place-items: center; --pw: min(520px, 92%); }
+.product-stage { position: relative; min-height: 600px; display: grid; place-items: center; --pw: min(520px, 92%); }
 .stage-aura { position: absolute; border: 1px solid #a98dab30; border-radius: 50%; }
 .stage-aura.a { width: 520px; height: 520px; box-shadow: 0 0 0 55px #ffffff22, 0 0 0 110px #ffffff22; }
 .stage-aura.b { width: 250px; height: 250px; background: #ffffff33; filter: blur(1px); }
@@ -178,20 +178,35 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .floating-card strong, .floating-card small { display: block; }
 .floating-card strong { font-size: 13px; }
 .floating-card small { color: var(--aubergine); font-size: 11px; font-weight: 800; }
-/* Anchored inside the stage's edges. These were offset OUTSIDE it
-   (`left: -25px` / `right: -30px`); since each card is ~200px wide and the
-   overhang was only ~30px, most of the card fell back across the window — the
-   privacy card clipping the "Safety checked" pill to "Saf", the reset card
-   covering the composer's "Message Aira…". Pinning them to the stage edges
-   keeps them fully on screen at every width, and the privacy card now sits
-   below the window header so it can never cover the safety pill again. */
-.reset-card { left: 0; bottom: 78px; }
+/* Anchored to the WINDOW, above and below it — not to the stage, and not over
+   the mock's content.
+
+   History worth keeping, because the first fix looked right and wasn't. The
+   cards started offset outside the stage (`left: -25px` / `right: -30px`);
+   each is ~200px wide against a ~30px overhang, so most of the card fell back
+   across the window — the privacy card clipping the "Safety checked" pill to
+   "Saf", the reset card covering the composer's "Message Aira…". Pinning them
+   to the stage edges fixed the pill and kept them on screen, but the stage is
+   only ~17px wider than the window: the privacy card still lay across the chat
+   bubble, hiding the end of "Shall we prepare together?", and the reset card
+   still sat on the "Check in" and "Reminder" chips. A hit-test in the browser
+   found both; nothing in a build or a type-check could.
+
+   The geometry never actually cleared at any desktop width — at the widest it
+   missed by about 6px — so the cards now sit in the empty band above and below
+   the window instead of beside it. `.window-anchor` shrink-wraps the window, so
+   these offsets are measured from the window's own edges. The remaining ~8px
+   of overlap lands on the window's border radius, clear of the header's safety
+   pill and the footer's composer — both of which an earlier attempt at this
+   covered. */
+.window-anchor { position: relative; width: var(--pw); }
+.reset-card { left: 0; bottom: -58px; }
 .reset-card .breath-mini {
   width: 38px; height: 38px; border-radius: 50%;
   background: radial-gradient(circle, #9d51aa 0 19%, #e9d8ec 20% 50%, #f5ecf5 51%);
 }
 .reset-card > svg { margin-left: 8px; color: var(--aubergine); }
-.privacy-card { right: 0; top: 118px; color: #346147; }
+.privacy-card { right: 0; top: -58px; color: #346147; }
 .privacy-card > svg { width: 38px; height: 38px; padding: 8px; border-radius: 10px; background: var(--sage-soft); }
 .privacy-card small { color: #758278; }
 

@@ -8,7 +8,7 @@
 // emergency profile; when there isn't one the button routes to setting it
 // rather than dialling a placeholder.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FileText, Phone, Siren, X } from "lucide-react";
 import { AiraAPI, telHref, type UrgentHelp } from "../aira-api";
 
@@ -44,12 +44,27 @@ export default function Urgent({
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
 
+  // Put focus on the call action, not on the page behind the dialog.
+  //
+  // This is the screen where that matters most: it opens on a RED safety
+  // result, and it opened with focus left wherever the user had been — so
+  // someone using a keyboard or a screen reader was told (by aria-modal) that
+  // the page behind is inert while still standing on it, and had to tab
+  // forward through an inert screen to reach the number for their care team.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const call = dialogRef.current?.querySelector<HTMLElement>('a[href^="tel:"], button:not([aria-label^="Close"])');
+    (call ?? dialogRef.current)?.focus();
+    return () => opener?.focus?.();
+  }, []);
+
   const careHref = telHref(carePhone);
   const contactHref = telHref(contactPhone);
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-label="Urgent help">
-      <div className="urgent-modal">
+      <div className="urgent-modal" ref={dialogRef} tabIndex={-1}>
         <button
           onClick={close}
           aria-label="Close urgent help"

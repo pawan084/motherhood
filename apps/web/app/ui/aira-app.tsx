@@ -51,6 +51,20 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   const [urgent, setUrgent] = useState<{ open: boolean; payload: UrgentHelp | null }>(
     { open: false, payload: null });
 
+  // Leaving a screen closes whatever was open on top of it.
+  //
+  // Both overlays are modal, but the nav stayed clickable behind them — so
+  // tapping "Care" with the check-in sheet open navigated underneath and left
+  // the sheet stranded over a screen it has nothing to do with, still showing
+  // the previous screen's form. The urgent dialog did the same, which is worse:
+  // it is the emergency handoff, and it ended up floating over an unrelated
+  // screen. Tying both to the screen that opened them also means Back closes
+  // them, which is what the gesture is for on a phone.
+  useEffect(() => {
+    setTool(null);
+    setUrgent({ open: false, payload: null });
+  }, [screen]);
+
   const refresh = useCallback(async () => {
     const [t, c, e, tl] = await Promise.allSettled([
       AiraAPI.today(), AiraAPI.care(), AiraAPI.emergencyProfile(), AiraAPI.timeline(),

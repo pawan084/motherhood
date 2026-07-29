@@ -110,9 +110,23 @@ export default function SignIn({
     return () => { alive = false; };
   }, [onSignedIn]);
 
+  // Focus moves into the dialog, and back to the trigger on close — the same
+  // rule as the tool sheets and the urgent handoff. aria-modal tells assistive
+  // tech the page behind is inert, so leaving focus out there contradicts what
+  // the dialog has just announced about itself.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const first = dialogRef.current?.querySelector<HTMLElement>(
+      'input, button:not([aria-label^="Close"]), a[href]',
+    );
+    (first ?? dialogRef.current)?.focus();
+    return () => opener?.focus?.();
+  }, []);
+
   return (
     <div className="modal-backdrop" onClick={close} role="dialog" aria-modal="true" aria-label="Sign in">
-      <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" ref={dialogRef} tabIndex={-1} style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <div>
             <p>Optional</p>

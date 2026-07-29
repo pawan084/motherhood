@@ -6,7 +6,7 @@
 // 900ms timer — the sheets looked functional and persisted nothing. Each tool
 // here either calls a real endpoint or plainly says it isn't wired up yet.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Brain, CalendarDays, Clock, FileText, Heart, LifeBuoy, LockKeyhole, Pill, ScanLine, Siren, Trash2, Users, Wind, X, type LucideIcon } from "lucide-react";
 import {
   AiraAPI, telHref, type ConsentFeature, type EmergencyProfile, type MemoryItem,
@@ -47,6 +47,24 @@ export default function ToolSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
 
+  // Move focus into the sheet, and put it back where it came from on close.
+  //
+  // The sheet declared role="dialog" aria-modal="true" but left focus on the
+  // page behind it, so a keyboard or screen-reader user opening "Check in" was
+  // still standing on Today: reaching the form meant tabbing forward through
+  // the whole screen the dialog was covering, and aria-modal tells assistive
+  // tech that everything back there is inert — so the tab stops it landed on
+  // were ones it had just been told to ignore.
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    const first = dialogRef.current?.querySelector<HTMLElement>(
+      'input, select, textarea, button:not([aria-label^="Close"])',
+    );
+    (first ?? dialogRef.current)?.focus();
+    return () => opener?.focus?.();
+  }, [tool]);
+
   const run = async (fn: () => Promise<unknown>, message: string) => {
     setBusy(true); setError(""); setDone("");
     try {
@@ -62,7 +80,7 @@ export default function ToolSheet({
 
   return (
     <div className="modal-backdrop" onClick={close} role="dialog" aria-modal="true" aria-label={info.title}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <span className="icon-box lilac"><Icon size={18} /></span>
           <div>
