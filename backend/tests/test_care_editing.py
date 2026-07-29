@@ -203,3 +203,50 @@ def test_returning_to_pregnant_restores_the_week_that_was_entered(client, user):
 
     client.patch("/account/profile", json={"journey": "pregnant"}, headers=h)
     assert client.get("/v1/today", headers=h).json()["weeks"] == 24
+
+
+# ── appointments with a real date ───────────────────────────────────────────
+
+
+def test_an_appointment_can_carry_a_date_and_still_keep_the_words(client, user):
+    """Both, not either. The date is what the app can sort and remind on; the
+    free text is how the person remembers the visit ("Friday, early")."""
+    h = user["headers"]
+    r = client.post("/v1/care/appointments",
+                    json={"doctor": "Dr Shah", "when": "Friday, early", "at": 1786000000},
+                    headers=h)
+    assert r.status_code == 200, r.text
+    appt = client.get("/v1/care", headers=h).json()["appointments"][0]
+    assert appt["at"] == 1786000000
+    assert appt["when"] == "Friday, early"
+
+
+def test_an_appointment_without_a_date_is_still_accepted(client, user):
+    """"Sometime next week" is a real answer. Refusing to record it until the
+    user commits to a day is how a care app ends up empty."""
+    h = user["headers"]
+    r = client.post("/v1/care/appointments", json={"doctor": "Dr Shah"}, headers=h)
+    assert r.status_code == 200
+    assert client.get("/v1/care", headers=h).json()["appointments"][0]["at"] is None
+
+
+def test_appointments_come_back_soonest_first_with_undated_ones_last(client, user):
+    h = user["headers"]
+    client.post("/v1/care/appointments", json={"doctor": "later", "at": 2000}, headers=h)
+    client.post("/v1/care/appointments", json={"doctor": "undated"}, headers=h)
+    client.post("/v1/care/appointments", json={"doctor": "sooner", "at": 1000}, headers=h)
+
+    order = [a["doctor"] for a in client.get("/v1/care", headers=h).json()["appointments"]]
+    assert order == ["sooner", "later", "undated"]
+
+
+def test_the_date_can_be_corrected_like_any_other_field(client, user):
+    """Appointments move. The whole point of storing a real date is undone if
+    it can't be changed when the clinic reschedules."""
+    h = user["headers"]
+    iid = client.post("/v1/care/appointments",
+                      json={"doctor": "Dr Shah", "at": 1000}, headers=h).json()["id"]
+
+    r = client.patch(f"/v1/care/items/{iid}", json={"at": 5000}, headers=h)
+    assert r.status_code == 200, r.text
+    assert client.get("/v1/care", headers=h).json()["appointments"][0]["at"] == 5000

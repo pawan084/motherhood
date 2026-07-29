@@ -836,8 +836,15 @@ class AiraViewModel : ViewModel() {
         }
     }
 
-    fun saveAppointment(context: Context?, doctor: String, place: String, whenText: String) =
-        write(context, "Appointment saved.") { AiraApi.addAppointment(it, doctor, place, whenText) }
+    fun saveAppointment(
+        context: Context?,
+        doctor: String,
+        place: String,
+        whenText: String,
+        at: Long? = null,
+    ) = write(context, "Appointment saved.") {
+        AiraApi.addAppointment(it, doctor, place.ifBlank { null }, whenText.ifBlank { null }, at)
+    }
 
     fun saveCheckIn(context: Context?, feeling: String, sleepHours: Double, note: String) =
         write(context, "Check-in saved.") { AiraApi.addCheckIn(it, feeling, sleepHours, note) }

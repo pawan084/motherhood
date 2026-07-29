@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -69,6 +69,8 @@ import androidx.compose.material.icons.outlined.Waves
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -82,6 +84,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,15 +105,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.aira.companion.model.AiraTool
-import com.aira.companion.data.MemoryItem
-import com.aira.companion.data.ConsentFeature
 import com.aira.companion.data.CareData
+import com.aira.companion.data.ConsentFeature
+import com.aira.companion.data.MemoryItem
 import com.aira.companion.data.PartnerInvite
 import com.aira.companion.data.PartnerInviteRow
 import com.aira.companion.data.PartnerShare
 import com.aira.companion.data.VoicePrefs
-import kotlinx.coroutines.delay
+import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChoiceCard
@@ -132,6 +134,7 @@ import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
 import com.aira.companion.ui.theme.UrgentMist
+import kotlinx.coroutines.delay
 
 private data class ChatToolItem(
     val tool: AiraTool,
@@ -250,7 +253,8 @@ fun ToolTraySheet(
 data class ToolActions(
     val saveReminder: (title: String, time: String, repeat: String) -> Unit = { _, _, _ -> },
     val saveMedicine: (name: String, dose: String, time: String) -> Unit = { _, _, _ -> },
-    val saveAppointment: (doctor: String, place: String, whenText: String) -> Unit = { _, _, _ -> },
+    val saveAppointment: (doctor: String, place: String, whenText: String, at: Long?) -> Unit =
+        { _, _, _, _ -> },
     val saveCheckIn: (feeling: String, sleepHours: Double, note: String) -> Unit = { _, _, _ -> },
     val saveSymptom: (what: String, severity: String, started: String) -> Unit = { _, _, _ -> },
     val markMedicineTaken: (id: String) -> Unit = {},
@@ -614,6 +618,12 @@ private fun AppointmentTool(actions: ToolActions, care: CareData?, onDismiss: ()
     var doctor by remember { mutableStateOf("") }
     var place by remember { mutableStateOf("") }
     var whenText by remember { mutableStateOf("") }
+    // The date as a real moment, when the person is willing to pick one.
+    // Nullable throughout: "sometime next week" is a real answer, and refusing
+    // to record the appointment until they commit to a day is how a care app
+    // ends up empty.
+    var at by remember { mutableStateOf<Long?>(null) }
+    var pickingDate by remember { mutableStateOf(false) }
     val checked = remember { mutableStateListOf(false, false, false) }
     val questions =
         listOf(
@@ -684,20 +694,56 @@ private fun AppointmentTool(actions: ToolActions, care: CareData?, onDismiss: ()
         shape = RoundedCornerShape(17.dp),
     )
     Spacer(Modifier.height(10.dp))
+    OutlinedButton(
+        onClick = { pickingDate = true },
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(17.dp),
+    ) {
+        Icon(Icons.Outlined.CalendarMonth, null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(at?.let { "On ${formatAppointmentDate(it)}" } ?: "Pick a date (optional)")
+    }
+    if (at != null) {
+        TextButton(onClick = { at = null }) { Text("Clear date", color = Plum) }
+    }
+    Spacer(Modifier.height(10.dp))
     OutlinedTextField(
         value = whenText,
         onValueChange = { whenText = it },
         modifier = Modifier.fillMaxWidth(),
-        label = { Text("When (optional)") },
+        // Sits alongside the date rather than replacing it. "Friday, early" is
+        // how someone remembers the visit; the date is how the app sorts it.
+        label = { Text("Anything else about when (optional)") },
         shape = RoundedCornerShape(17.dp),
     )
     Spacer(Modifier.height(14.dp))
     PrimaryButton(
         label = "Save appointment",
-        onClick = { actions.saveAppointment(doctor.trim(), place.trim(), whenText.trim()); onDismiss() },
+        onClick = {
+            actions.saveAppointment(doctor.trim(), place.trim(), whenText.trim(), at)
+            onDismiss()
+        },
         modifier = Modifier.fillMaxWidth(),
         enabled = doctor.isNotBlank(),
     )
+
+    if (pickingDate) {
+        val picker = rememberDatePickerState(initialSelectedDateMillis = at?.let { it * 1000 })
+        DatePickerDialog(
+            onDismissRequest = { pickingDate = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    at = picker.selectedDateMillis?.let { it / 1000 }
+                    pickingDate = false
+                }) { Text("Choose", color = Plum) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pickingDate = false }) { Text("Cancel", color = InkMuted) }
+            },
+        ) {
+            DatePicker(state = picker)
+        }
+    }
 }
 
 @Composable
@@ -1711,3 +1757,10 @@ private fun SettingLine(
 // InfoBanner moved to ui/components/AiraComponents.kt when the auth
 // screens needed it too — it had outgrown being private to this file.
 
+
+
+/** A date a person would say out loud: "Fri 7 Aug". Unix seconds in. */
+internal fun formatAppointmentDate(epochSeconds: Long): String =
+    java.time.Instant.ofEpochSecond(epochSeconds)
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM"))

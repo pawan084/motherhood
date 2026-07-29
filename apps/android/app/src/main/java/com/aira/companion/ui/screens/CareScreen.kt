@@ -93,7 +93,17 @@ fun CareScreen(
     onRename: (String, String, String) -> Unit = { _, _, _ -> },
     onDelete: (String) -> Unit = {},
 ) {
-    val appointments = care?.appointments.orEmpty()
+    // Upcoming and past, split on a real date rather than guessed from free
+    // text. Before appointments carried one, "Friday" was all the app had and
+    // no amount of parsing turns that into a day without picking a Friday.
+    // Undated appointments count as upcoming: someone who wrote "after the
+    // scan" has not had it yet.
+    val nowSeconds = System.currentTimeMillis() / 1000.0
+    val allAppointments = care?.appointments.orEmpty()
+    val appointments = allAppointments.filter { it.at == null || it.at >= nowSeconds }
+    val pastAppointments = allAppointments
+        .filter { it.at != null && it.at < nowSeconds }
+        .sortedByDescending { it.at }
     val medicines = care?.medicinesDue.orEmpty()
     val reminders = care?.reminders.orEmpty()
     val stillLoading = loading && care == null
@@ -134,6 +144,28 @@ fun CareScreen(
                     onRename = onRename,
                     onDelete = onDelete,
                 )
+            }
+        }
+
+        if (pastAppointments.isNotEmpty()) {
+            CareSection(
+                title = "Past appointments",
+                addLabel = "Add",
+                onAdd = { onOpenTool(AiraTool.Appointment) },
+                empty = "",
+                isEmpty = false,
+                count = "${pastAppointments.size}",
+            ) {
+                pastAppointments.forEach { appt ->
+                    CareRow(
+                        item = appt,
+                        icon = Icons.Outlined.CalendarMonth,
+                        tint = InkMuted,
+                        renameField = "doctor",
+                        onRename = onRename,
+                        onDelete = onDelete,
+                    )
+                }
             }
         }
 

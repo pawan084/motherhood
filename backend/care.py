@@ -160,7 +160,12 @@ def journey(uid: str = Depends(current_user)):
 @router.get("/care")
 def care(uid: str = Depends(current_user)):
     meds = _list_items(uid, "medicine")
-    appts = _list_items(uid, "appointment")
+    # Soonest first among those with a date; undated ones after, since "we
+    # haven't fixed a time yet" belongs below "Tuesday at 10".
+    appts = sorted(
+        _list_items(uid, "appointment"),
+        key=lambda a: (a.get("at") is None, a.get("at") or 0),
+    )
     docs = _list_items(uid, "document")
     return {
         "appointments": appts,
@@ -295,7 +300,19 @@ def mark_taken(item_id: str, uid: str = Depends(current_user)):
 class AppointmentIn(BaseModel):
     doctor: str
     place: str | None = None
+    # Free text, as typed: "Friday", "after the scan", "10:30 with Dr Shah".
+    # Kept because people describe appointments to themselves in their own
+    # words, and throwing that away to force a picker loses information.
     when: str | None = None
+    # The same moment as a number, when the client could offer a picker.
+    # Unix seconds. Optional on purpose: an appointment someone knows only as
+    # "sometime next week" is still worth recording, and refusing to store it
+    # until they commit to a time is how a care app ends up with nothing in it.
+    #
+    # Everything that needs ordering — upcoming vs past, what to remind about —
+    # keys off this. `when` alone could not support any of it: no amount of
+    # parsing turns "Friday" into a date without guessing which Friday.
+    at: float | None = None
     notes: str | None = None
 
 
@@ -372,7 +389,7 @@ def add_symptom(body: SymptomIn, uid: str = Depends(current_user)):
 _EDITABLE_FIELDS = {
     "reminder": {"title", "time", "repeat"},
     "medicine": {"name", "dose", "schedule", "time"},
-    "appointment": {"doctor", "place", "when", "notes"},
+    "appointment": {"doctor", "place", "when", "at", "notes"},
     "document": {"type"},
     "checkin": {"feeling", "sleep_hours", "note"},
     "symptom": {"what", "severity", "started", "pattern"},

@@ -318,12 +318,30 @@ object AiraApi {
         )
     }
 
-    suspend fun addAppointment(ctx: Context, doctor: String, place: String?, whenText: String?) {
+    /**
+     * Book a visit.
+     *
+     * `at` is the moment as a number, and it is what makes an appointment
+     * sortable, splittable into upcoming and past, and eventually remindable.
+     * `whenText` stays alongside it because people describe appointments to
+     * themselves in their own words — "after the scan", "Friday, early" — and a
+     * picker that discards that loses information. Either may be absent: an
+     * appointment known only as "sometime next week" is still worth recording.
+     */
+    suspend fun addAppointment(
+        ctx: Context,
+        doctor: String,
+        place: String?,
+        whenText: String?,
+        at: Long? = null,
+    ) {
         request(
             "POST", "/v1/care/appointments",
-            JSONObject().put("doctor", doctor)
+            JSONObject()
+                .put("doctor", doctor)
                 .put("place", place ?: JSONObject.NULL)
-                .put("when", whenText ?: JSONObject.NULL),
+                .put("when", whenText ?: JSONObject.NULL)
+                .put("at", at ?: JSONObject.NULL),
             ensureToken(ctx),
         )
     }
@@ -822,6 +840,9 @@ data class CareItem(
     val done: Boolean,
     val title: String,
     val subtitle: String,
+    /** Unix seconds, for the kinds that have a real moment — appointments.
+     *  Null where the user never picked one, which is allowed. */
+    val at: Double? = null,
 )
 
 data class CareData(
@@ -922,6 +943,9 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
             o.optDoubleOrNull("sleep_hours")?.let { h ->
                 if (h == h.toInt().toDouble()) "${h.toInt()}h sleep" else "${h}h sleep"
             },
+            // The picked date, ahead of the free-text note, because it is the
+            // part the app can act on.
+            o.optDoubleOrNull("at")?.let { formatCareDate(it) },
             o.optStringOrNull("note"),
             // Documents carry a filename as `name`, so `type` is what tells the
             // list a row is a prescription rather than a scan.
@@ -934,6 +958,7 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 done = o.optBoolean("done", false),
                 title = title,
                 subtitle = subtitle,
+                at = o.optDoubleOrNull("at"),
             ),
         )
     }
@@ -966,3 +991,11 @@ private fun JSONArray?.toStringList(): List<String> {
     for (i in 0 until length()) out.add(optString(i))
     return out
 }
+
+
+/** "Fri 7 Aug" for a care item's date. Shared by the list rows so every screen
+ *  writes a date the same way. */
+internal fun formatCareDate(epochSeconds: Double): String =
+    java.time.Instant.ofEpochSecond(epochSeconds.toLong())
+        .atZone(java.time.ZoneId.systemDefault())
+        .format(java.time.format.DateTimeFormatter.ofPattern("EEE d MMM"))

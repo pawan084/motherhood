@@ -304,7 +304,7 @@ private fun MainExperience(
             ToolActions(
                 saveReminder = { t, time, repeat -> viewModel.saveReminder(context, t, time, repeat) },
                 saveMedicine = { n, d, t -> viewModel.saveMedicine(context, n, d, t) },
-                saveAppointment = { doc, p, w -> viewModel.saveAppointment(context, doc, p, w) },
+                saveAppointment = { doc, p, w, at -> viewModel.saveAppointment(context, doc, p, w, at) },
                 saveCheckIn = { f, s, n -> viewModel.saveCheckIn(context, f, s, n) },
                 saveSymptom = { w, sev, st -> viewModel.saveSymptom(context, w, sev, st) },
                 markMedicineTaken = { viewModel.markMedicineTaken(context, it) },
