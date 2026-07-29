@@ -11,7 +11,9 @@ import type { TodayData, User } from "../aira-api";
 
 export const NAV: { name: Screen; icon: LucideIcon; blurb: string }[] = [
   { name: "Today", icon: House, blurb: "Your one next step" },
-  { name: "Aira", icon: Sparkles, blurb: "Chat, by text or voice" },
+  // Not "by text or voice": spoken conversation isn't wired up in this build,
+  // and the composer's mic is disabled to match.
+  { name: "Aira", icon: Sparkles, blurb: "Chat with Aira" },
   { name: "Journey", icon: BookOpen, blurb: "Where you are now" },
   { name: "Care", icon: BriefcaseMedical, blurb: "Appointments and reminders" },
   { name: "Updates", icon: Bell, blurb: "What needs attention" },
@@ -50,13 +52,14 @@ export function Sidebar({
 
       <p className="side-label">Your care</p>
       <nav className="side-nav" aria-label="Sections">
-        {NAV.map(({ name: n, icon: Icon }) => (
+        {NAV.map(({ name: n, icon: Icon, blurb }) => (
           <button
             key={n}
             className={active === n ? "active" : ""}
             onClick={() => onNavigate(n)}
             disabled={locked && n !== "Aira"}
             aria-current={active === n ? "page" : undefined}
+            title={blurb}
           >
             <Icon size={17} />
             <span>{n}</span>

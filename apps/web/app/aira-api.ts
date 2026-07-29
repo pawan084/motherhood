@@ -130,6 +130,9 @@ export type MemoryItem = {
   source: string; created: number;
 };
 export type ConsentFeature = { key: string; label: string; granted: boolean; locked: boolean };
+/** Voice options must match `prefs.VOICES` on the backend, which 400s anything else. */
+export const VOICES = ["Aira warm", "Aira gentle", "Text only"] as const;
+export type Prefs = { voice: string; spoken_replies: boolean };
 export type ChatHistoryItem = { ts: number; role: string; text: string; safety_level: string };
 export type EmergencyProfile = {
   stage?: string | null; name?: string | null;
@@ -181,6 +184,12 @@ export const AiraAPI = {
   reminders: () => req<{ items: CareItem[] }>("/v1/care/reminders"),
   addReminder: (b: { title: string; time?: string; repeat?: string; private_label?: boolean }) =>
     req<CareItem>("/v1/care/reminders", { method: "POST", body: JSON.stringify(b) }),
+  // Toggleable, unlike a medicine dose: a reminder ticked by mistake has to be
+  // reversible, so this takes the target state rather than being a one-way mark.
+  setReminderDone: (id: string, done: boolean) =>
+    req<{ ok: boolean; done: boolean }>(`/v1/care/reminders/${id}/done`, {
+      method: "POST", body: JSON.stringify({ done }),
+    }),
   medicines: () => req<{ items: CareItem[] }>("/v1/care/medicines"),
   addMedicine: (b: { name: string; dose?: string; schedule?: string; time?: string }) =>
     req<CareItem>("/v1/care/medicines", { method: "POST", body: JSON.stringify(b) }),
@@ -223,6 +232,12 @@ export const AiraAPI = {
   setMemoryApproved: (id: string, approved: boolean) =>
     req<{ ok: boolean }>(`/v1/memory/${id}`, { method: "PATCH", body: JSON.stringify({ approved }) }),
   forgetMemory: (id: string) => req<{ ok: boolean }>(`/v1/memory/${id}`, { method: "DELETE" }),
+
+  // Voice preference. Stored for real, but spoken replies don't exist in this
+  // build — the UI says so rather than implying the setting does something now.
+  prefs: () => req<Prefs>("/v1/prefs"),
+  setPrefs: (p: Partial<Prefs>) =>
+    req<Prefs>("/v1/prefs", { method: "PUT", body: JSON.stringify(p) }),
 
   consent: () => req<{ features: ConsentFeature[] }>("/v1/consent"),
   setConsent: (feature: string, granted: boolean) =>

@@ -19,7 +19,7 @@ function str(v: unknown, fallback = ""): string {
 }
 
 export default function Today({
-  today, care, loading, openTool, onNavigate, onMarkTaken,
+  today, care, loading, openTool, onNavigate, onMarkTaken, onReminderDone,
 }: {
   today: TodayData | null;
   care: CareData | null;
@@ -27,6 +27,7 @@ export default function Today({
   openTool: (t: ToolName) => void;
   onNavigate: (s: "Aira" | "Journey" | "Care") => void;
   onMarkTaken: (id: string) => void;
+  onReminderDone: (id: string, done: boolean) => void;
 }) {
   const weeks = today?.weeks ?? null;
   const journeyLabel = today?.journey ? JOURNEY_LABEL[today.journey] ?? "Exploring" : "Exploring";
@@ -126,7 +127,12 @@ export default function Today({
               <strong>{str(r.title, "Reminder")}</strong>
               <p>{[str(r.time), str(r.repeat)].filter(Boolean).join(" · ") || "No time set"}</p>
             </div>
-            <button disabled>{r.done ? "Done" : "Open"}</button>
+            <button
+              onClick={() => onReminderDone(r.id, !r.done)}
+              aria-pressed={!!r.done}
+            >
+              {r.done ? <><Check size={14} /> Done</> : "Mark done"}
+            </button>
           </div>
         ))}
 

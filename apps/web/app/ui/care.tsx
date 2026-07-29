@@ -15,13 +15,14 @@ function str(v: unknown, fallback = ""): string {
 }
 
 export default function Care({
-  care, emergency, loading, openTool, onMarkTaken,
+  care, emergency, loading, openTool, onMarkTaken, onReminderDone,
 }: {
   care: CareData | null;
   emergency: EmergencyProfile | null;
   loading: boolean;
   openTool: (t: ToolName) => void;
   onMarkTaken: (id: string) => void;
+  onReminderDone: (id: string, done: boolean) => void;
 }) {
   const appts = care?.appointments ?? [];
   const meds = care?.medicines_due ?? [];
@@ -105,7 +106,13 @@ export default function Care({
                     <strong>{str(r.title, "Reminder")}</strong>
                     <small>{[str(r.time), str(r.repeat)].filter(Boolean).join(" · ") || "No time set"}</small>
                   </div>
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>{r.done ? "Done" : "Open"}</span>
+                  <button
+                    className="btn-ghost"
+                    onClick={() => onReminderDone(r.id, !r.done)}
+                    aria-pressed={!!r.done}
+                  >
+                    {r.done ? <><Check size={14} /> Done</> : "Mark done"}
+                  </button>
                 </div>
               ))}
               {!loading && !reminders.length && <p className="empty-row">No reminders yet.</p>}

@@ -105,6 +105,13 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     } catch { /* the row simply stays due */ }
   }, [refresh]);
 
+  const setReminderDone = useCallback(async (id: string, done: boolean) => {
+    try {
+      await AiraAPI.setReminderDone(id, done);
+      await refresh();
+    } catch { /* the row keeps its previous state */ }
+  }, [refresh]);
+
   const openUrgent = (payload: UrgentHelp | null) => {
     setTool(null);
     setUrgent({ open: true, payload });
@@ -200,6 +207,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               openTool={setTool}
               onNavigate={(s) => setScreen(s)}
               onMarkTaken={markTaken}
+              onReminderDone={setReminderDone}
             />
           )}
           {screen === "Aira" && (
@@ -213,7 +221,8 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           {screen === "Journey" && <JourneyScreen journey={journey} loading={!journey} />}
           {screen === "Care" && (
             <Care care={care} emergency={emergency} loading={care === null}
-                  openTool={setTool} onMarkTaken={markTaken} />
+                  openTool={setTool} onMarkTaken={markTaken}
+                  onReminderDone={setReminderDone} />
           )}
           {screen === "Updates" && <Updates updates={updates} loading={care === null} />}
           {screen === "You" && (

@@ -11,6 +11,7 @@
 //     the chosen journey to onboarding rather than dropping everyone on a
 //     generic first step.
 
+import Link from "next/link";
 import {
   ArrowRight, Bell, BookOpen, CalendarDays, Check, ChevronRight, ClipboardCheck,
   FileText, Heart, LockKeyhole, MessageCircle, Mic, Phone, Pill, Send,
@@ -347,8 +348,8 @@ export default function Landing({ enterApp }: { enterApp: () => void }) {
         <div>
           <strong>Trust</strong>
           <a href="#safety">Safety</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
         </div>
         <div>
           <strong>Important</strong>

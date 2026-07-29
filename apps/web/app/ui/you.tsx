@@ -7,9 +7,12 @@
 // context reaches the reply prompt. It is not local UI state pretending to be a
 // setting, which is what it used to be.
 
-import { useState } from "react";
-import { Brain, Download, LockKeyhole, LifeBuoy, Languages, Trash2, Users } from "lucide-react";
-import { AiraAPI, clearSession, downloadJson, type ConsentFeature, type Journey, type User } from "../aira-api";
+import { useEffect, useState } from "react";
+import { Brain, Download, LockKeyhole, LifeBuoy, Trash2, Users } from "lucide-react";
+import {
+  AiraAPI, clearSession, downloadJson, VOICES,
+  type ConsentFeature, type Journey, type Prefs, type User,
+} from "../aira-api";
 import { JOURNEY_LABEL, type ToolName } from "./types";
 
 const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "exploring"];
@@ -31,8 +34,22 @@ export default function You({
   const [busy, setBusy] = useState<"" | "export" | "delete">("");
   const [note, setNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
 
   const personalisation = consent.find((c) => c.key === "personalization");
+
+  useEffect(() => { AiraAPI.prefs().then(setPrefs).catch(() => undefined); }, []);
+
+  const chooseVoice = async (voice: string) => {
+    const previous = prefs;
+    setPrefs((p) => (p ? { ...p, voice } : p));   // optimistic; reverted on failure
+    try {
+      setPrefs(await AiraAPI.setPrefs({ voice }));
+    } catch {
+      setPrefs(previous);
+      setNote("Couldn't save your voice preference.");
+    }
+  };
 
   const saveProfile = async () => {
     setSavingProfile(true);
@@ -155,13 +172,30 @@ export default function You({
         </div>
       )}
 
-      <div className="control-row">
-        <div>
-          <strong>Language &amp; voice</strong>
-          <small>Voice conversation isn&apos;t wired up in this build.</small>
-        </div>
-        <Languages size={19} style={{ color: "var(--muted)" }} />
-      </div>
+      {/* Previously an inert row with a static icon, duplicating the language
+          selector above it. The voice choice is now stored for real — but
+          spoken replies genuinely don't exist yet, so the row says that rather
+          than letting the setting imply a feature the build doesn't have. */}
+      {prefs && (
+        <section className="panel" style={{ marginTop: 18, padding: 24 }}>
+          <div className="section-heading"><h3>Voice</h3></div>
+          <p style={{ margin: "0 0 14px", color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
+            Spoken replies aren&apos;t available in this build. Your choice is
+            saved and will apply as soon as they are — the composer&apos;s mic
+            stays disabled until then.
+          </p>
+          <div className="choice-row">
+            {VOICES.map((v) => (
+              <button
+                key={v}
+                className={prefs.voice === v ? "selected" : ""}
+                onClick={() => chooseVoice(v)}
+                aria-pressed={prefs.voice === v}
+              >{v}</button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {note && <div className="banner" style={{ marginTop: 18 }}>{note}</div>}
 
