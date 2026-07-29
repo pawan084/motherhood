@@ -134,7 +134,14 @@ def today(uid: str = Depends(current_user)):
     return {
         "name": name, "journey": journey,
         "context_line": jc.get("this_week") or "",
-        "weeks": ctx["weeks"],
+        # Take weeks from the journey payload, not raw from care_context.
+        # `journey_content` already refuses to return a pregnancy week for a
+        # non-pregnant journey; /today read the stored number directly and so
+        # ignored that. Someone who moved from pregnant to postpartum — a change
+        # that is often a loss — kept being shown "Week 24" and a 24-week ring
+        # beside postpartum copy, counting the weeks of a pregnancy they had
+        # just told Aira had ended.
+        "weeks": jc.get("weeks"),
         "next_action": action,
         # No `all_clear` here. It was hardcoded True and read by nobody — a field
         # that would have been actively wrong the first time a client trusted it,

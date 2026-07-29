@@ -158,3 +158,48 @@ def test_a_timeline_entry_can_be_corrected_and_removed(client, user):
 
     client.delete(f"/v1/care/items/{iid}", headers=h)
     assert client.get("/v1/care/timeline", headers=h).json()["items"] == []
+
+
+# ── the journey moving on ───────────────────────────────────────────────────
+
+
+def test_changing_journey_away_from_pregnant_stops_counting_weeks(client, user):
+    """Found on a physical device, not in a test.
+
+    Today read `weeks` straight out of care_context while the Journey screen
+    read it through journey_content, which already refuses to hand back a
+    pregnancy week for a non-pregnant journey. So after switching to postpartum
+    the app rendered "Week 24" and a 24-week ring above postpartum copy — still
+    counting the weeks of a pregnancy the user had just told it had ended. That
+    change is frequently a loss, which makes this the worst possible field to
+    get stale.
+    """
+    h = user["headers"]
+    client.post("/v1/onboarding",
+                json={"journey": "pregnant", "language": "English",
+                      "priorities": [], "weeks": 24}, headers=h)
+    assert client.get("/v1/today", headers=h).json()["weeks"] == 24
+
+    client.patch("/account/profile", json={"journey": "postpartum"}, headers=h)
+
+    today = client.get("/v1/today", headers=h).json()
+    assert today["journey"] == "postpartum"
+    assert today["weeks"] is None, "postpartum users must not be shown a pregnancy week"
+    assert "week" not in today["context_line"].lower()
+    assert client.get("/v1/journey", headers=h).json()["weeks"] is None
+
+
+def test_returning_to_pregnant_restores_the_week_that_was_entered(client, user):
+    """Hiding the week is not the same as discarding it. Someone who switches
+    journeys by mistake, or is pregnant again, should not have to re-enter what
+    they already told Aira — so the stored value survives, it just stops being
+    reported while it doesn't apply."""
+    h = user["headers"]
+    client.post("/v1/onboarding",
+                json={"journey": "pregnant", "language": "English",
+                      "priorities": [], "weeks": 24}, headers=h)
+    client.patch("/account/profile", json={"journey": "exploring"}, headers=h)
+    assert client.get("/v1/today", headers=h).json()["weeks"] is None
+
+    client.patch("/account/profile", json={"journey": "pregnant"}, headers=h)
+    assert client.get("/v1/today", headers=h).json()["weeks"] == 24
