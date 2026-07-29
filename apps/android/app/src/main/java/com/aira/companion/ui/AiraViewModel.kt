@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
 import com.aira.companion.data.CareItem
+import com.aira.companion.data.SafetyKeywords
 import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
@@ -1084,7 +1085,7 @@ class AiraViewModel : ViewModel() {
     }
 
     private fun applyOfflineReply(text: String) {
-        if (RED_WORDS.any { text.lowercase().contains(it) }) {
+        if (SafetyKeywords.looksUrgent(text)) {
             _uiState.update {
                 it.copy(sending = false, urgentHelpOpen = true, activeTool = null, toolsOpen = false)
             }
@@ -1119,10 +1120,6 @@ class AiraViewModel : ViewModel() {
 
     private companion object {
         // Local FALLBACK only — the authoritative gate runs server-side in AiraApi.
-        val RED_WORDS = listOf(
-            "bleeding", "chest pain", "cannot breathe", "can't breathe", "severe pain",
-            "fainted", "not moving", "kill myself", "harm my baby", "emergency",
-        )
 
         fun apiJourney(journey: JourneyType?): String = when (journey) {
             JourneyType.Trying -> "trying"

@@ -7,16 +7,14 @@
 // The safety gate runs on the SERVER (`POST /v1/chat/turn`). A red result comes
 // back with `reply: null` and an `urgent_help` payload carrying a real care-team
 // number, and we route straight to the urgent screen without rendering an AI
-// answer. RED_WORDS below is NOT a safety gate — it is the offline fallback used
+// answer. The offline list is NOT a safety gate — it is the fallback used
 // only when the request itself fails, and it errs toward showing urgent help.
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertTriangle, CalendarDays, ChevronRight, ClipboardCheck, Heart, Mic, Pill, Plus, Send, ShieldCheck, Sparkles, Upload, Wind } from "lucide-react";
 import { AiraAPI, type TurnResponse, type UrgentHelp } from "../aira-api";
+import { looksUrgentOffline } from "../safety-keywords";
 import { isToolName, type ToolName } from "./types";
-
-const RED_WORDS = ["bleeding", "chest pain", "cannot breathe", "can't breathe",
-  "severe pain", "fainted", "not moving", "kill myself", "emergency"];
 
 const OFFLINE_URGENT: UrgentHelp = {
   headline: "Please contact your care team now.",
@@ -101,7 +99,7 @@ export default function Chat({
     } catch (err) {
       // The server gate never ran. Fail toward the urgent handoff on anything
       // that looks serious, and say plainly that we're offline otherwise.
-      if (RED_WORDS.some((w) => value.toLowerCase().includes(w))) {
+      if (looksUrgentOffline(value)) {
         onUrgent(OFFLINE_URGENT);
         return;
       }

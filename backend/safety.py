@@ -50,7 +50,7 @@ def worse(a: str, b: str) -> str:
 # the list previously held "can't breathe" and a user typing "i cant breathe"
 # — which is how most people type on a phone — was screened GREEN and handed a
 # normal AI reply.
-_RED_PHRASES = (
+RED_PHRASES = (
     "heavy bleeding", "bleeding heavily", "wont stop bleeding", "cannot stop bleeding",
     "gushing blood", "lot of blood", "so much blood", "severe bleeding",
     "soaking a pad", "soaking pads", "filling a pad", "bahut khoon", "khoon bah raha",
@@ -112,7 +112,7 @@ def _keyword_level(message: str) -> tuple[str, list[str]]:
     experience, it is no screening at all for that message.
     """
     m = _normalise(message)
-    red = [p for p in _RED_PHRASES if p in m]
+    red = [p for p in RED_PHRASES if p in m]
     red += [p.pattern[:28] for p in _RED_PATTERNS if p.search(m)]
     if red:
         return RED, red
