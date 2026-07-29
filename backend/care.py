@@ -51,12 +51,47 @@ def init() -> None:
 
 # ── context helpers ──────────────────────────────────────────────────────────
 
+# A pregnancy is dated to about 40 weeks and is not left to run far past 42.
+# Beyond that this stops asserting a week rather than counting into fiction.
+MAX_TRACKED_WEEK = 42
+
+
+def current_weeks(reported: int | None, reported_at: float | None,
+                  now: float | None = None) -> int | None:
+    """The week the user is in NOW, from the week they told us and when.
+
+    Weeks were stored once at onboarding and read back verbatim for ever, so
+    someone who said "24" stayed at week 24 permanently — the app showing them
+    week-24 content in month nine, and after the birth, and a year later. A
+    pregnancy week is the one number in this app that changes without anyone
+    touching it, and it was the one number treated as fixed.
+
+    Past MAX_TRACKED_WEEK this returns None instead of a bigger number. At that
+    point the pregnancy has almost certainly ended and we were not told; saying
+    nothing is honest, where "week 61" is not.
+    """
+    if reported is None:
+        return None
+    if reported_at is None:
+        return reported
+    now = now if now is not None else time.time()
+    elapsed_weeks = int((now - reported_at) // (7 * 86400))
+    weeks = reported + max(0, elapsed_weeks)
+    return weeks if weeks <= MAX_TRACKED_WEEK else None
+
+
 def _context(uid: str) -> dict:
     init()
-    row = _conn.execute("SELECT weeks, priorities FROM care_context WHERE user_id=?", (uid,)).fetchone()
+    row = _conn.execute(
+        "SELECT weeks, priorities, updated FROM care_context WHERE user_id=?", (uid,)).fetchone()
     if not row:
-        return {"weeks": None, "priorities": []}
-    return {"weeks": row[0], "priorities": json.loads(row[1] or "[]")}
+        return {"weeks": None, "priorities": [], "weeks_reported": None}
+    return {
+        "weeks": current_weeks(row[0], row[2]),
+        "priorities": json.loads(row[1] or "[]"),
+        # What they actually typed, for an editor to prefill with.
+        "weeks_reported": row[0],
+    }
 
 
 def _add_item(uid: str, kind: str, data: dict) -> dict:
@@ -129,6 +164,50 @@ def onboarding(body: OnboardingIn, uid: str = Depends(current_user)):
     return today(uid)
 
 
+class CareContextIn(BaseModel):
+    weeks: int | None = None
+    priorities: list[str] | None = None
+
+
+@router.patch("/care/context")
+def update_care_context(body: CareContextIn, uid: str = Depends(current_user)):
+    """Correct the week, or change what Aira focuses on.
+
+    Both were set once during onboarding and then unreachable. Priorities drive
+    what Today suggests, so someone whose needs changed — and in this app they
+    change by design — was stuck with an answer they gave before they had used
+    it. And a week can be entered wrongly as easily as any other number.
+
+    Setting the week restarts the clock: `updated` becomes now, so the week
+    counts forward from what the user has just told us rather than from the
+    original onboarding date.
+    """
+    init()
+    row = _conn.execute(
+        "SELECT weeks, priorities, updated FROM care_context WHERE user_id=?", (uid,)).fetchone()
+    weeks = row[0] if row else None
+    priorities = json.loads(row[1] or "[]") if row else []
+    updated = row[2] if row else time.time()
+
+    if body.weeks is not None:
+        if not 1 <= body.weeks <= MAX_TRACKED_WEEK:
+            raise HTTPException(
+                status_code=400,
+                detail=f"a pregnancy week is between 1 and {MAX_TRACKED_WEEK}")
+        weeks = body.weeks
+        updated = time.time()
+    if body.priorities is not None:
+        priorities = [str(p)[:60] for p in body.priorities][:5]
+
+    _conn.execute(
+        "INSERT INTO care_context (user_id, weeks, priorities, updated) VALUES (?,?,?,?) "
+        "ON CONFLICT(user_id) DO UPDATE SET weeks=excluded.weeks, "
+        "priorities=excluded.priorities, updated=excluded.updated",
+        (uid, weeks, json.dumps(priorities), updated))
+    _conn.commit()
+    return _context(uid)
+
+
 # ── Today / Journey / Care ───────────────────────────────────────────────────
 
 @router.get("/today")
@@ -150,6 +229,10 @@ def today(uid: str = Depends(current_user)):
         # beside postpartum copy, counting the weeks of a pregnancy they had
         # just told Aira had ended.
         "weeks": jc.get("weeks"),
+        # What the user last typed, so an editor prefills with their own answer
+        # rather than the advanced number — otherwise every save would nudge
+        # the date forward by however long it had been.
+        "weeks_reported": ctx.get("weeks_reported"),
         "next_action": action,
         # No `all_clear` here. It was hardcoded True and read by nobody — a field
         # that would have been actively wrong the first time a client trusted it,

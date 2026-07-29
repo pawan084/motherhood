@@ -112,6 +112,8 @@ data class TodayData(
     val journey: String,
     val contextLine: String,
     val weeks: Int?,
+    /** The week as last reported, before the server advanced it. */
+    val weeksReported: Int? = null,
     val nextAction: TodayNextAction?,
     val priorities: List<String>,
 )

@@ -681,7 +681,14 @@ class AiraViewModel : ViewModel() {
      * moved from trying to conceive to pregnant kept getting content for where
      * they used to be, with deleting their account as the only way out.
      */
-    fun saveProfile(context: Context?, name: String, journey: JourneyType?, language: String) =
+    fun saveProfile(
+        context: Context?,
+        name: String,
+        journey: JourneyType?,
+        language: String,
+        weeks: Int? = null,
+        priorities: List<String>? = null,
+    ) =
         write(context, "Profile saved.", refreshCare = false) { ctx ->
             val user = AiraApi.updateProfile(
                 ctx,
@@ -697,6 +704,11 @@ class AiraViewModel : ViewModel() {
                         j.name.equals(user.journey, ignoreCase = true)
                     } ?: it.journey,
                 )
+            }
+            // Week and priorities live in the care context rather than the
+            // profile, so they are a second call — but one save to the user.
+            if (weeks != null || priorities != null) {
+                AiraApi.updateCareContext(ctx, weeks, priorities)
             }
             // Journey drives what Today and Journey render, so both have to be
             // refetched or the screens keep describing the old stage.

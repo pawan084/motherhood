@@ -138,6 +138,21 @@ object AiraApi {
         return !request("GET", "/health", null, null).optBoolean("llm_configured", false)
     }
 
+    /**
+     * Correct the pregnancy week, or change what Aira focuses on.
+     *
+     * Both were set once during onboarding and then unreachable. Sending the
+     * week also restarts its clock server-side, so it counts forward from what
+     * the user has just said rather than from the day they first onboarded.
+     */
+    suspend fun updateCareContext(ctx: Context, weeks: Int? = null,
+                                  priorities: List<String>? = null) {
+        val body = JSONObject()
+        if (weeks != null) body.put("weeks", weeks)
+        if (priorities != null) body.put("priorities", JSONArray(priorities))
+        request("PATCH", "/v1/care/context", body, ensureToken(ctx))
+    }
+
     suspend fun today(ctx: Context): TodayData {
         val o = request("GET", "/v1/today", null, ensureToken(ctx))
         val na = o.optJSONObject("next_action")
@@ -146,6 +161,7 @@ object AiraApi {
             journey = o.optString("journey"),
             contextLine = o.optString("context_line"),
             weeks = o.optIntOrNull("weeks"),
+            weeksReported = o.optIntOrNull("weeks_reported"),
             nextAction = na?.let {
                 TodayNextAction(
                     tool = it.optString("tool"),

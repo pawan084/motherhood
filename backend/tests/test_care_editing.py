@@ -314,3 +314,74 @@ def test_takingAMedicineThatIsNotYoursIs404(client, user):
     iid = _add_medicine(client, user["headers"])
 
     assert client.post(f"/v1/care/medicines/{iid}/taken", headers=other).status_code == 404
+
+
+# ── a pregnancy week moves on its own ───────────────────────────────────────
+
+
+def test_the_week_advances_with_time(client, user):
+    """The defect this fixes: weeks were stored once at onboarding and read back
+    verbatim for ever, so someone who said "24" was shown week-24 content in
+    month nine, after the birth, and a year later. It is the one number in this
+    app that changes without anyone touching it."""
+    import care
+
+    now = 1_800_000_000.0
+    assert care.current_weeks(24, now, now) == 24
+    assert care.current_weeks(24, now - 7 * 86400, now) == 25
+    assert care.current_weeks(24, now - 3 * 7 * 86400, now) == 27
+
+
+def test_a_week_past_term_stops_being_asserted(client, user):
+    """Rather than counting into fiction. Past 42 the pregnancy has almost
+    certainly ended and nobody told us; saying nothing is honest, "week 61" is
+    not."""
+    import care
+
+    now = 1_800_000_000.0
+    assert care.current_weeks(24, now - 30 * 7 * 86400, now) is None
+
+
+def test_the_week_can_be_corrected_and_restarts_the_clock(client, user):
+    h = user["headers"]
+    client.post("/v1/onboarding",
+                json={"journey": "pregnant", "language": "English",
+                      "priorities": [], "weeks": 24}, headers=h)
+
+    r = client.patch("/v1/care/context", json={"weeks": 30}, headers=h)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["weeks"] == 30
+    assert client.get("/v1/today", headers=h).json()["weeks"] == 30
+
+
+def test_an_impossible_week_is_refused(client, user):
+    assert client.patch("/v1/care/context", json={"weeks": 0},
+                        headers=user["headers"]).status_code == 400
+    assert client.patch("/v1/care/context", json={"weeks": 60},
+                        headers=user["headers"]).status_code == 400
+
+
+def test_priorities_can_be_changed_after_onboarding(client, user):
+    """They drive what Today suggests, and were set once before the user had
+    used the app at all."""
+    h = user["headers"]
+    client.post("/v1/onboarding",
+                json={"journey": "pregnant", "language": "English",
+                      "priorities": ["Feel calmer"], "weeks": 20}, headers=h)
+
+    r = client.patch("/v1/care/context", json={"priorities": ["Plan my care"]}, headers=h)
+
+    assert r.json()["priorities"] == ["Plan my care"]
+    assert client.get("/v1/today", headers=h).json()["priorities"] == ["Plan my care"]
+
+
+def test_changing_priorities_leaves_the_week_alone(client, user):
+    h = user["headers"]
+    client.post("/v1/onboarding",
+                json={"journey": "pregnant", "language": "English",
+                      "priorities": [], "weeks": 22}, headers=h)
+
+    client.patch("/v1/care/context", json={"priorities": ["Feel calmer"]}, headers=h)
+
+    assert client.get("/v1/today", headers=h).json()["weeks"] == 22

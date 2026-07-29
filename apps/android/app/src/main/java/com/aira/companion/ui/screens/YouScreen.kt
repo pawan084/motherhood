@@ -1,6 +1,7 @@
 package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,8 +44,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.aira.companion.data.ConsentFeature
 import com.aira.companion.model.AiraTool
@@ -92,7 +97,16 @@ fun YouScreen(
     onSignIn: () -> Unit = {},
     /** Name, journey and language, as the app currently holds them. */
     journeyType: JourneyType? = null,
-    onSaveProfile: (name: String, journey: JourneyType?, language: String) -> Unit = { _, _, _ -> },
+    onSaveProfile: (
+        name: String,
+        journey: JourneyType?,
+        language: String,
+        weeks: Int?,
+        priorities: List<String>?,
+    ) -> Unit = { _, _, _, _, _ -> },
+    /** What the user last told us, for the editor to prefill. */
+    weeksReported: Int? = null,
+    priorities: List<String> = emptyList(),
     /** Replay the intro. It was shown once on first run — when someone is
      *  least able to absorb it — and then unreachable forever. */
     onReplayTutorial: () -> Unit = {},
@@ -164,8 +178,10 @@ fun YouScreen(
                 initialName = name,
                 initialJourney = journeyType,
                 initialLanguage = language,
-                onSave = { n, j, l ->
-                    onSaveProfile(n, j, l)
+                initialWeeks = weeksReported,
+                initialPriorities = priorities,
+                onSave = { n, j, l, w, p ->
+                    onSaveProfile(n, j, l, w, p)
                     editingProfile = false
                 },
             )
@@ -444,13 +460,17 @@ private fun ProfileEditor(
     initialName: String,
     initialJourney: JourneyType?,
     initialLanguage: String,
-    onSave: (String, JourneyType?, String) -> Unit,
+    initialWeeks: Int?,
+    initialPriorities: List<String>,
+    onSave: (String, JourneyType?, String, Int?, List<String>?) -> Unit,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var journey by remember(initialJourney) { mutableStateOf(initialJourney) }
     var language by remember(initialLanguage) {
         mutableStateOf(initialLanguage.ifBlank { "English" })
     }
+    var weeks by remember(initialWeeks) { mutableStateOf(initialWeeks?.toString().orEmpty()) }
+    val chosen = remember(initialPriorities) { initialPriorities.toMutableStateList() }
 
     AiraCard {
         SectionLabel("What Aira calls you")
@@ -488,10 +508,63 @@ private fun ProfileEditor(
             }
         }
 
+        // The week, which the server advances on its own from whatever was
+        // last reported — so this is a correction, not a weekly chore.
+        if (journey == JourneyType.Pregnant) {
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionLabel("How many weeks")
+            OutlinedTextField(
+                value = weeks,
+                onValueChange = { entry -> weeks = entry.filter { it.isDigit() }.take(2) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("e.g. 24") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                shape = RoundedCornerShape(14.dp),
+            )
+            Text(
+                text = "Aira counts the weeks forward from here, so you only need " +
+                    "to change this if it drifts.",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+
+        // Priorities decide what Today suggests, and were answered once before
+        // the user had used the app at all.
+        Spacer(modifier = Modifier.height(16.dp))
+        SectionLabel("What should Aira focus on")
+        Spacer(modifier = Modifier.height(8.dp))
+        PRIORITY_OPTIONS.forEach { option ->
+            val selected = option in chosen
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        if (selected) chosen.remove(option) else chosen.add(option)
+                    }
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = selected, onCheckedChange = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(option, style = MaterialTheme.typography.bodyMedium, color = Ink)
+            }
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
         PrimaryButton(
             label = "Save profile",
-            onClick = { onSave(name, journey, language) },
+            onClick = {
+                onSave(
+                    name,
+                    journey,
+                    language,
+                    weeks.toIntOrNull()?.takeIf { journey == JourneyType.Pregnant },
+                    chosen.toList(),
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
@@ -502,3 +575,13 @@ private fun ProfileEditor(
         )
     }
 }
+
+
+/** The same options onboarding offers, so a change here is a change to the same
+ *  answer rather than a second, differently-worded question. */
+private val PRIORITY_OPTIONS = listOf(
+    "Understand changes",
+    "Prepare for a visit",
+    "Feel calmer",
+    "Plan my care",
+)
