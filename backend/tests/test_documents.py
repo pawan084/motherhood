@@ -100,3 +100,50 @@ def test_a_missing_file_says_so_rather_than_serving_nothing(client, user):
     os.remove(care._document_path(user["id"], iid))
 
     assert client.get(f"/v1/care/documents/{iid}/file", headers=h).status_code == 410
+
+
+# ── the export that says "everything" ───────────────────────────────────────
+
+
+def test_the_zip_export_contains_the_actual_files(client, user):
+    """The JSON export called itself "everything Aira holds" while the vault's
+    documents existed only on the server. Listing a file in an export is not
+    exporting it."""
+    import zipfile
+
+    h = user["headers"]
+    _upload(client, h, name="scan.pdf", content=b"%PDF-1.4 the real scan")
+
+    r = client.get("/v1/account/export.zip", headers=h)
+
+    assert r.status_code == 200, r.text
+    assert r.headers["content-type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        assert "aira-export.json" in z.namelist()
+        assert "documents/scan.pdf" in z.namelist()
+        assert z.read("documents/scan.pdf") == b"%PDF-1.4 the real scan"
+
+
+def test_two_documents_with_the_same_name_both_survive(client, user):
+    """Someone photographing two pages gets IMG_0001.jpg twice. An archive that
+    silently keeps one of them is a data loss dressed as a download."""
+    import zipfile
+
+    h = user["headers"]
+    _upload(client, h, name="scan.pdf", content=b"first")
+    _upload(client, h, name="scan.pdf", content=b"second")
+
+    r = client.get("/v1/account/export.zip", headers=h)
+
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        docs = [n for n in z.namelist() if n.startswith("documents/")]
+        assert len(docs) == 2, docs
+        assert {z.read(n) for n in docs} == {b"first", b"second"}
+
+
+def test_the_json_export_still_works_for_records(client, user):
+    """Unchanged for callers that only want the records."""
+    r = client.get("/v1/account/export", headers=user["headers"])
+
+    assert r.status_code == 200
+    assert "care" in r.json()["data"]

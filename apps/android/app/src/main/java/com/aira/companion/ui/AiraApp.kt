@@ -163,7 +163,9 @@ private fun MainExperience(
     // The export writes to a location the user picks, so no storage permission
     // and no FileProvider are involved.
     val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json"),
+        // A zip now, not JSON: the export carries the Care Vault's actual files
+        // alongside the records.
+        contract = ActivityResultContracts.CreateDocument("application/zip"),
     ) { uri -> if (uri != null) viewModel.exportAccountTo(context, uri) }
 
     // Notification permission, asked at the moment it means something.
@@ -282,7 +284,7 @@ private fun MainExperience(
                         deleting = state.deleting,
                         onLoadConsent = { viewModel.loadConsent(context) },
                         onSetConsent = { f, g -> viewModel.setConsent(context, f, g) },
-                        onExport = { exportLauncher.launch("aira-data-export.json") },
+                        onExport = { exportLauncher.launch("aira-export.zip") },
                         onDelete = { viewModel.deleteAccount(context) },
                         signedIn = state.signedIn,
                         onSignOut = { viewModel.signOut(context) },

@@ -844,12 +844,11 @@ class AiraViewModel : ViewModel() {
         _uiState.update { it.copy(exporting = true) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val json = AiraApi.exportAccount(context)
-                context.contentResolver.openOutputStream(uri)?.use {
-                    it.write(json.toByteArray())
+                context.contentResolver.openOutputStream(uri)?.use { sink ->
+                    AiraApi.exportAccountTo(context, sink)
                 } ?: throw IllegalStateException("couldn't open that location")
                 _uiState.update { it.copy(exporting = false) }
-                notify("Your data was saved to this device.")
+                notify("Your data and documents were saved to this device.")
             } catch (e: Exception) {
                 _uiState.update { it.copy(exporting = false) }
                 notify("Export failed. ${e.message.orEmpty()}".trim())

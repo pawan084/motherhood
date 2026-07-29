@@ -750,8 +750,34 @@ object AiraApi {
      * both promise you can export or delete "at any time" — a promise only the
      * web client could keep.
      */
-    suspend fun exportAccount(ctx: Context): String =
-        request("GET", "/v1/account/export", null, ensureToken(ctx)).toString(2)
+    /**
+     * Everything, as a zip: the records as JSON plus the actual document files.
+     *
+     * The JSON-only export described itself as "everything Aira holds" while
+     * the Care Vault's scans and prescriptions stayed on the server. Streamed
+     * straight into the destination the user picked, because an account with
+     * twenty scans is exactly the one that shouldn't be assembled in memory.
+     */
+    suspend fun exportAccountTo(ctx: Context, sink: java.io.OutputStream) =
+        withContext(Dispatchers.IO) {
+            val token = ensureToken(ctx)
+            val conn = (URL("$base/v1/account/export.zip").openConnection() as HttpURLConnection)
+                .apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 120000     // a big vault is a slow archive
+                    setRequestProperty("Authorization", "Bearer $token")
+                    if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)
+                }
+            try {
+                if (conn.responseCode !in 200..299) {
+                    throw IllegalStateException("Export failed (${conn.responseCode}).")
+                }
+                conn.inputStream.use { it.copyTo(sink) }
+            } finally {
+                conn.disconnect()
+            }
+        }
 
     /**
      * Irreversible. The confirmation string is required by the server so a leaked

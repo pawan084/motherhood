@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { Brain, Download, LockKeyhole, LifeBuoy, LogIn, LogOut, Siren, Trash2, Users } from "lucide-react";
 import {
-  AiraAPI, clearSession, downloadJson, signOut, VOICES,
+  AiraAPI, clearSession, downloadAccountArchive, signOut, VOICES,
   type ConsentFeature, type Journey, type Prefs, type User,
 } from "../aira-api";
 import { JOURNEY_LABEL, type ToolName } from "./types";
@@ -95,7 +95,7 @@ export default function You({
     setBusy("export");
     setNote("");
     try {
-      downloadJson("aira-data-export.json", await AiraAPI.exportAccount());
+      await downloadAccountArchive();
       setNote("Your data was downloaded to this device.");
     } catch (e) {
       setNote(e instanceof Error ? e.message : "Export failed.");
@@ -265,7 +265,8 @@ export default function You({
       <section className="danger-zone">
         <h4>Your data</h4>
         <p>
-          Export everything Aira holds for you as a JSON file, or erase it. Deletion
+          Download everything Aira holds for you — your records as JSON and your
+          documents as the original files, in one zip. Or erase it. Deletion
           is immediate and cannot be undone — it removes your profile, conversations,
           care items, memory, consent history and safety records.
         </p>

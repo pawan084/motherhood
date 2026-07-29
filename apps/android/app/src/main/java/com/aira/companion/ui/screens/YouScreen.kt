@@ -370,7 +370,8 @@ fun YouScreen(
         Spacer(modifier = Modifier.height(8.dp))
         AiraCard {
             Text(
-                text = "Export everything Aira holds for you as a JSON file, or erase it. " +
+                text = "Download everything Aira holds for you — your records as a " +
+                    "JSON file and your documents as the original files, in one zip. Or erase it. " +
                     "Deletion is immediate and cannot be undone — it removes your profile, " +
                     "conversations, care items, memory, consent history and safety records.",
                 style = MaterialTheme.typography.bodySmall,

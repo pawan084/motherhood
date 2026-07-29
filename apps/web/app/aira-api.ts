@@ -455,6 +455,30 @@ export function clearSession() {
 }
 
 /** Save an object to the user's device as a JSON file. */
+/**
+ * Download everything as a zip: the records plus the Care Vault's actual files.
+ *
+ * The JSON export called itself "everything Aira holds" while the documents —
+ * someone's scans and prescriptions — stayed on the server. Listing a file in
+ * an export is not exporting it.
+ */
+export async function downloadAccountArchive(): Promise<void> {
+  const token = await ensureToken();
+  const res = await fetch(`${BASE}/v1/account/export.zip`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(APP_TOKEN ? { "X-App-Token": APP_TOKEN } : {}),
+    },
+  });
+  if (!res.ok) throw new Error(`Export failed (${res.status})`);
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "aira-export.zip";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function downloadJson(filename: string, data: unknown) {
   const url = URL.createObjectURL(
     new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));

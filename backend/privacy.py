@@ -20,10 +20,15 @@ last means a mid-sequence failure leaves the user able to authenticate and retry
 instead of stranding rows nobody can reach. The counts returned per module make
 a partial deletion visible rather than silent.
 """
+import io
+import json
 import logging
+import os
 import time
+import zipfile
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 import accounts
@@ -63,9 +68,7 @@ _SOURCES = (
 DELETE_CONFIRMATION = "DELETE MY DATA"
 
 
-@router.get("/account/export")
-def export_account(uid: str = Depends(current_user)):
-    """Everything Aira holds for the signed-in user, as one JSON document."""
+def _export_payload(uid: str) -> dict:
     data = {}
     for label, module in _SOURCES:
         try:
@@ -74,6 +77,59 @@ def export_account(uid: str = Depends(current_user)):
             log.warning("export of %s failed for %s: %s", label, uid, e)
             data[label] = {"error": "could not be exported"}
     return {"user_id": uid, "exported_at": time.time(), "data": data}
+
+
+@router.get("/account/export")
+def export_account(uid: str = Depends(current_user)):
+    """Every record Aira holds for the signed-in user, as one JSON document.
+
+    Records only. Uploaded documents are listed here with their metadata; the
+    files themselves come with /account/export.zip, because a scan does not fit
+    in a JSON field in any form a person can open.
+    """
+    return _export_payload(uid)
+
+
+@router.get("/account/export.zip")
+def export_account_zip(uid: str = Depends(current_user)):
+    """Everything, including the files.
+
+    The JSON export described itself as "everything Aira holds" while the Care
+    Vault's actual documents — someone's scans and prescriptions — existed only
+    on the server. Listing a file in an export is not exporting it.
+
+    Streamed rather than assembled in memory: the cap is 20 MB per document and
+    there is no cap on how many someone has, so building the archive in RAM
+    would make the export fail exactly for the users with the most to lose.
+    """
+    payload = _export_payload(uid)
+    documents = payload.get("data", {}).get("care", {}).get("items", {}).get("document", [])
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("aira-export.json", json.dumps(payload, indent=2, default=str))
+        used: set[str] = set()
+        for doc in documents:
+            path = care._document_path(uid, doc.get("id", ""))
+            if not os.path.exists(path):
+                continue
+            # Two scans can share a filename; the archive must not silently keep
+            # only the last one.
+            name = os.path.basename(doc.get("name") or "document")
+            candidate = name
+            n = 2
+            while candidate in used:
+                stem, dot, ext = name.rpartition(".")
+                candidate = f"{stem} ({n}){dot}{ext}" if dot else f"{name} ({n})"
+                n += 1
+            used.add(candidate)
+            archive.write(path, f"documents/{candidate}")
+    buffer.seek(0)
+    return StreamingResponse(
+        buffer,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="aira-export.zip"'},
+    )
 
 
 class DeleteAccountIn(BaseModel):
