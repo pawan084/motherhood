@@ -34,7 +34,6 @@ log = logging.getLogger("aira.accounts")
 
 APP_SESSION_SECRET = os.environ.get("APP_SESSION_SECRET", "dev-app-session-secret")
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
-ANDROID_PACKAGE_NAME = os.environ.get("ANDROID_PACKAGE_NAME", "com.aira.companion").strip()
 _GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 _GOOGLE_CERTS = "https://www.googleapis.com/oauth2/v3/certs"
 
@@ -209,10 +208,13 @@ def _verify_google_id_token(id_token: str) -> dict:
     from jwt import PyJWKClient
     if _jwk_client is None:
         _jwk_client = PyJWKClient(_GOOGLE_CERTS)
-    # Accept both the web/OAuth client id and the Android package name as valid
-    # audiences (Android ID tokens carry the app's client id; the package name
-    # is checked defensively where configured).
-    audiences = [a for a in (GOOGLE_CLIENT_ID, ANDROID_PACKAGE_NAME) if a]
+    # ONLY the configured OAuth client id. The Android package name used to be
+    # accepted here too, which was a misunderstanding: Google puts a client id
+    # in `aud`, never a package name, so no real token would ever carry it —
+    # it simply widened what we would accept for nothing. Android should send a
+    # token minted for this same (web) client id, which Google's own guidance
+    # calls the server client id.
+    audiences = [GOOGLE_CLIENT_ID]
     try:
         signing_key = _jwk_client.get_signing_key_from_jwt(id_token)
         claims = jwt.decode(id_token, signing_key.key, algorithms=["RS256"],
@@ -253,7 +255,13 @@ def account_google(body: GoogleIn):
     names an existing anonymous user, its onboarding/care data is carried over."""
     claims = _verify_google_id_token(body.id_token)
     sub = claims.get("sub")
-    email = (claims.get("email") or "").lower() or None
+    # Only keep an email Google says it verified. Identity is keyed on `sub`, so
+    # an unverified address is not an account-takeover risk — but the admin
+    # console looks users up by email, and an address the account holder may not
+    # own would put support in front of the wrong person's record. Signing in
+    # still works; the account simply carries no email until one is verified.
+    email = ((claims.get("email") or "").lower() or None
+             if claims.get("email_verified") else None)
     name = claims.get("name") or ""
     init()
     row = _conn.execute("SELECT id FROM users WHERE google_sub=?", (sub,)).fetchone()

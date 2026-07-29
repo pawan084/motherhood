@@ -94,8 +94,14 @@ to boot without `APP_SHARED_SECRET`, and every route — including
 `/device/register` — 401s before identity is checked when `X-App-Token` is
 missing. A build without it fails at first launch, not at build time.
 
-Configure `GOOGLE_CLIENT_ID` / `ANDROID_PACKAGE_NAME` on the backend for Google
-Sign-In. Note the app uses `ACTION_DIAL` (no `CALL_PHONE` permission needed).
+Configure `GOOGLE_CLIENT_ID` on the backend for Google Sign-In — one client id,
+which is the only accepted `aud`. Android must send a token minted for that same
+(web) client id, which Google's guidance calls the server client id; a token
+minted for an Android-type client will be rejected. The web app needs the same
+value as `VITE_GOOGLE_CLIENT_ID`, or its Sign in dialog says it isn't
+configured rather than offering a button that can only 503.
+
+Note the app uses `ACTION_DIAL` (no `CALL_PHONE` permission needed).
 
 > **Cleartext:** release builds block plain HTTP entirely (Android's default
 > since targetSdk 28), so the production URL must be `https://`. Debug builds
