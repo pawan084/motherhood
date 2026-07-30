@@ -150,62 +150,16 @@ fun AiraChatScreen(
                 }
             }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = LilacMist),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Lilac),
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .background(Plum, RoundedCornerShape(13.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CalendarMonth,
-                                    contentDescription = null,
-                                    tint = Paper,
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(11.dp))
-                            Column {
-                                // Two stacked labels — "NEXT BEST ACTION" and
-                                // "Based on your context" — sat above a title
-                                // that already says what the card offers. Both
-                                // described the card rather than its subject.
-                                Text(
-                                    text = "Suggested for you",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Plum,
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Prepare for your visit",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Ink,
-                        )
-                        Text(
-                            text = "Questions worth asking, prepared from what you've told Aira.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = InkMuted,
-                        )
-                        Spacer(modifier = Modifier.height(15.dp))
-                        PrimaryButton(
-                            label = "Prepare questions",
-                            onClick = { onOpenTool(AiraTool.Appointment) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
-            }
+            // The chat used to carry its own "Suggested for you" card, naming
+            // the same action Today proposes — "Prepare for your visit" here,
+            // "Prepare for your next appointment" there, and a third wording on
+            // the server. Two surfaces proposing, disagreeing about the name, and
+            // neither one being the place Aira tells you what matters.
+            //
+            // Today proposes; this screen is where you act. The quick prompts
+            // below stay, because they are inputs to a conversation rather than
+            // a second dashboard — a blank composer is the worst discoverability
+            // in the app.
 
             item {
                 Row(

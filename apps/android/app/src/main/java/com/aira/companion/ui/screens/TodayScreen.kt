@@ -383,51 +383,29 @@ fun TodayScreen(
         }
 
         val sections = journey?.sections.orEmpty()
+        // One row, not four cards.
+        //
+        // Today had eighteen tappable things on it while claiming to offer "one
+        // clear next step instead of a feed". Four browse cards competing with
+        // the action above them is a feed. Reading is a thing people choose to
+        // do, not the thing Today is for, so it gets one door and Aira can
+        // still raise a topic in conversation when it is relevant.
         if (sections.isNotEmpty()) {
             Spacer(modifier = Modifier.height(22.dp))
-            SectionLabel("Read about")
-            Spacer(modifier = Modifier.height(9.dp))
-            sections.forEach { section ->
-                TodayReadRow(
-                    title = section.title,
-                    body = section.text,
-                    onClick = { onOpenSection(section) },
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-            }
             TodayReadRow(
-                title = "Short guided videos",
-                body = "Picked for where you are, and saveable for later.",
+                title = "Read and watch",
+                body = "${sections.size} topics for where you are, and short guided videos.",
                 onClick = onOpenLearn,
             )
         }
 
-        Spacer(modifier = Modifier.height(26.dp))
-        SectionLabel("Add something")
-        Spacer(modifier = Modifier.height(10.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            QuickAdd(
-                icon = Icons.Outlined.FavoriteBorder,
-                label = "Check in",
-                onClick = { onOpenTool(AiraTool.CheckIn) },
-                modifier = Modifier.weight(1f),
-            )
-            QuickAdd(
-                icon = Icons.Outlined.AccessTime,
-                label = "Reminder",
-                onClick = { onOpenTool(AiraTool.Reminder) },
-                modifier = Modifier.weight(1f),
-            )
-            QuickAdd(
-                icon = Icons.Outlined.TrackChanges,
-                label = "Symptom",
-                onClick = { onOpenTool(AiraTool.Symptom) },
-                modifier = Modifier.weight(1f),
-            )
-        }
+        // "Add something" moved off Today.
+        //
+        // Check in / Reminder / Symptom were three more CTAs on the screen that
+        // is supposed to propose one thing — and they duplicate the chat's own
+        // chips, which sit next to the composer where somebody is already
+        // typing. Care keeps an Add on every section, which is where records
+        // are kept and where adding one belongs.
 
         Spacer(modifier = Modifier.height(18.dp))
 
