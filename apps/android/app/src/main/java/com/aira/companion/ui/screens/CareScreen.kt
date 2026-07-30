@@ -45,6 +45,7 @@ import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.EditableRow
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
+import com.aira.companion.ui.theme.Amber
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -508,6 +509,20 @@ private fun CareRow(
                     item.subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
+                )
+            }
+            // Written with no signal and not yet sent. Said plainly, because a
+            // list that mixes sent and unsent items without distinguishing them
+            // lets someone believe their care team can already see this.
+            if (item.pending) {
+                Text(
+                    "Waiting to send",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Amber,
+                    modifier = Modifier.semantics {
+                        contentDescription = "${item.title} is saved on this phone " +
+                            "and waiting to send"
+                    },
                 )
             }
         }

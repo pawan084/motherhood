@@ -375,26 +375,24 @@ object AiraApi {
         )
     }
 
-    suspend fun addReminder(ctx: Context, title: String, time: String?, repeat: String?) {
-        request(
-            "POST", "/v1/care/reminders",
+    suspend fun addReminder(ctx: Context, title: String, time: String?,
+                            repeat: String?): CreateOutcome =
+        createCare(
+            ctx, "/v1/care/reminders",
             JSONObject().put("title", title)
                 .put("time", time ?: JSONObject.NULL)
                 .put("repeat", repeat ?: "Daily"),
-            ensureToken(ctx),
         )
-    }
 
-    suspend fun addMedicine(ctx: Context, name: String, dose: String?, time: String?) {
-        request(
-            "POST", "/v1/care/medicines",
+    suspend fun addMedicine(ctx: Context, name: String, dose: String?,
+                            time: String?): CreateOutcome =
+        createCare(
+            ctx, "/v1/care/medicines",
             JSONObject().put("name", name)
                 .put("dose", dose ?: JSONObject.NULL)
                 .put("time", time ?: JSONObject.NULL)
                 .put("schedule", "Daily"),
-            ensureToken(ctx),
         )
-    }
 
     suspend fun markMedicineTaken(ctx: Context, id: String) {
         request("POST", "/v1/care/medicines/$id/taken", null, ensureToken(ctx))
@@ -428,37 +426,33 @@ object AiraApi {
         place: String?,
         whenText: String?,
         at: Long? = null,
-    ) {
-        request(
-            "POST", "/v1/care/appointments",
+    ): CreateOutcome =
+        createCare(
+            ctx, "/v1/care/appointments",
             JSONObject()
                 .put("doctor", doctor)
                 .put("place", place ?: JSONObject.NULL)
                 .put("when", whenText ?: JSONObject.NULL)
                 .put("at", at ?: JSONObject.NULL),
-            ensureToken(ctx),
         )
-    }
 
-    suspend fun addCheckIn(ctx: Context, feeling: String?, sleepHours: Double?, note: String?) {
-        request(
-            "POST", "/v1/care/checkin",
+    suspend fun addCheckIn(ctx: Context, feeling: String?, sleepHours: Double?,
+                           note: String?): CreateOutcome =
+        createCare(
+            ctx, "/v1/care/checkin",
             JSONObject().put("feeling", feeling ?: JSONObject.NULL)
                 .put("sleep_hours", sleepHours ?: JSONObject.NULL)
                 .put("note", note ?: JSONObject.NULL),
-            ensureToken(ctx),
         )
-    }
 
-    suspend fun addSymptom(ctx: Context, what: String, severity: String?, started: String?) {
-        request(
-            "POST", "/v1/care/symptom",
+    suspend fun addSymptom(ctx: Context, what: String, severity: String?,
+                           started: String?): CreateOutcome =
+        createCare(
+            ctx, "/v1/care/symptom",
             JSONObject().put("what", what)
                 .put("severity", severity ?: JSONObject.NULL)
                 .put("started", started ?: JSONObject.NULL),
-            ensureToken(ctx),
         )
-    }
 
     /**
      * Download a stored document to a cache file and return it.
@@ -888,6 +882,78 @@ object AiraApi {
         // server had already erased — and "delete removes everything" is a
         // promise the screen makes in those words.
         AiraCache.clearAll(ctx)
+        PendingWrites.clearAll(ctx)
+    }
+
+    // ── creating care items, with or without a connection ────────────────────
+
+    /** Whether a create reached the server, or is being held until it can. */
+    enum class CreateOutcome { SENT, QUEUED }
+
+    /**
+     * Send a create, or keep it until there is a connection.
+     *
+     * Queued BEFORE the attempt, deliberately. If the process dies mid-request
+     * the note survives; the alternative order loses what someone typed in the
+     * exact circumstances this exists for. The cost is that a successful send
+     * has to remove it again, which is cheap and cannot go wrong quietly.
+     *
+     * The client id is generated once, when the user pressed Save, and reused
+     * on every retry — so the request that reached the server and lost its reply
+     * is recognised as the same one rather than creating a second item.
+     */
+    private suspend fun createCare(ctx: Context, path: String, body: JSONObject): CreateOutcome {
+        val token = cachedToken(ctx)
+        val uid = AiraCache.userKey(token)
+        if (token == null || uid == null) {
+            // No session yet. Registering needs the network anyway, so there is
+            // nothing useful to queue against — fail as before.
+            request("POST", path, body, ensureToken(ctx))
+            return CreateOutcome.SENT
+        }
+        val clientId = PendingWrites.add(ctx, uid, path, body)
+        return try {
+            request("POST", path, JSONObject(body.toString()).put("client_id", clientId), token)
+            PendingWrites.remove(ctx, uid, clientId)
+            CreateOutcome.SENT
+        } catch (e: AiraApiException) {
+            // The server answered and refused it. Retrying the same body will be
+            // refused again, so it is dropped rather than left to fail forever.
+            PendingWrites.remove(ctx, uid, clientId)
+            throw e
+        } catch (_: Exception) {
+            // No answer at all — keep it and tell the caller it is waiting.
+            CreateOutcome.QUEUED
+        }
+    }
+
+    /**
+     * Try to send everything waiting. Returns how many went.
+     *
+     * Stops at the first one that cannot be sent rather than skipping past it,
+     * so the queue keeps the order things were written in — a check-in and the
+     * symptom logged after it should not swap places on their way to the server.
+     */
+    /** The account queued writes belong to, for the UI to read them back. */
+    fun pendingUserKey(ctx: Context): String? = AiraCache.userKey(cachedToken(ctx))
+
+    suspend fun flushPending(ctx: Context): Int {
+        val token = cachedToken(ctx) ?: return 0
+        val uid = AiraCache.userKey(token) ?: return 0
+        var sent = 0
+        for (p in PendingWrites.all(ctx, uid)) {
+            try {
+                request("POST", p.path,
+                    JSONObject(p.body.toString()).put("client_id", p.clientId), token)
+                PendingWrites.remove(ctx, uid, p.clientId)
+                sent++
+            } catch (_: AiraApiException) {
+                PendingWrites.remove(ctx, uid, p.clientId)
+            } catch (_: Exception) {
+                break
+            }
+        }
+        return sent
     }
 
     // ── cached reads ──────────────────────────────────────────────────────────
@@ -1062,7 +1128,48 @@ data class CareItem(
     val repeat: String? = null,
     /** Documents: what to hand a viewer when opening the file. */
     val contentType: String? = null,
+    /** Written with no signal and not yet sent. Shown on the row, because a
+     *  list that mixes saved and unsent items without saying which is which
+     *  invites someone to believe their care team can already see it. */
+    val pending: Boolean = false,
 )
+
+/** Rows created locally and still queued, so a re-merge does not double them. */
+fun List<CareItem>.dropPending(): List<CareItem> = filterNot { it.pending }
+
+/** A queued create, shaped like the row it will become. Titles match what the
+ *  server would build from the same body, so the item does not visibly change
+ *  when the real one replaces it. */
+fun PendingWrites.Pending.toCareItem(): CareItem {
+    val b = body
+    val title = when (kind) {
+        "reminder" -> b.optString("title")
+        "medicine" -> b.optString("name")
+        "appointment" -> b.optString("doctor")
+        "symptom" -> b.optString("what")
+        else -> b.optString("feeling").ifBlank { "Check-in" }
+    }
+    val subtitle = when (kind) {
+        "reminder" -> listOfNotNull(b.optStringOrNull("time"), b.optStringOrNull("repeat"))
+            .joinToString(" · ")
+        "medicine" -> listOfNotNull(b.optStringOrNull("dose"), b.optStringOrNull("time"))
+            .joinToString(" · ")
+        "appointment" -> listOfNotNull(b.optStringOrNull("place"), b.optStringOrNull("when"))
+            .joinToString(" · ")
+        "symptom" -> b.optStringOrNull("severity").orEmpty()
+        else -> b.optStringOrNull("note").orEmpty()
+    }
+    return CareItem(
+        id = "pending_" + clientId,
+        kind = kind,
+        done = false,
+        title = title,
+        subtitle = subtitle,
+        time = b.optStringOrNull("time"),
+        repeat = b.optStringOrNull("repeat"),
+        pending = true,
+    )
+}
 
 data class CareData(
     val appointments: List<CareItem> = emptyList(),

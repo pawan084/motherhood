@@ -6,6 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aira.companion.data.AiraApi
 import com.aira.companion.data.CareItem
+import com.aira.companion.data.CareData
+import com.aira.companion.data.PendingWrites
+import com.aira.companion.data.dropPending
+import com.aira.companion.data.toCareItem
 import com.aira.companion.data.SafetyKeywords
 import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
@@ -514,6 +518,7 @@ class AiraViewModel : ViewModel() {
                 careLoading = false,
             )
         }
+        mergePending(context)
     }
 
     /** Retry whatever the current screen needs. */
@@ -599,11 +604,20 @@ class AiraViewModel : ViewModel() {
             showCachedIfEmpty(context)
             _uiState.update { it.copy(careLoading = it.careData == null) }
             try {
+                // A successful read proves there is a connection, which is
+                // the only signal this app has that queued writes can go. No
+                // connectivity listener, no polling — the moment we know, we
+                // send, and if anything went the list is re-read so the server's
+                // version replaces the local one.
+                if (AiraApi.flushPending(context) > 0) {
+                    _uiState.update { it.copy(careData = AiraApi.care(context)) }
+                }
                 val data = AiraApi.care(context)
                 _uiState.update {
                     it.copy(careData = data, careLoading = false, loadFailed = false,
                             showingCached = false, cachedAt = null)
                 }
+                mergePending(context)
                 // The server's list is the source of truth for what should
                 // fire, so scheduling follows every load rather than only
                 // creation — a reminder added on the web arrives here too, and
@@ -627,6 +641,63 @@ class AiraViewModel : ViewModel() {
     // reminders, medicines, appointments, check-ins and symptom logs were all
     // discarded the moment the sheet closed. Each action below persists, then
     // refreshes Care so the new row is visible immediately.
+
+    /**
+     * A create, which may be sent now or held until there is a connection.
+     *
+     * Separate from [write] because the message has to differ. Telling someone
+     * "Reminder saved. Aira will notify you." when the request never left the
+     * phone is the class of lie this project keeps finding and removing — the
+     * screen would be claiming a notification that nothing has been scheduled
+     * to send.
+     */
+    private fun writeCreate(
+        context: Context?,
+        sent: String,
+        queued: String,
+        block: suspend (Context) -> AiraApi.CreateOutcome,
+    ) {
+        if (context == null) {
+            notify("Not saved — Aira isn't connected right now.")
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val outcome = block(context)
+                notify(if (outcome == AiraApi.CreateOutcome.SENT) sent else queued)
+                // Queued items are shown from the queue itself, so the list is
+                // right either way.
+                if (outcome == AiraApi.CreateOutcome.SENT) loadCare(context) else mergePending(context)
+            } catch (e: Exception) {
+                notify(saveFailureMessage(e))
+            }
+        }
+    }
+
+    /**
+     * Put anything still waiting to be sent into the lists on screen.
+     *
+     * Without this a reminder added with no signal simply vanishes: it is safely
+     * on disk and will reach the server later, but the person who typed it sees
+     * an unchanged screen and reasonably concludes it did not save. Marked
+     * [pending] so the row can say so rather than pretending it is synced.
+     */
+    private fun mergePending(context: Context) {
+        val queued = PendingWrites.all(context, AiraApi.pendingUserKey(context))
+        val care = _uiState.value.careData ?: CareData()
+        fun items(kind: String) = queued.filter { it.kind == kind }.map { it.toCareItem() }
+        _uiState.update {
+            it.copy(
+                careData = care.copy(
+                    reminders = care.reminders.dropPending() + items("reminder"),
+                    medicines = care.medicines.dropPending() + items("medicine"),
+                    appointments = care.appointments.dropPending() + items("appointment"),
+                ),
+                timeline = it.timeline.dropPending() +
+                    items("checkin") + items("symptom"),
+            )
+        }
+    }
 
     private fun write(
         context: Context?,
@@ -687,7 +758,7 @@ class AiraViewModel : ViewModel() {
     }
 
     fun saveReminder(context: Context?, title: String, time: String, repeat: String) =
-        write(
+        writeCreate(
             context,
             // Says whether it will actually arrive. Notifications can be off at
             // the OS level, and a "Reminder saved." that quietly never fires is
@@ -697,10 +768,15 @@ class AiraViewModel : ViewModel() {
             } else {
                 "Reminder saved. Turn on notifications to be reminded."
             },
+            queued = "Saved on this phone. Aira will send it — and start " +
+                "reminding you — once you're back online.",
         ) { AiraApi.addReminder(it, title, time, repeat) }
 
     fun saveMedicine(context: Context?, name: String, dose: String, time: String) =
-        write(context, "Medicine added.") { AiraApi.addMedicine(it, name, dose, time) }
+        writeCreate(
+            context, "Medicine added.",
+            "Saved on this phone. Aira will add it once you're back online.",
+        ) { AiraApi.addMedicine(it, name, dose, time) }
 
     fun markMedicineTaken(context: Context?, id: String) =
         write(context, "Marked as taken.") { AiraApi.markMedicineTaken(it, id) }
@@ -1013,10 +1089,16 @@ class AiraViewModel : ViewModel() {
     }
 
     fun saveCheckIn(context: Context?, feeling: String, sleepHours: Double, note: String) =
-        write(context, "Check-in saved.") { AiraApi.addCheckIn(it, feeling, sleepHours, note) }
+        writeCreate(
+            context, "Check-in saved.",
+            "Saved on this phone. Aira will send it once you're back online.",
+        ) { AiraApi.addCheckIn(it, feeling, sleepHours, note) }
 
     fun saveSymptom(context: Context?, what: String, severity: String, started: String) =
-        write(context, "Added to your timeline.") { AiraApi.addSymptom(it, what, severity, started) }
+        writeCreate(
+            context, "Added to your timeline.",
+            "Saved on this phone. Aira will send it once you're back online.",
+        ) { AiraApi.addSymptom(it, what, severity, started) }
 
     fun saveEmergencyProfile(context: Context?, fields: Map<String, String>) =
         write(context, "Emergency profile saved.", refreshCare = false) {
