@@ -60,6 +60,7 @@ import com.aira.companion.ui.components.rememberAiraHaptics
 import com.aira.companion.ui.screens.AiraChatScreen
 import com.aira.companion.ui.screens.AuthScreen
 import com.aira.companion.ui.screens.CareScreen
+import com.aira.companion.ui.screens.DocumentViewer
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
 import com.aira.companion.ui.screens.JourneySectionSheet
@@ -527,6 +528,20 @@ private fun MainExperience(
                 partnerShared = state.partnerShared,
                 uploading = state.uploadingDocument,
                 editingReminder = state.editingReminder,
+            )
+        }
+
+        // Reading a document takes the whole screen, above the tabs. It is a
+        // scan of somebody's own record; sharing the screen with a nav bar
+        // invites a stray tap out of it.
+        state.openDocument?.let { doc ->
+            BackHandler(enabled = true) { viewModel.closeDocument() }
+            DocumentViewer(
+                file = java.io.File(doc.path),
+                title = doc.title,
+                contentType = doc.contentType,
+                onClose = viewModel::closeDocument,
+                onOpenExternally = { viewModel.openDocumentExternally(context) },
             )
         }
 

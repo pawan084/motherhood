@@ -308,6 +308,13 @@ data class AiraUiState(
     // chat header claimed "Safety checked" unconditionally, which is a promise
     // about a safety system rather than decoration.
     val screeningDegraded: Boolean = false,
+    /** A document being read inside the app. Null when none is open.
+     *
+     *  Opening one used to fire an ACTION_VIEW intent, which hands the file to
+     *  another app — past the lock, past FLAG_SECURE, and into whatever cache
+     *  that app keeps. It is rendered here now, and handing it over is a named
+     *  action somebody chooses. */
+    val openDocument: OpenDocument? = null,
     val snackbarMessage: String? = null,
     /** Set when the snackbar carries an action, e.g. "Undo" after a delete. */
     val snackbarAction: String? = null,
@@ -456,3 +463,11 @@ fun onboardingPromptsFor(journey: JourneyType?): List<OnboardingPrompt> =
         // that don't exist and one that isn't recorded is worse than not
         // asking. Chat is the only mode, so there is nothing to choose yet.
     }
+
+/** A downloaded document held open for reading. The file lives in the app's own
+ *  cache directory; nothing else has been granted access to it. */
+data class OpenDocument(
+    val path: String,
+    val title: String,
+    val contentType: String?,
+)

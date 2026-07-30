@@ -22,6 +22,7 @@ import com.aira.companion.model.ChatMessage
 import com.aira.companion.model.JourneySection
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
+import com.aira.companion.model.OpenDocument
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.OnboardingAnswer
 import com.aira.companion.model.OnboardingField
@@ -1009,6 +1010,36 @@ class AiraViewModel : ViewModel() {
         }
     }
 
+    fun closeDocument() {
+        _uiState.update { it.copy(openDocument = null) }
+    }
+
+    /**
+     * Hand the open document to another app, because they asked.
+     *
+     * Still a one-shot read grant on a FileProvider uri — the same as before —
+     * but now it is a decision somebody makes with the file already in front of
+     * them, rather than the only way to see their own scan.
+     */
+    fun openDocumentExternally(context: Context?) {
+        val doc = _uiState.value.openDocument ?: return
+        if (context == null) return
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, "${context.packageName}.files", java.io.File(doc.path),
+            )
+            context.startActivity(
+                android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, doc.contentType ?: "*/*")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (_: android.content.ActivityNotFoundException) {
+            notify("No app on this phone can open that file.")
+        }
+    }
+
     /** Check-ins and symptom logs — read back for the first time. */
     fun loadTimeline(context: Context?) {
         if (context == null) return
@@ -1049,17 +1080,18 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val file = AiraApi.downloadDocument(context, item.id, item.title)
-                val uri = androidx.core.content.FileProvider.getUriForFile(
-                    context, "${context.packageName}.files", file,
-                )
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, item.contentType ?: "*/*")
-                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                // Held for the in-app viewer rather than thrown at whatever app
+                // claims the type. Nothing outside this process has been given
+                // access to it at this point.
+                _uiState.update {
+                    it.copy(
+                        openDocument = OpenDocument(
+                            path = file.absolutePath,
+                            title = item.title,
+                            contentType = item.contentType,
+                        ),
+                    )
                 }
-                context.startActivity(intent)
-            } catch (e: android.content.ActivityNotFoundException) {
-                notify("No app on this phone can open that file.")
             } catch (e: Exception) {
                 notify(e.message ?: "Couldn't open that document.")
             }
