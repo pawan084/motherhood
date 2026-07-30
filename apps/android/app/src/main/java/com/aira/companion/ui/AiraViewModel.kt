@@ -41,12 +41,44 @@ import kotlinx.coroutines.launch
  * so it stays a plain, dependency-free [ViewModel] that unit tests construct with
  * no arguments.
  */
-class AiraViewModel : ViewModel() {
+class AiraViewModel(
+    /**
+     * Survives process death, which is not the same as surviving rotation.
+     *
+     * Android kills backgrounded apps under memory pressure and then restores
+     * the task as though it had been there all along. Nothing here was saved, so
+     * a half-typed message — the one somebody was working up to asking — came
+     * back as an empty box, and they landed on Today instead of where they were.
+     * A ViewModel alone does not cover this; it dies with the process.
+     *
+     * Defaulted so the 23 tests that construct this with no arguments still can.
+     * A fix for losing work should not start by breaking the suite that guards
+     * the rest of it.
+     */
+    private val saved: androidx.lifecycle.SavedStateHandle = androidx.lifecycle.SavedStateHandle(),
+) : ViewModel() {
+
     /** How long a removed row can be brought back. Long enough to notice the
      *  snackbar and react, short enough that the delete is not left hanging. */
     private val UNDO_WINDOW_MS = 5_000L
 
     private val _uiState = MutableStateFlow(AiraUiState())
+
+    init {
+        // Restored through pendingDestination rather than written straight into
+        // the state: restoreSession runs a moment later and sets Today for every
+        // onboarded user, so anything set here directly would be overwritten —
+        // the same trap the notification deep link fell into.
+        saved.get<String>(KEY_DESTINATION)?.let { name ->
+            runCatching { MainDestination.valueOf(name) }.getOrNull()?.let {
+                pendingDestination = it
+            }
+        }
+        saved.get<String>(KEY_DRAFT)?.takeIf { it.isNotBlank() }?.let { draft ->
+            _uiState.update { it.copy(chatDraft = draft) }
+        }
+    }
+
     val uiState: StateFlow<AiraUiState> = _uiState.asStateFlow()
 
     /**
@@ -431,6 +463,7 @@ class AiraViewModel : ViewModel() {
 
     fun selectDestination(destination: MainDestination) {
         _uiState.update { it.copy(destination = destination, toolsOpen = false) }
+        saved[KEY_DESTINATION] = destination.name
     }
 
     /** Load the educational video library (best-effort; keeps last data on failure). */
@@ -1468,12 +1501,16 @@ class AiraViewModel : ViewModel() {
 
     fun updateDraft(value: String) {
         _uiState.update { it.copy(chatDraft = value) }
+        saved[KEY_DRAFT] = value
     }
 
     fun sendMessage(context: Context? = null) {
         val clean = _uiState.value.chatDraft.trim()
         if (clean.isEmpty()) return
         _uiState.update { it.copy(chatDraft = "") }
+        // Cleared here too, or a sent message reappears in the box after a
+        // process death — which reads as "it didn't send".
+        saved[KEY_DRAFT] = ""
         dispatch(clean, context)
     }
 
@@ -1598,6 +1635,11 @@ class AiraViewModel : ViewModel() {
     }
 
     private companion object {
+        /** Keys for the values that must outlive the process — see the
+         *  constructor. */
+        const val KEY_DRAFT = "chat_draft"
+        const val KEY_DESTINATION = "destination"
+
         // Local FALLBACK only — the authoritative gate runs server-side in AiraApi.
 
         fun apiJourney(journey: JourneyType?): String = when (journey) {
