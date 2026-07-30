@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.CloudUpload
+import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.EditNote
@@ -97,6 +98,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -309,6 +311,24 @@ fun DynamicToolSheet(
             contract = ActivityResultContracts.OpenDocument(),
         ) { uri -> if (uri != null) pickedDocument = uri }
 
+    // Photographing a report, which is how most of them arrive.
+    //
+    // The card has said "Choose or scan a document" all along and there was no
+    // scan — only a file picker, which cannot photograph the piece of paper a
+    // clinic just handed you. Getting it in meant leaving Aira, opening the
+    // camera, coming back and hunting for the file.
+    //
+    // The capture is written into the same cache/documents directory the
+    // FileProvider already scopes, so nothing widens what this app can hand
+    // out. No CAMERA permission is declared, and none is needed: the system
+    // camera takes the picture and returns it: Aira never opens the lens.
+    val context = LocalContext.current
+    var cameraTarget by remember(tool) { mutableStateOf<Uri?>(null) }
+    val cameraLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.TakePicture(),
+        ) { saved -> if (saved) pickedDocument = cameraTarget else cameraTarget = null }
+
     // The self/partner photo pickers that used to live here are gone with the
     // future-baby story's picker UI — see CompanionTool.
 
@@ -355,6 +375,15 @@ fun DynamicToolSheet(
                             documentLauncher.launch(
                                 arrayOf("application/pdf", "image/jpeg", "image/png"),
                             )
+                        },
+                        onPhotograph = {
+                            val dir = java.io.File(context.cacheDir, "documents").apply { mkdirs() }
+                            val file = java.io.File(dir, "photo-${System.currentTimeMillis()}.jpg")
+                            val uri = androidx.core.content.FileProvider.getUriForFile(
+                                context, "${context.packageName}.files", file,
+                            )
+                            cameraTarget = uri
+                            cameraLauncher.launch(uri)
                         },
                         onUpload = actions.uploadDocument,
                     )
@@ -785,6 +814,7 @@ private fun CareVaultTool(
     picked: Uri?,
     uploading: Boolean,
     onPickDocument: () -> Unit,
+    onPhotograph: () -> Unit,
     onUpload: (Uri, String) -> Unit,
 ) {
     // The "Use in future answers" switch that used to sit here was removed
@@ -825,7 +855,7 @@ private fun CareVaultTool(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (picked != null) "Ready to upload" else "Choose or scan a document",
+                text = if (picked != null) "Ready to upload" else "Choose a file",
                 style = MaterialTheme.typography.titleSmall,
                 color = Ink,
             )
@@ -836,6 +866,25 @@ private fun CareVaultTool(
                 color = InkMuted,
             )
         }
+    }
+
+    // A second, equal way in — not a link buried under the drop zone. A paper
+    // report handed over at a clinic is the common case, and it has no file to
+    // choose.
+    Spacer(Modifier.height(10.dp))
+    OutlinedButton(
+        onClick = onPhotograph,
+        enabled = !uploading,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        shape = RoundedCornerShape(16.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.PhotoCamera,
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text("Photograph a document")
     }
     Spacer(Modifier.height(14.dp))
     InfoBanner(
