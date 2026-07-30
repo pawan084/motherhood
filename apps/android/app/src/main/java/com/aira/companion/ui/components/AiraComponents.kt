@@ -443,6 +443,7 @@ fun AiraBottomNavigation(
     onSelect: (MainDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val haptics = rememberAiraHaptics()
     NavigationBar(
         modifier = modifier,
         containerColor = Paper,
@@ -453,7 +454,13 @@ fun AiraBottomNavigation(
             val icon = destinationIcons.getValue(destination)
             NavigationBarItem(
                 selected = selectedItem,
-                onClick = { onSelect(destination) },
+                onClick = {
+                    // Only on an actual change. Re-tapping the tab you are
+                    // already on is not a navigation, and buzzing for it teaches
+                    // people the feedback means nothing.
+                    if (!selectedItem) haptics.select()
+                    onSelect(destination)
+                },
                 icon = {
                     Icon(
                         imageVector = if (selectedItem) icon.active else icon.inactive,

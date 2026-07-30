@@ -3,6 +3,7 @@ package com.aira.companion.ui
 import android.Manifest
 import android.content.Intent
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +52,7 @@ import com.aira.companion.model.updatesCount
 import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
+import com.aira.companion.ui.components.rememberAiraHaptics
 import com.aira.companion.ui.screens.AiraChatScreen
 import com.aira.companion.ui.screens.AuthScreen
 import com.aira.companion.ui.screens.CareScreen
@@ -144,6 +147,33 @@ private fun MainExperience(
     snackbarHostState: SnackbarHostState,
 ) {
     val context = LocalContext.current
+    val haptics = rememberAiraHaptics()
+
+    // Back returns to Today rather than leaving the app.
+    //
+    // There was no BackHandler anywhere in the app, so back from Aira, Care,
+    // Journey or You closed it outright. On a phone that reads as a crash, and
+    // it is the kind of thing nobody reports — they just stop opening the app.
+    //
+    // Only registered off Today, so back from Today still exits, which is what
+    // the system gesture should do at the top of a stack. The tool sheet and
+    // the urgent dialog register their own handlers while they are shown and,
+    // being registered later, take precedence — so back closes the sheet first
+    // and only then walks the tabs.
+    BackHandler(enabled = state.destination != MainDestination.Today) {
+        viewModel.selectDestination(MainDestination.Today)
+    }
+
+    // Keeps each tab's scroll position while you are away from it.
+    //
+    // The destinations are a `when`, so leaving one removes it from composition
+    // and every `rememberScrollState` inside it was discarded — coming back to
+    // Care after a glance at Today put you at the top of the list again. This
+    // holds each tab's saveable state by destination, and because
+    // `rememberScrollState` is already saveable, the positions survive both the
+    // switch and process death without any screen having to know about it.
+    val tabState = rememberSaveableStateHolder()
+
     // Refresh the journey-aware content whenever the user lands on Today/Journey.
     LaunchedEffect(state.destination) {
         when (state.destination) {
@@ -197,7 +227,7 @@ private fun MainExperience(
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
                     onNotifications = { viewModel.openTool(AiraTool.Notifications) },
-                    onUrgentHelp = { viewModel.openUrgentHelp(context) },
+                    onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                 )
             },
             bottomBar = {
@@ -226,6 +256,7 @@ private fun MainExperience(
                 )
                 return@Scaffold
             }
+            tabState.SaveableStateProvider(state.destination) {
             when (state.destination) {
                 MainDestination.Today ->
                     TodayScreen(
@@ -239,8 +270,8 @@ private fun MainExperience(
                     AiraChatScreen(
                         state = state,
                         onDraftChange = viewModel::updateDraft,
-                        onSend = { viewModel.sendMessage(context) },
-                        onQuickMessage = { viewModel.quickMessage(it, context) },
+                        onSend = { haptics.confirm(); viewModel.sendMessage(context) },
+                        onQuickMessage = { haptics.confirm(); viewModel.quickMessage(it, context) },
                         onOpenTools = viewModel::openTools,
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier.padding(padding),
@@ -255,18 +286,21 @@ private fun MainExperience(
                 MainDestination.Care ->
                     CareScreen(
                         onOpenTool = viewModel::openTool,
-                        onUrgentHelp = { viewModel.openUrgentHelp(context) },
+                        onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                         modifier = Modifier.padding(padding),
                         care = state.careData,
                         loading = state.careLoading,
-                        onMarkTaken = { viewModel.markMedicineTaken(context, it) },
+                        onMarkTaken = { haptics.confirm(); viewModel.markMedicineTaken(context, it) },
                         timeline = state.timeline,
                         documents = state.documents,
-                        onReminderDone = { id, done -> viewModel.setReminderDone(context, id, done) },
+                        onReminderDone = { id, done ->
+                            haptics.confirm()
+                            viewModel.setReminderDone(context, id, done)
+                        },
                         onRename = { id, field, value ->
                             viewModel.renameCareItem(context, id, field, value)
                         },
-                        onDelete = { viewModel.deleteCareItem(context, it) },
+                        onDelete = { haptics.weighty(); viewModel.deleteCareItem(context, it) },
                         onEditReminder = viewModel::editReminder,
                         onOpenDocument = { viewModel.openDocument(context, it) },
                     )
@@ -298,6 +332,7 @@ private fun MainExperience(
                         priorities = state.todayData?.priorities.orEmpty(),
                         onReplayTutorial = viewModel::replayTutorial,
                     )
+            }
             }
         }
 
@@ -371,7 +406,7 @@ private fun MainExperience(
                     viewModel.closeTool()
                 },
                 onNotify = viewModel::notify,
-                onUrgentHelp = { viewModel.openUrgentHelp(context) },
+                onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                 actions = toolActions,
                 care = state.careData,
                 memory = state.memory,
