@@ -524,7 +524,12 @@ class AiraViewModel : ViewModel() {
     /** Retry whatever the current screen needs. */
     fun retryLoad(context: Context?) {
         if (context == null) return
-        _uiState.update { it.copy(loadFailed = false) }
+        // Clear the per-section failures too, so the sections show placeholders
+        // while the retry runs rather than sitting on "Couldn't load this"
+        // until it finishes — pressing Retry should visibly do something.
+        _uiState.update {
+            it.copy(loadFailed = false, timelineFailed = false, documentsFailed = false)
+        }
         when (_uiState.value.destination) {
             MainDestination.Today -> { loadToday(context); loadCare(context) }
             MainDestination.Journey -> loadJourney(context)
@@ -886,11 +891,21 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             showCachedIfEmpty(context)
             try {
-                _uiState.update { it.copy(timeline = AiraApi.timeline(context)) }
+                _uiState.update {
+                    it.copy(timeline = AiraApi.timeline(context), timelineFailed = false)
+                }
             } catch (_: Exception) {
-                // Silent by design: the timeline sits alongside content that has
-                // its own notice, so a second banner for the same lost
-                // connection would just be noise.
+                // No banner — the screen already has one for the same lost
+                // connection. But the section must not go on claiming the user
+                // has logged nothing when we simply could not ask.
+                // Only when there is nothing to show at all. If a cached copy
+                // is up, the banner at the top already says how old it is, and
+                // a second "couldn't load" inside the section would both repeat
+                // it and overstate it — we DID have an answer, just an older
+                // one, and it said the timeline was empty.
+                _uiState.update {
+                    it.copy(timelineFailed = it.timeline.isEmpty() && !it.showingCached)
+                }
             }
         }
     }
@@ -932,8 +947,13 @@ class AiraViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             showCachedIfEmpty(context)
             try {
-                _uiState.update { it.copy(documents = AiraApi.documents(context)) }
+                _uiState.update {
+                    it.copy(documents = AiraApi.documents(context), documentsFailed = false)
+                }
             } catch (_: Exception) {
+                _uiState.update {
+                    it.copy(documentsFailed = it.documents.isEmpty() && !it.showingCached)
+                }
             }
         }
     }

@@ -31,6 +31,7 @@ import com.aira.companion.model.VideoTopic
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.SkeletonRows
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -122,7 +123,9 @@ fun LearnScreen(
         Spacer(Modifier.height(16.dp))
 
         if (loading && videos.isEmpty()) {
-            Text("Loading…", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+            // Card-shaped placeholders rather than the word "Loading…", so the
+            // page does not jump when the real cards arrive.
+            SkeletonRows(count = 3, label = "Videos")
         }
 
         shown.forEachIndexed { index, video ->

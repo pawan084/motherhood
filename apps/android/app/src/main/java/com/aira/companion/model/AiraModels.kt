@@ -251,6 +251,14 @@ data class AiraUiState(
      *  would be the worse failure — this app is used to answer "have I taken
      *  it?", and a confident wrong answer to that is not a smaller mistake than
      *  no answer. */
+    /** A section's own fetch failed and there is nothing cached for it.
+     *
+     *  Separate from an empty list, and the distinction matters more here than
+     *  in most apps: "Check-ins and symptoms you log will appear here" reads as
+     *  "you have logged none", and showing that when the request actually
+     *  failed tells someone their symptom log is empty when it is not. */
+    val timelineFailed: Boolean = false,
+    val documentsFailed: Boolean = false,
     val showingCached: Boolean = false,
     /** When the cached copy on screen was stored (epoch millis), so the notice
      *  can say a time rather than the word "old". */

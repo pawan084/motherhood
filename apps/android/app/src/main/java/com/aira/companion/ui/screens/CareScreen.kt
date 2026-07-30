@@ -44,6 +44,7 @@ import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.EditableRow
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.SkeletonRows
 import com.aira.companion.ui.components.ToolListRow
 import com.aira.companion.ui.theme.Amber
 import com.aira.companion.ui.theme.Ink
@@ -98,6 +99,11 @@ fun CareScreen(
     /** Opens the full reminder sheet rather than an inline rename. */
     onEditReminder: (CareItem) -> Unit = {},
     onOpenDocument: (CareItem) -> Unit = {},
+    /** Per-section "we asked and could not get an answer", so an empty list is
+     *  never presented as a fact about the user. */
+    timelineFailed: Boolean = false,
+    documentsFailed: Boolean = false,
+    onRetry: (() -> Unit)? = null,
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -142,8 +148,9 @@ fun CareScreen(
             title = "Appointments",
             addLabel = "Add",
             onAdd = { onOpenTool(AiraTool.Appointment) },
-            empty = if (stillLoading) "Loading…" else "Nothing booked yet.",
+            empty = "Nothing booked yet.",
             isEmpty = appointments.isEmpty(),
+            loading = stillLoading,
         ) {
             appointments.forEach { appt ->
                 CareRow(
@@ -183,8 +190,9 @@ fun CareScreen(
             title = "Medicines",
             addLabel = "Add",
             onAdd = { onOpenTool(AiraTool.Medicines) },
-            empty = if (stillLoading) "Loading…" else "Nothing added yet.",
+            empty = "Nothing added yet.",
             isEmpty = medicines.isEmpty(),
+            loading = stillLoading,
             count = if (medicines.isNotEmpty()) {
                 "${medicines.count { it.takenToday }} of ${medicines.size} taken today"
             } else {
@@ -228,8 +236,9 @@ fun CareScreen(
             title = "Reminders",
             addLabel = "Add",
             onAdd = { onOpenTool(AiraTool.Reminder) },
-            empty = if (stillLoading) "Loading…" else "Nothing to remember yet.",
+            empty = "Nothing to remember yet.",
             isEmpty = reminders.isEmpty(),
+            loading = stillLoading,
             count = if (reminders.isNotEmpty()) {
                 "${reminders.count { it.done }} of ${reminders.size} done"
             } else {
@@ -304,12 +313,11 @@ fun CareScreen(
             title = "Documents",
             addLabel = "Add",
             onAdd = { onOpenTool(AiraTool.CareVault) },
-            empty = if (stillLoading) {
-                "Loading…"
-            } else {
-                "Prescriptions, reports and scans go here."
-            },
+            empty = "Prescriptions, reports and scans go here.",
             isEmpty = documents.isEmpty(),
+            loading = stillLoading,
+            failed = documentsFailed,
+            onRetry = onRetry,
             footnote = "A document is only used in an answer after you approve it.",
         ) {
             documents.forEach { doc ->
@@ -341,6 +349,9 @@ fun CareScreen(
             onAdd = { onOpenTool(AiraTool.Symptom) },
             empty = "Check-ins and symptoms you log will appear here.",
             isEmpty = timeline.isEmpty(),
+            loading = stillLoading,
+            failed = timelineFailed,
+            onRetry = onRetry,
             footnote = "Logging is tracking, not diagnosis. Anything that worries " +
                 "you is worth taking to your care team rather than waiting for a pattern.",
         ) {
@@ -435,6 +446,13 @@ private fun CareSection(
     isEmpty: Boolean,
     count: String? = null,
     footnote: String? = null,
+    /** Still arriving. Draws placeholder rows instead of the empty copy, which
+     *  would otherwise claim the section is empty before anyone has asked. */
+    loading: Boolean = false,
+    /** Asked and could not get an answer. Distinct from empty on purpose — see
+     *  AiraUiState.timelineFailed. */
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     Spacer(modifier = Modifier.height(24.dp))
@@ -463,14 +481,26 @@ private fun CareSection(
             )
         }
     }
-    if (isEmpty) {
-        Text(
+    when {
+        loading && isEmpty -> SkeletonRows(count = 2, label = title)
+        failed && isEmpty -> Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                // Not "nothing here yet". We do not know that.
+                text = "Couldn't load this.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Amber,
+                modifier = Modifier.weight(1f),
+            )
+            if (onRetry != null) {
+                TextButton(onClick = onRetry) { Text("Retry", color = Plum) }
+            }
+        }
+        isEmpty -> Text(
             text = empty,
             style = MaterialTheme.typography.bodySmall,
             color = InkMuted,
         )
-    } else {
-        content()
+        else -> content()
     }
     if (footnote != null) {
         Spacer(modifier = Modifier.height(8.dp))

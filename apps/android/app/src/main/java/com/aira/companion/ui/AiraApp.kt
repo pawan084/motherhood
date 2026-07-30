@@ -329,6 +329,9 @@ private fun MainExperience(
                         onDelete = { haptics.weighty(); viewModel.deleteCareItem(context, it) },
                         onEditReminder = viewModel::editReminder,
                         onOpenDocument = { viewModel.openDocument(context, it) },
+                        timelineFailed = state.timelineFailed,
+                        documentsFailed = state.documentsFailed,
+                        onRetry = { viewModel.retryLoad(context) },
                     )
                 MainDestination.You ->
                     YouScreen(
