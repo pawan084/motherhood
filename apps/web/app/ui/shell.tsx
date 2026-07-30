@@ -4,7 +4,7 @@
 // bottom tab bar under 780px. This is what replaces the old 390x812 phone bezel
 // the app used to render inside.
 
-import { Bell, BookOpen, BriefcaseMedical, House, Settings, ShieldCheck, Siren, Sparkles, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, BookOpen, BriefcaseMedical, House, PlayCircle, Settings, ShieldCheck, Siren, Sparkles, UserRound, type LucideIcon } from "lucide-react";
 import type { Screen } from "./types";
 import { JOURNEY_LABEL } from "./types";
 import type { TodayData, User } from "../aira-api";
@@ -15,6 +15,7 @@ export const NAV: { name: Screen; icon: LucideIcon; blurb: string }[] = [
   // and the composer's mic is disabled to match.
   { name: "Aira", icon: Sparkles, blurb: "Chat with Aira" },
   { name: "Journey", icon: BookOpen, blurb: "Where you are now" },
+  { name: "Learn", icon: PlayCircle, blurb: "Short guided videos" },
   { name: "Care", icon: BriefcaseMedical, blurb: "Appointments and reminders" },
   { name: "Updates", icon: Bell, blurb: "What needs attention" },
   { name: "You", icon: UserRound, blurb: "Privacy and preferences" },

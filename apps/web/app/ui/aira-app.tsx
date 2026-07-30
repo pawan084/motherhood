@@ -16,6 +16,7 @@ import { Header, MobileNav, Sidebar } from "./shell";
 import Today from "./today";
 import Chat from "./chat";
 import JourneyScreen from "./journey";
+import Learn from "./learn";
 import Care from "./care";
 import Updates, { buildUpdates } from "./updates";
 import You from "./you";
@@ -33,6 +34,7 @@ const BREADCRUMB: Record<Screen, string> = {
   Today: "Your day",
   Aira: "Conversation",
   Journey: "Where you are",
+  Learn: "Short guided videos",
   Care: "Appointments, medicines and documents",
   Updates: "What needs attention",
   You: "Profile, privacy and data",
@@ -329,7 +331,10 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onAfterTurn={refresh}
             />
           )}
-          {screen === "Journey" && <JourneyScreen journey={journey} loading={!journey} />}
+          {screen === "Journey" && <JourneyScreen journey={journey} loading={!journey} onNavigate={setScreen} />}
+          {screen === "Learn" && (
+            <Learn today={today} onOpenChat={() => setScreen("Aira")} onUrgent={() => openUrgent(null)} />
+          )}
           {screen === "Care" && (
             <Care care={care} emergency={emergency} timeline={timeline}
                   loading={care === null}

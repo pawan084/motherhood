@@ -841,6 +841,78 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .editorial-grid h4 { margin: 14px 0 7px; font-family: var(--serif); font-size: 19px; font-weight: 500; }
 .editorial-grid p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
 
+/* ── Learn · educational video library ───────────────────────────────────────
+   Videos are topics only (no media produced yet), so playback shows an honest
+   "in production" state. Urgent topics route to care rather than reassure. */
+.learn-featured {
+  position: relative; overflow: hidden; margin-bottom: 22px;
+  padding: 26px 30px; border-radius: 22px; color: #fff;
+  background: linear-gradient(120deg, #4d2052, #723779); box-shadow: 0 18px 44px #501f5426;
+}
+.learn-featured .draft-title { font-size: clamp(23px, 2.6vw, 31px); }
+.learn-head { margin-bottom: 18px; }
+.learn-head h2 { margin: 8px 0; font-family: var(--serif); font-size: clamp(26px, 3vw, 34px); font-weight: 500; letter-spacing: -.025em; }
+.learn-head > p { margin: 0; max-width: 640px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+
+.learn-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 20px; }
+.learn-search { display: flex; align-items: center; gap: 8px; padding: 9px 13px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--muted); }
+.learn-search input { min-width: 190px; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 14px; }
+.learn-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.learn-chips button { padding: 8px 13px; border: 1px solid var(--line); border-radius: 99px; background: #fff; color: var(--muted); font-size: 13px; font-weight: 650; }
+.learn-chips button:hover { border-color: #c5abc8; color: var(--aubergine); }
+.learn-chips button.active { border-color: var(--aubergine); background: var(--aubergine); color: #fff; }
+
+.learn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.video-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); cursor: pointer; transition: border-color .12s ease, transform .12s ease; }
+.video-card:hover { border-color: #c5abc8; transform: translateY(-2px); }
+.video-card:focus-visible { outline: 2px solid var(--aubergine); outline-offset: 2px; }
+.video-poster { height: 92px; display: grid; place-items: center; color: #ffffffcc; background: linear-gradient(135deg, #6d3570, #8f5a92); }
+.video-poster.pregnancy_week_by_week { background: linear-gradient(135deg, #4d2052, #723779); }
+.video-poster.pregnancy_symptoms { background: linear-gradient(135deg, #8a4b3f, #b07158); }
+.video-poster.nutrition { background: linear-gradient(135deg, #4f6b45, #7f9c6a); }
+.video-poster.movement_and_wellness { background: linear-gradient(135deg, #3f6b6b, #6a9c95); }
+.video-poster.tests_and_appointments { background: linear-gradient(135deg, #46557f, #7181ab); }
+.video-poster.labour_and_delivery { background: linear-gradient(135deg, #6d3560, #9a5f86); }
+.video-poster.postpartum_recovery { background: linear-gradient(135deg, #7a5a2c, #a98a52); }
+.video-poster.newborn_care { background: linear-gradient(135deg, #55607f, #8390b0); }
+.video-card-body { display: flex; flex-direction: column; gap: 7px; padding: 15px 16px 14px; flex: 1; }
+.video-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.vtag { padding: 3px 9px; border-radius: 99px; background: var(--lilac-soft); color: var(--aubergine); font-size: 11px; font-weight: 700; }
+.vtag.urgent { background: #fdf1f0; color: var(--red); }
+.video-card-body h3 { margin: 2px 0 0; font-family: var(--serif); font-size: 17px; font-weight: 500; line-height: 1.25; }
+.video-card-body > p { margin: 0; flex: 1; color: var(--muted); font-size: 13px; line-height: 1.5; }
+.video-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; }
+.vdur { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 650; }
+.vsave { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--aubergine); font-size: 12px; font-weight: 700; }
+.vsave[aria-pressed="true"] { border-color: var(--aubergine); background: var(--lilac-soft); }
+.learn-disclaimer { margin: 24px 0 0; color: var(--muted); font-size: 13px; }
+
+/* Video detail modal extras (reuses .modal / .modal-body). */
+.video-stage { display: grid; place-items: center; gap: 10px; padding: 30px; border-radius: 14px; text-align: center; color: #efe4f0; background: linear-gradient(135deg, #4d2052, #723779); }
+.video-stage span { color: #e3d3e4; font-size: 13px; }
+.vkicker { color: var(--aubergine); font-size: 11px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.video-meta { display: flex; gap: 16px; }
+.video-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.video-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.video-urgent { padding: 16px; border: 1px solid #e7c3c0; border-radius: 14px; background: #fdf1f0; }
+.video-urgent strong { display: block; color: #a53b36; font-size: 15px; line-height: 1.35; }
+.video-urgent p { margin: 8px 0 14px; color: #7c4a46; font-size: 13.5px; line-height: 1.55; }
+
+/* "Your week with Aira" video entry points on Journey and Today (both use .panel). */
+.journey-video { display: flex; align-items: center; gap: 14px; width: 100%; margin-top: 20px; padding: 16px 18px; text-align: left; cursor: pointer; }
+.journey-video:hover { border-color: #c5abc8; }
+.journey-video-play { width: 42px; height: 42px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 12px; background: var(--aubergine); color: #fff; }
+.journey-video-body { flex: 1; display: grid; }
+.journey-video-body small { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.journey-video-body strong { margin-top: 4px; font-size: 15px; }
+.journey-video-cta { flex: 0 0 auto; color: var(--aubergine); font-size: 13px; font-weight: 700; }
+.your-week { display: flex; align-items: center; gap: 11px; width: 100%; padding: 14px; text-align: left; cursor: pointer; }
+.your-week:hover { border-color: #c5abc8; }
+.your-week-play { width: 34px; height: 34px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 10px; background: var(--aubergine); color: #fff; }
+.your-week-body { display: grid; }
+.your-week-body small { color: var(--muted); font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.your-week-body strong { margin-top: 3px; font-size: 13.5px; line-height: 1.3; }
+
 .care-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, .8fr); gap: 22px; align-items: start; }
 .care-side { display: grid; gap: 16px; }
 .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }

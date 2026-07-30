@@ -17,7 +17,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { Screen } from "./types";
 
-const SCREENS: Screen[] = ["Today", "Aira", "Journey", "Care", "Updates", "You"];
+const SCREENS: Screen[] = ["Today", "Aira", "Journey", "Learn", "Care", "Updates", "You"];
 const PREFIX = "#/app/";
 
 function subscribe(onChange: () => void) {

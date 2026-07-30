@@ -1,6 +1,6 @@
 // Shared vocabulary for the web application shell.
 
-export type Screen = "Today" | "Aira" | "Journey" | "Care" | "Updates" | "You";
+export type Screen = "Today" | "Aira" | "Journey" | "Learn" | "Care" | "Updates" | "You";
 
 // The in-conversation tools. `tool` strings also arrive from the backend on a
 // chat action_card, so unknown values must degrade rather than crash — see
