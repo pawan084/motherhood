@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Needed to receive BOOT_COMPLETED, so reminders are re-timed after a
+         device has been off — the stored delay counted down while it slept. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="false"
@@ -47,6 +50,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Re-times pending reminders when the clock underneath them moves:
+             travel, daylight saving, or a corrected device clock. WorkManager
+             stores a duration, not a moment, so without this an 8pm tablet
+             reminder follows you across a timezone and arrives at 2:30pm.
+
+             All three are protected broadcasts the system still delivers to
+             manifest-registered receivers, so this works with the app closed —
+             which is the only state it matters in. -->
+        <receiver
+            android:name=".reminders.TimeChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- The Done and Snooze buttons on a reminder. Not exported: nothing
              outside this app has any business marking someone's reminders

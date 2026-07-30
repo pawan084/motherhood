@@ -121,3 +121,59 @@ class ReminderSchedulingTest {
         assertEquals(LocalDateTime.of(2026, 8, 1, 18, 0), at)
     }
 }
+
+/**
+ * Why a pending reminder has to be re-timed when the clock moves.
+ *
+ * WorkManager stores a DURATION, not a moment. These pin the arithmetic that
+ * makes that a problem, and that recomputing is the fix — the behaviour lives
+ * in TimeChangeReceiver, which needs a device to exercise, but the reasoning it
+ * rests on does not.
+ */
+class ClockChangeTest {
+
+    private val delhi = java.time.ZoneId.of("Asia/Kolkata")
+    private val london = java.time.ZoneId.of("Europe/London")
+
+    @Test
+    fun aDelayComputedBeforeFlyingLandsAtTheWrongLocalTime() {
+        // Scheduled at 10:00 in Delhi for the 20:00 tablet: ten hours.
+        val scheduledAt = java.time.ZonedDateTime.of(2026, 8, 1, 10, 0, 0, 0, delhi)
+        val target = ReminderScheduler.nextOccurrence("8:00 PM · Daily", scheduledAt.toLocalDateTime())!!
+        val delay = java.time.Duration.between(scheduledAt.toLocalDateTime(), target)
+        assertEquals(java.time.Duration.ofHours(10), delay)
+
+        // The duration elapses exactly as promised. The wall clock does not.
+        //
+        // August, so London is on BST (UTC+1) and Delhi is UTC+5:30 — a gap of
+        // four and a half hours, not five and a half. I asserted 14:30 first
+        // and the test corrected me; the exact figure matters less than the
+        // direction, but a test that documents an offset should have it right.
+        val firesAt = scheduledAt.toInstant().plus(delay).atZone(london)
+        assertEquals(15, firesAt.hour)
+        assertEquals(30, firesAt.minute)
+        // 15:30 is not 20:00, and nothing in WorkManager notices.
+    }
+
+    @Test
+    fun recomputingAfterTheChangeGivesTheRightTimeAgain() {
+        // What the receiver does: ask again, from where you now are.
+        val nowInLondon = java.time.ZonedDateTime.of(2026, 8, 1, 14, 30, 0, 0, london)
+        val target = ReminderScheduler.nextOccurrence("8:00 PM · Daily", nowInLondon.toLocalDateTime())!!
+        assertEquals(20, target.hour)
+        assertEquals(java.time.LocalDate.of(2026, 8, 1), target.toLocalDate())
+    }
+
+    @Test
+    fun anHourLostToDaylightSavingIsAnHourOfDrift() {
+        // Spring forward: 01:00 becomes 02:00. A reminder scheduled the evening
+        // before counts down through a night that is an hour shorter than the
+        // duration assumed, and arrives an hour late by the wall clock.
+        val zone = java.time.ZoneId.of("Europe/London")
+        val before = java.time.ZonedDateTime.of(2026, 3, 28, 22, 0, 0, 0, zone)
+        val target = ReminderScheduler.nextOccurrence("8:00 AM · Daily", before.toLocalDateTime())!!
+        val delay = java.time.Duration.between(before.toLocalDateTime(), target)
+        val firesAt = before.toInstant().plus(delay).atZone(zone)
+        assertEquals(9, firesAt.hour)   // meant 08:00, arrives at 09:00
+    }
+}
