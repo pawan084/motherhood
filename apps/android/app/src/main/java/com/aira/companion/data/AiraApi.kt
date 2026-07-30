@@ -9,6 +9,9 @@ import com.aira.companion.model.JourneyData
 import com.aira.companion.model.JourneySection
 import com.aira.companion.model.TodayData
 import com.aira.companion.model.TodayNextAction
+import com.aira.companion.model.VideoCategory
+import com.aira.companion.model.VideoTopic
+import com.aira.companion.model.VideosResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -200,6 +203,69 @@ object AiraApi {
             body = o.optString("body"),
             sections = sections,
         )
+    }
+
+    // ── educational video library ────────────────────────────────────────────
+    // The server resolves journey + gestational week from the caller's profile +
+    // care context, so the list call needs no parameters.
+
+    suspend fun videos(ctx: Context): VideosResult = parseVideos(getCached(ctx, "/v1/videos"))
+
+    suspend fun saveVideo(ctx: Context, id: String) {
+        request("POST", "/v1/videos/$id/save", null, ensureToken(ctx))
+    }
+
+    suspend fun unsaveVideo(ctx: Context, id: String) {
+        request("DELETE", "/v1/videos/$id/save", null, ensureToken(ctx))
+    }
+
+    private fun parseVideoTopic(o: JSONObject): VideoTopic {
+        val timing = o.optJSONObject("timing")
+        val dur = o.optJSONObject("duration")
+        val review = o.optJSONObject("clinical_review")
+        return VideoTopic(
+            id = o.optString("id"),
+            slug = o.optString("slug"),
+            title = o.optString("title"),
+            category = o.optString("category"),
+            categoryLabel = o.optString("category_label"),
+            journeys = o.optJSONArray("journeys").toStringList(),
+            timingType = timing?.optString("type") ?: "on_demand",
+            startWeek = timing?.optIntOrNull("start_week"),
+            endWeek = timing?.optIntOrNull("end_week"),
+            minSeconds = dur?.optInt("min_seconds", 60) ?: 60,
+            maxSeconds = dur?.optInt("max_seconds", 120) ?: 120,
+            description = o.optString("description"),
+            safetyLevel = o.optString("safety_level", "standard"),
+            inAppActions = o.optJSONArray("in_app_actions").toStringList(),
+            languages = o.optJSONArray("languages").toStringList(),
+            status = o.optString("status", "planned"),
+            reviewStatus = review?.optString("status") ?: "pending",
+            playable = o.optBoolean("playable", false),
+            saved = o.optBoolean("saved", false),
+        )
+    }
+
+    internal fun parseVideos(o: JSONObject): VideosResult {
+        val itemsArr = o.optJSONArray("items")
+        val items = ArrayList<VideoTopic>(itemsArr?.length() ?: 0)
+        if (itemsArr != null) {
+            for (i in 0 until itemsArr.length()) {
+                val it = itemsArr.optJSONObject(i) ?: continue
+                items.add(parseVideoTopic(it))
+            }
+        }
+        val catsArr = o.optJSONArray("categories")
+        val categories = ArrayList<VideoCategory>(catsArr?.length() ?: 0)
+        if (catsArr != null) {
+            for (i in 0 until catsArr.length()) {
+                val c = catsArr.optJSONObject(i) ?: continue
+                categories.add(VideoCategory(c.optString("key"), c.optString("label")))
+            }
+        }
+        val week = o.optJSONObject("week_video")?.let { parseVideoTopic(it) }
+        val saved = o.optJSONArray("saved_ids").toStringList().toSet()
+        return VideosResult(items = items, weekVideo = week, categories = categories, savedIds = saved)
     }
 
     /** The signed-in user. Used at launch to decide whether onboarding is needed. */

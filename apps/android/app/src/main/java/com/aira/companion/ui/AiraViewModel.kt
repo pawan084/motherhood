@@ -401,6 +401,50 @@ class AiraViewModel : ViewModel() {
         _uiState.update { it.copy(destination = destination, toolsOpen = false) }
     }
 
+    /** Load the educational video library (best-effort; keeps last data on failure). */
+    fun loadVideos(context: Context?) {
+        if (context == null) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(videosLoading = it.videos.isEmpty()) }
+            try {
+                val res = AiraApi.videos(context)
+                _uiState.update {
+                    it.copy(
+                        videos = res.items,
+                        weekVideo = res.weekVideo,
+                        videoCategories = res.categories,
+                        savedVideoIds = res.savedIds,
+                        videosLoading = false,
+                    )
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(videosLoading = false) }
+            }
+        }
+    }
+
+    /** Save/unsave a video — optimistic, rolled back if the server rejects it. */
+    fun toggleSaveVideo(context: Context?, id: String) {
+        if (context == null) return
+        val wasSaved = _uiState.value.savedVideoIds.contains(id)
+        _uiState.update {
+            val next = it.savedVideoIds.toMutableSet()
+            if (wasSaved) next.remove(id) else next.add(id)
+            it.copy(savedVideoIds = next)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (wasSaved) AiraApi.unsaveVideo(context, id) else AiraApi.saveVideo(context, id)
+            } catch (_: Exception) {
+                _uiState.update {
+                    val next = it.savedVideoIds.toMutableSet()
+                    if (wasSaved) next.add(id) else next.remove(id)
+                    it.copy(savedVideoIds = next)
+                }
+            }
+        }
+    }
+
     /** Load journey-aware Today content (best-effort; keeps last data on failure). */
     fun loadToday(context: Context?) {
         if (context == null) return

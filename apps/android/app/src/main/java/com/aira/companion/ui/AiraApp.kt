@@ -59,6 +59,7 @@ import com.aira.companion.ui.screens.CareScreen
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
 import com.aira.companion.ui.screens.JourneySectionSheet
+import com.aira.companion.ui.screens.LearnScreen
 import com.aira.companion.ui.screens.OnboardingChatScreen
 import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
@@ -295,6 +296,18 @@ private fun MainExperience(
                         modifier = Modifier,
                         journey = state.journeyData,
                         onOpenSection = viewModel::openJourneySection,
+                    )
+                MainDestination.Learn ->
+                    LearnScreen(
+                        modifier = Modifier,
+                        videos = state.videos,
+                        weekVideo = state.weekVideo,
+                        categories = state.videoCategories,
+                        savedIds = state.savedVideoIds,
+                        loading = state.videosLoading,
+                        onLoad = { viewModel.loadVideos(context) },
+                        onToggleSave = { haptics.confirm(); viewModel.toggleSaveVideo(context, it) },
+                        onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                     )
                 MainDestination.Care ->
                     CareScreen(

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -433,6 +435,7 @@ private val destinationIcons =
         MainDestination.Today to DestinationIcon(Icons.Filled.Home, Icons.Outlined.Home),
         MainDestination.Aira to DestinationIcon(Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome),
         MainDestination.Journey to DestinationIcon(Icons.Filled.Book, Icons.Outlined.Book),
+        MainDestination.Learn to DestinationIcon(Icons.Filled.PlayCircle, Icons.Outlined.PlayCircle),
         MainDestination.Care to DestinationIcon(Icons.Filled.MedicalServices, Icons.Outlined.MedicalServices),
         MainDestination.You to DestinationIcon(Icons.Filled.Person, Icons.Outlined.Person),
     )

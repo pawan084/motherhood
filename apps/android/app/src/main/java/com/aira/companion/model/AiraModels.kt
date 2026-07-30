@@ -35,6 +35,7 @@ enum class MainDestination(
     Today("Today"),
     Aira("Aira"),
     Journey("Journey"),
+    Learn("Learn"),
     Care("Care"),
     You("You"),
 }
@@ -155,6 +156,41 @@ fun toolKeyToTool(key: String?): AiraTool? =
         else -> null
     }
 
+/** An educational video topic, served by GET /v1/videos. Timing and duration are
+ *  flattened from the backend's nested objects for a simpler UI model. No media
+ *  is produced yet, so `playable` is false and the screen shows an "in
+ *  production" state; an `urgent` topic routes to the care team, not playback. */
+data class VideoTopic(
+    val id: String,
+    val slug: String,
+    val title: String,
+    val category: String,
+    val categoryLabel: String,
+    val journeys: List<String>,
+    val timingType: String,
+    val startWeek: Int?,
+    val endWeek: Int?,
+    val minSeconds: Int,
+    val maxSeconds: Int,
+    val description: String,
+    val safetyLevel: String,
+    val inAppActions: List<String>,
+    val languages: List<String>,
+    val status: String,
+    val reviewStatus: String,
+    val playable: Boolean,
+    val saved: Boolean,
+)
+
+data class VideoCategory(val key: String, val label: String)
+
+data class VideosResult(
+    val items: List<VideoTopic>,
+    val weekVideo: VideoTopic?,
+    val categories: List<VideoCategory>,
+    val savedIds: Set<String>,
+)
+
 data class AiraUiState(
     val stage: AppStage = AppStage.Starting,
     val destination: MainDestination = MainDestination.Aira,
@@ -264,6 +300,13 @@ data class AiraUiState(
     // Set while a Care Vault file is streaming, so the sheet can show progress
     // instead of looking idle through a 20 MB upload.
     val uploadingDocument: Boolean = false,
+    // Educational video library (Learn). The server resolves journey + week, so
+    // `weekVideo` is the pregnant caller's current week-by-week topic.
+    val videos: List<VideoTopic> = emptyList(),
+    val weekVideo: VideoTopic? = null,
+    val videoCategories: List<VideoCategory> = emptyList(),
+    val savedVideoIds: Set<String> = emptySet(),
+    val videosLoading: Boolean = false,
 )
 
 
