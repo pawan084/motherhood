@@ -1,64 +1,80 @@
 "use client";
 
-// Learn — Aira's educational video library. The topics come from the clinician-
-// review-gated catalog (see videos-data.ts). No media is produced yet, so this is
-// honest about being a preview of what's in production: you can browse, filter,
-// and save topics for when they're ready. The week-timed "Your Week with Aira"
-// video is featured for pregnant users (suggest-only — Watch/Save/Not now).
+// Learn — Aira's educational video library, served by GET /v1/videos. The server
+// resolves the caller's journey + gestational week (from their profile + care
+// context) and returns the scoped library plus the pregnant caller's current
+// week-by-week "Your Week" video. No media is produced yet, so playback shows an
+// honest "in production" state; you can browse, filter, and save for later.
 //
 // Safety: urgent topics never offer AI reassurance. Their detail routes to the
-// user's care team / urgent help instead, matching the server-side safety gate.
+// care team / urgent help instead, matching the server-side safety gate.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Clock, Play, Search, Siren, Sparkles, X } from "lucide-react";
-import type { TodayData } from "../aira-api";
-import {
-  durationLabel, videoForWeek, videosForJourney, VIDEO_CATEGORIES, type VideoTopic,
-} from "./videos-data";
+import { AiraAPI, videoDurationLabel, type VideosResponse, type VideoTopic } from "../aira-api";
 
-const SAVED_KEY = "aira.saved_videos";
 const WEEK_DISMISS_KEY = "aira.learn.week_dismissed";
-
-function readSaved(): string[] {
+function readDismissedWeeks(): string[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(SAVED_KEY) || "[]"); } catch { return []; }
+  try { return JSON.parse(sessionStorage.getItem(WEEK_DISMISS_KEY) || "[]"); } catch { return []; }
 }
 
 export default function Learn({
-  today, onOpenChat, onUrgent,
+  onOpenChat, onUrgent,
 }: {
-  today: TodayData | null;
   onOpenChat: () => void;
   onUrgent: () => void;
 }) {
-  const journey = today?.journey ?? "exploring";
-  const weeks = today?.weeks ?? null;
-
-  const [saved, setSaved] = useState<string[]>(readSaved);
+  const [data, setData] = useState<VideosResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<Set<string>>(new Set());
   const [cat, setCat] = useState<string>("all");
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<VideoTopic | null>(null);
-  const [weekDismissed, setWeekDismissed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    const wv = videoForWeek(today?.weeks ?? null);
-    try { return !!wv && sessionStorage.getItem(WEEK_DISMISS_KEY) === wv.id; } catch { return false; }
-  });
+  const [dismissedWeeks, setDismissedWeeks] = useState<string[]>(readDismissedWeeks);
 
-  const isSaved = (id: string) => saved.includes(id);
-  function toggleSave(id: string) {
-    const next = isSaved(id) ? saved.filter((x) => x !== id) : [...saved, id];
-    setSaved(next);
-    try { localStorage.setItem(SAVED_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+  useEffect(() => {
+    let alive = true;
+    AiraAPI.videos()
+      .then((r) => { if (alive) { setData(r); setSaved(new Set(r.saved_ids)); } })
+      .catch((e) => { if (alive) setError(e instanceof Error ? e.message : "Couldn't load videos."); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const isSaved = (id: string) => saved.has(id);
+  async function toggleSave(id: string) {
+    const wasSaved = saved.has(id);
+    setSaved((prev) => {
+      const next = new Set(prev);
+      if (wasSaved) next.delete(id); else next.add(id);
+      return next;
+    });
+    try {
+      if (wasSaved) await AiraAPI.unsaveVideo(id); else await AiraAPI.saveVideo(id);
+    } catch {
+      // Roll back a save that didn't land, so the star never lies about the server.
+      setSaved((prev) => {
+        const next = new Set(prev);
+        if (wasSaved) next.add(id); else next.delete(id);
+        return next;
+      });
+    }
   }
 
-  const weekVideo = journey === "pregnant" ? videoForWeek(weeks) : null;
+  const weekVideo = data?.week_video ?? null;
+  const showWeek = weekVideo && !dismissedWeeks.includes(weekVideo.id);
   function dismissWeek() {
-    if (weekVideo) { try { sessionStorage.setItem(WEEK_DISMISS_KEY, weekVideo.id); } catch { /* private */ } }
-    setWeekDismissed(true);
+    if (!weekVideo) return;
+    const next = [...dismissedWeeks, weekVideo.id];
+    setDismissedWeeks(next);
+    try { sessionStorage.setItem(WEEK_DISMISS_KEY, JSON.stringify(next)); } catch { /* private */ }
   }
 
+  const categories = data?.categories ?? [];
   const query = q.trim().toLowerCase();
-  const list = videosForJourney(journey).filter((v) => {
+  const list = (data?.items ?? []).filter((v) => {
     if (cat === "saved") return isSaved(v.id);
     if (cat !== "all" && v.category !== cat) return false;
     if (query && !(`${v.title} ${v.description}`.toLowerCase().includes(query))) return false;
@@ -67,11 +83,11 @@ export default function Learn({
 
   return (
     <div className="content-page learn">
-      {weekVideo && !weekDismissed && (
+      {showWeek && weekVideo && (
         <section className="learn-featured">
           <p className="draft-tag"><Sparkles size={14} /> Your week with Aira</p>
           <h2 className="draft-title">{weekVideo.title}</h2>
-          <p className="draft-detail">{weekVideo.description} · {durationLabel(weekVideo)}</p>
+          <p className="draft-detail">{weekVideo.description} · {videoDurationLabel(weekVideo)}</p>
           <div className="draft-actions">
             <button className="draft-confirm" onClick={() => setSelected(weekVideo)}>
               <Play size={16} /> Preview
@@ -93,64 +109,74 @@ export default function Learn({
         </p>
       </div>
 
-      <div className="learn-controls">
-        <label className="learn-search">
-          <Search size={16} />
-          <input
-            value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder="Search topics" aria-label="Search video topics"
-          />
-        </label>
-        <div className="learn-chips" role="tablist" aria-label="Filter by category">
-          <button className={cat === "all" ? "active" : ""} onClick={() => setCat("all")}>All</button>
-          <button className={cat === "saved" ? "active" : ""} onClick={() => setCat("saved")}>
-            Saved{saved.length ? ` (${saved.length})` : ""}
-          </button>
-          {VIDEO_CATEGORIES.map((c) => (
-            <button key={c.key} className={cat === c.key ? "active" : ""} onClick={() => setCat(c.key)}>
-              {c.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {error && <div className="banner error" role="alert">{error}</div>}
 
-      <div className="learn-grid">
-        {list.map((v) => (
-          <article
-            key={v.id} className="video-card"
-            onClick={() => setSelected(v)}
-            role="button" tabIndex={0}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(v); } }}
-          >
-            <div className={`video-poster ${v.category}`}><Play size={22} /></div>
-            <div className="video-card-body">
-              <div className="video-card-tags">
-                <span className="vtag">{v.categoryLabel}</span>
-                {v.safety === "urgent" && <span className="vtag urgent">Urgent · see your care team</span>}
+      {!error && (
+        <div className="learn-controls">
+          <label className="learn-search">
+            <Search size={16} />
+            <input
+              value={q} onChange={(e) => setQ(e.target.value)}
+              placeholder="Search topics" aria-label="Search video topics"
+            />
+          </label>
+          <div className="learn-chips" role="tablist" aria-label="Filter by category">
+            <button className={cat === "all" ? "active" : ""} onClick={() => setCat("all")}>All</button>
+            <button className={cat === "saved" ? "active" : ""} onClick={() => setCat("saved")}>
+              Saved{saved.size ? ` (${saved.size})` : ""}
+            </button>
+            {categories.map((c) => (
+              <button key={c.key} className={cat === c.key ? "active" : ""} onClick={() => setCat(c.key)}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="learn-grid">
+          {[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton" style={{ height: 190, borderRadius: 16 }} />)}
+        </div>
+      ) : (
+        <div className="learn-grid">
+          {list.map((v) => (
+            <article
+              key={v.id} className="video-card"
+              onClick={() => setSelected(v)}
+              role="button" tabIndex={0}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(v); } }}
+            >
+              <div className={`video-poster ${v.category}`}><Play size={22} /></div>
+              <div className="video-card-body">
+                <div className="video-card-tags">
+                  <span className="vtag">{v.category_label}</span>
+                  {v.safety_level === "urgent" && <span className="vtag urgent">Urgent · see your care team</span>}
+                </div>
+                <h3>{v.title}</h3>
+                <p>{v.description}</p>
+                <div className="video-card-foot">
+                  <span className="vdur"><Clock size={13} /> {videoDurationLabel(v)}</span>
+                  <button
+                    className="vsave"
+                    onClick={(e) => { e.stopPropagation(); toggleSave(v.id); }}
+                    aria-pressed={isSaved(v.id)}
+                    aria-label={isSaved(v.id) ? `Remove ${v.title} from saved` : `Save ${v.title}`}
+                  >
+                    {isSaved(v.id) ? <><BookmarkCheck size={14} /> Saved</> : <><Bookmark size={14} /> Save</>}
+                  </button>
+                </div>
               </div>
-              <h3>{v.title}</h3>
-              <p>{v.description}</p>
-              <div className="video-card-foot">
-                <span className="vdur"><Clock size={13} /> {durationLabel(v)}</span>
-                <button
-                  className="vsave"
-                  onClick={(e) => { e.stopPropagation(); toggleSave(v.id); }}
-                  aria-pressed={isSaved(v.id)}
-                  aria-label={isSaved(v.id) ? `Remove ${v.title} from saved` : `Save ${v.title}`}
-                >
-                  {isSaved(v.id) ? <><BookmarkCheck size={14} /> Saved</> : <><Bookmark size={14} /> Save</>}
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
-        {list.length === 0 && (
-          <p className="empty-row">
-            {cat === "saved" ? "Nothing saved yet. Save a topic and it will wait for you here."
-              : "No topics match that yet."}
-          </p>
-        )}
-      </div>
+            </article>
+          ))}
+          {!error && list.length === 0 && (
+            <p className="empty-row">
+              {cat === "saved" ? "Nothing saved yet. Save a topic and it will wait for you here."
+                : "No topics match that yet."}
+            </p>
+          )}
+        </div>
+      )}
 
       <p className="learn-disclaimer">
         Every video is clinician-reviewed before it&apos;s published. Aira is wellness support,
@@ -162,7 +188,7 @@ export default function Learn({
           <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div className="modal-head">
               <div>
-                <p>{selected.categoryLabel}</p>
+                <p>{selected.category_label}</p>
                 <h2>{selected.title}</h2>
               </div>
               <button onClick={() => setSelected(null)} aria-label="Close"><X size={16} /></button>
@@ -173,7 +199,7 @@ export default function Learn({
                 <span>In production — this video isn&apos;t ready to play yet.</span>
               </div>
 
-              {selected.safety === "urgent" ? (
+              {selected.safety_level === "urgent" ? (
                 <div className="video-urgent">
                   <strong>This one is about knowing when to get help — not something to watch and wait on.</strong>
                   <p>
@@ -191,14 +217,14 @@ export default function Learn({
                     <p>{selected.description}</p>
                   </div>
                   <p className="video-meta">
-                    <span><Clock size={13} /> {durationLabel(selected)}</span>
+                    <span><Clock size={13} /> {videoDurationLabel(selected)}</span>
                     <span>{selected.languages.map((l) => l.toUpperCase()).join(" · ")}</span>
                   </p>
                   <div className="video-actions">
                     <button className="btn-ghost" onClick={() => toggleSave(selected.id)}>
                       {isSaved(selected.id) ? <><BookmarkCheck size={15} /> Saved</> : <><Bookmark size={15} /> Save for later</>}
                     </button>
-                    {selected.actions.includes("ask_aira") && (
+                    {selected.in_app_actions.includes("ask_aira") && (
                       <button className="btn-primary" onClick={onOpenChat}>
                         <Sparkles size={15} /> Ask Aira about this
                       </button>

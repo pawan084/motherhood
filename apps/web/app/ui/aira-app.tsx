@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import {
   AiraAPI, health, type CareData, type CareItem, type ConsentFeature, type EmergencyProfile,
-  type JourneyData, type TodayData, type UrgentHelp, type User,
+  type JourneyData, type TodayData, type UrgentHelp, type User, type VideoTopic,
 } from "../aira-api";
 import { Header, MobileNav, Sidebar } from "./shell";
 import Today from "./today";
@@ -49,6 +49,9 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   const [care, setCare] = useState<CareData | null>(null);
   const [timeline, setTimeline] = useState<CareItem[]>([]);
   const [emergency, setEmergency] = useState<EmergencyProfile | null>(null);
+  // The pregnant caller's current week-by-week video, resolved server-side. Shown
+  // as a suggest-only "Your Week" card on Today and Journey; Learn fetches its own.
+  const [weekVideo, setWeekVideo] = useState<VideoTopic | null>(null);
   const [consent, setConsent] = useState<ConsentFeature[]>([]);
   const [loading, setLoading] = useState(true);
   const [bootError, setBootError] = useState("");
@@ -86,13 +89,14 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
   }, [screen]);
 
   const refresh = useCallback(async () => {
-    const [t, c, e, tl] = await Promise.allSettled([
-      AiraAPI.today(), AiraAPI.care(), AiraAPI.emergencyProfile(), AiraAPI.timeline(),
+    const [t, c, e, tl, v] = await Promise.allSettled([
+      AiraAPI.today(), AiraAPI.care(), AiraAPI.emergencyProfile(), AiraAPI.timeline(), AiraAPI.videos(),
     ]);
     if (t.status === "fulfilled") setToday(t.value);
     if (c.status === "fulfilled") setCare(c.value);
     if (e.status === "fulfilled") setEmergency(e.value);
     if (tl.status === "fulfilled") setTimeline(tl.value.items);
+    if (v.status === "fulfilled") setWeekVideo(v.value.week_video);
   }, []);
 
   // First load. `me` decides whether onboarding runs, so it gates the rest.
@@ -316,7 +320,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
         <main className="page-wrap" id="main" tabIndex={-1}>
           {screen === "Today" && (
             <Today
-              today={today} care={care} loading={care === null}
+              today={today} care={care} loading={care === null} weekVideo={weekVideo}
               openTool={setTool}
               onNavigate={(s) => setScreen(s)}
               onMarkTaken={markTaken}
@@ -331,9 +335,11 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onAfterTurn={refresh}
             />
           )}
-          {screen === "Journey" && <JourneyScreen journey={journey} loading={!journey} onNavigate={setScreen} />}
+          {screen === "Journey" && (
+            <JourneyScreen journey={journey} loading={!journey} weekVideo={weekVideo} onNavigate={setScreen} />
+          )}
           {screen === "Learn" && (
-            <Learn today={today} onOpenChat={() => setScreen("Aira")} onUrgent={() => openUrgent(null)} />
+            <Learn onOpenChat={() => setScreen("Aira")} onUrgent={() => openUrgent(null)} />
           )}
           {screen === "Care" && (
             <Care care={care} emergency={emergency} timeline={timeline}

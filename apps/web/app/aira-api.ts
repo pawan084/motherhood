@@ -309,6 +309,36 @@ export async function localCareItemCount(): Promise<number> {
   }
 }
 
+// Educational video library (served by GET /v1/videos). Snake_case mirrors the
+// backend payload; the `saved` flag is per-item for the signed-in user.
+export type VideoTiming = { type: "gestational_week" | "on_demand"; start_week: number | null; end_week: number | null };
+export type VideoTopic = {
+  id: string; slug: string; title: string;
+  category: string; category_label: string;
+  journeys: string[]; timing: VideoTiming;
+  content_format: string;
+  duration: { min_seconds: number; max_seconds: number };
+  description: string;
+  safety_level: "standard" | "clinical" | "urgent";
+  in_app_actions: string[]; languages: string[];
+  status: string;
+  clinical_review: { required: boolean; specialties: string[]; status: string };
+  playable: boolean;
+  saved?: boolean;
+};
+export type VideosResponse = {
+  items: VideoTopic[];
+  week_video: VideoTopic | null;
+  categories: { key: string; label: string }[];
+  saved_ids: string[];
+};
+/** "2–4 min" from a topic's recommended duration range. */
+export function videoDurationLabel(v: VideoTopic): string {
+  const lo = Math.max(1, Math.round(v.duration.min_seconds / 60));
+  const hi = Math.max(lo, Math.round(v.duration.max_seconds / 60));
+  return lo === hi ? `${lo} min` : `${lo}–${hi} min`;
+}
+
 export const AiraAPI = {
   // identity + profile
   me: () => req<{ user: User }>("/account/me"),
@@ -436,6 +466,15 @@ export const AiraAPI = {
     }),
   sendFeedback: (kind: string, message: string) =>
     req("/v1/feedback", { method: "POST", body: JSON.stringify({ kind, message }) }),
+
+  // Educational video library. The server resolves journey + gestational week
+  // from the caller's own profile + care context, so no params are needed.
+  videos: () => req<VideosResponse>("/v1/videos"),
+  savedVideos: () => req<{ items: VideoTopic[] }>("/v1/videos/saved"),
+  saveVideo: (id: string) =>
+    req<{ saved: boolean; video_id: string }>(`/v1/videos/${id}/save`, { method: "POST" }),
+  unsaveVideo: (id: string) =>
+    req<{ saved: boolean; video_id: string }>(`/v1/videos/${id}/save`, { method: "DELETE" }),
 
   // Everything Aira holds for this user, as one JSON document.
   exportAccount: () => req<{ user_id: string; exported_at: number; data: unknown }>(

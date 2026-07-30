@@ -5,9 +5,8 @@
 // cards, so nothing here needs to guess at the reader's stage.
 
 import { Activity, CalendarDays, Heart, Play } from "lucide-react";
-import type { JourneyData } from "../aira-api";
+import { videoDurationLabel, type JourneyData, type VideoTopic } from "../aira-api";
 import { JOURNEY_LABEL, type Screen } from "./types";
-import { durationLabel, videoForWeek } from "./videos-data";
 
 const SECTION_ICONS = [Activity, Heart, CalendarDays];
 
@@ -15,10 +14,11 @@ const SECTION_ICONS = [Activity, Heart, CalendarDays];
 const TERM_WEEKS = 40;
 
 export default function Journey({
-  journey, loading, onNavigate,
+  journey, loading, weekVideo, onNavigate,
 }: {
   journey: JourneyData | null;
   loading: boolean;
+  weekVideo?: VideoTopic | null;
   onNavigate?: (s: Screen) => void;
 }) {
   if (loading && !journey) {
@@ -37,7 +37,6 @@ export default function Journey({
   const weeks = journey?.weeks ?? null;
   const label = journey?.journey ? JOURNEY_LABEL[journey.journey] ?? "Exploring" : "Exploring";
   const pct = weeks != null ? Math.min(100, Math.round((weeks / TERM_WEEKS) * 100)) : null;
-  const weekVideo = journey?.journey === "pregnant" ? videoForWeek(weeks) : null;
 
   return (
     <div className="content-page">
@@ -66,7 +65,7 @@ export default function Journey({
         <button className="panel journey-video" onClick={() => onNavigate?.("Learn")}>
           <span className="journey-video-play"><Play size={18} /></span>
           <span className="journey-video-body">
-            <small>Your week with Aira · {durationLabel(weekVideo)}</small>
+            <small>Your week with Aira · {videoDurationLabel(weekVideo)}</small>
             <strong>{weekVideo.title}</strong>
           </span>
           <span className="journey-video-cta">Watch in Learn</span>

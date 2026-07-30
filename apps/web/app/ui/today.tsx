@@ -20,9 +20,8 @@ import {
   ArrowRight, Calendar, Check, ClipboardCheck, Heart, LockKeyhole,
   Pill, Play, Sparkles, Wind,
 } from "lucide-react";
-import type { CareData, CareItem, TodayData } from "../aira-api";
+import { videoDurationLabel, type CareData, type CareItem, type TodayData, type VideoTopic } from "../aira-api";
 import { greeting, isToolName, JOURNEY_LABEL, type ToolName } from "./types";
-import { durationLabel, videoForWeek } from "./videos-data";
 
 function str(v: unknown, fallback = ""): string {
   return typeof v === "string" && v.trim() ? v : fallback;
@@ -52,11 +51,12 @@ function readDismissed(): string[] {
 }
 
 export default function Today({
-  today, care, loading, openTool, onNavigate, onMarkTaken, onReminderDone,
+  today, care, loading, weekVideo, openTool, onNavigate, onMarkTaken, onReminderDone,
 }: {
   today: TodayData | null;
   care: CareData | null;
   loading: boolean;
+  weekVideo: VideoTopic | null;
   openTool: (t: ToolName) => void;
   onNavigate: (s: "Aira" | "Journey" | "Learn" | "Care") => void;
   onMarkTaken: (id: string) => void;
@@ -77,7 +77,6 @@ export default function Today({
   const appts = care?.appointments ?? [];
   const reminders = care?.reminders ?? [];
   const plan = care?.care_plan;
-  const weekVideo = today?.journey === "pregnant" ? videoForWeek(weeks) : null;
 
   const context = weeks != null ? `Week ${weeks} · ${journeyLabel}` : journeyLabel;
 
@@ -245,7 +244,7 @@ export default function Today({
             <button className="panel your-week" onClick={() => onNavigate("Learn")}>
               <span className="your-week-play"><Play size={16} /></span>
               <span className="your-week-body">
-                <small>Your week with Aira · {durationLabel(weekVideo)}</small>
+                <small>Your week with Aira · {videoDurationLabel(weekVideo)}</small>
                 <strong>{weekVideo.title}</strong>
               </span>
             </button>
