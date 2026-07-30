@@ -90,6 +90,11 @@ dependencies {
     // the brand rather than a blank window while the cached session resolves.
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.activity:activity-compose:1.12.3")
+    // App lock. BiometricPrompt is the system dialog, so the fingerprint or face
+    // data never reaches this app — it asks the OS a yes/no question. It needs a
+    // FragmentActivity host, which is why MainActivity extends one.
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.9")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")

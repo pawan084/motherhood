@@ -49,7 +49,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import com.aira.companion.data.ConsentFeature
+import com.aira.companion.data.AppPrefs
+import com.aira.companion.security.AppLock
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.journeyLabel
@@ -355,6 +358,11 @@ fun YouScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // App lock — device-local, not a server consent. See AppPrefs.
+        AppLockCard()
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         AiraCard(containerColor = SageMist) {
             Text(
                 text = "Never used for advertising",
@@ -596,3 +604,68 @@ private val PRIORITY_OPTIONS = listOf(
     "Feel calmer",
     "Plan my care",
 )
+
+/**
+ * The app lock switch.
+ *
+ * Three states, not two — the same rule the consent list follows. A phone with
+ * no screen lock set cannot honour this, so the switch is disabled and says
+ * why, rather than flipping on and protecting nothing. That failure would be
+ * invisible: the toggle would look on, and the app would simply open.
+ *
+ * Local to this screen because the value is local to this device, so it never
+ * travels through the ViewModel or the consent ledger.
+ */
+@Composable
+private fun AppLockCard() {
+    val context = LocalContext.current
+    val availability = remember { AppLock.availability(context) }
+    var enabled by remember { mutableStateOf(AppPrefs.appLockEnabled(context)) }
+    val usable = availability == AppLock.Availability.READY
+
+    AiraCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(44.dp).background(SageMist, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Lock,
+                    contentDescription = null,
+                    tint = SageDeep,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Lock Aira",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Ink,
+                )
+                Text(
+                    text = when {
+                        availability == AppLock.Availability.NOTHING_ENROLLED ->
+                            "Set a screen lock on this phone first — Aira uses the same one."
+                        availability == AppLock.Availability.UNSUPPORTED ->
+                            "This phone can't ask for a fingerprint or PIN."
+                        enabled ->
+                            "On — Aira asks every time it's reopened, and stays out of " +
+                                "screenshots and the recent apps preview."
+                        else ->
+                            "Ask for your fingerprint, face or PIN before opening your care."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+            Switch(
+                checked = enabled && usable,
+                enabled = usable,
+                onCheckedChange = {
+                    AppPrefs.setAppLockEnabled(context, it)
+                    enabled = it
+                },
+            )
+        }
+    }
+}

@@ -18,9 +18,28 @@ object AppPrefs {
     private const val PREFS = "aira_local"
     private const val KEY_TUTORIAL_SEEN = "tutorial_seen"
     private const val KEY_ONBOARDED = "onboarded"
+    private const val KEY_APP_LOCK = "app_lock"
 
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /**
+     * Whether this device asks for a fingerprint or PIN before showing the app.
+     *
+     * Device-local by design, and deliberately NOT a server-side consent: it is
+     * a property of this phone, not of the account. Someone who locks the app on
+     * a shared handset should not have that decision follow them onto a tablet
+     * they keep to themselves, and it has to work before any account exists.
+     *
+     * Survives sign-out with the rest of this file. Signing out is not a reason
+     * to unlock a phone.
+     */
+    fun appLockEnabled(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_APP_LOCK, false)
+
+    fun setAppLockEnabled(ctx: Context, enabled: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_APP_LOCK, enabled).apply()
+    }
 
     /**
      * True once the tutorial has been completed OR skipped. Skipping counts:
