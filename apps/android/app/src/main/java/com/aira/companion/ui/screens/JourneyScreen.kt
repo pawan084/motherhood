@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.PersonOutline
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -55,6 +56,8 @@ fun JourneyScreen(
     modifier: Modifier = Modifier,
     journey: JourneyData? = null,
     onOpenSection: (JourneySection) -> Unit = {},
+    /** Opens the video library, which used to be its own tab. */
+    onOpenLearn: () -> Unit = {},
 ) {
     // Journey-aware fields, falling back to the static demo copy when offline.
     val weeks = journey?.weeks
@@ -135,6 +138,25 @@ fun JourneyScreen(
                 }
             }
         }
+
+        // Watching, next to reading.
+        //
+        // Learn was a sixth tab doing the same job as this screen — "understand
+        // where you are", one in words and one in video, both anchored to the
+        // same week. Splitting that across two tabs made the reader choose a
+        // medium before choosing a subject. It is a full screen still, one tap
+        // from here, so nothing upstream built has been reshaped to fit.
+        Spacer(modifier = Modifier.height(22.dp))
+        SectionLabel("Watch")
+        Spacer(modifier = Modifier.height(9.dp))
+        JourneyCard(
+            icon = Icons.Outlined.PlayCircle,
+            title = "Short guided videos",
+            body = "Picked for where you are, and saveable for later.",
+            color = SageMist,
+            iconColor = SageDeep,
+            onClick = onOpenLearn,
+        )
 
         // The section cards.
         //

@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.aira.companion.model.MainDestination
+import com.aira.companion.model.bottomBarDestinations
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -488,7 +489,7 @@ fun AiraBottomNavigation(
         containerColor = Paper,
         tonalElevation = 0.dp,
     ) {
-        MainDestination.entries.forEach { destination ->
+        bottomBarDestinations.forEach { destination ->
             val selectedItem = selected == destination
             val icon = destinationIcons.getValue(destination)
             NavigationBarItem(

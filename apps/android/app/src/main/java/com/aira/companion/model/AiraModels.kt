@@ -40,6 +40,26 @@ enum class MainDestination(
     You("You"),
 }
 
+/**
+ * The four in the bottom bar.
+ *
+ * Six was two too many — Material tops out at five, and at a raised font scale
+ * six single-line labels on a 360dp screen truncate. But the real problem was
+ * not the count: Journey and Learn were doing one job between them ("understand
+ * where you are", reading and watching), and Today and Journey both drew a
+ * section headed "Where you are".
+ *
+ * Learn and You are still destinations, reached from Journey and from the
+ * header. A screen does not have to be a tab to be one tap away, and back
+ * returns to Today from both.
+ */
+val bottomBarDestinations: List<MainDestination> = listOf(
+    MainDestination.Today,
+    MainDestination.Aira,
+    MainDestination.Journey,
+    MainDestination.Care,
+)
+
 enum class JourneyType(
     val label: String,
     val supportingText: String,

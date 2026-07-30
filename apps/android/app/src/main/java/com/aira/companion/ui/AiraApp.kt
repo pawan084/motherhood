@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HealthAndSafety
-import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -240,7 +240,7 @@ private fun MainExperience(
                     notificationCount = updatesCount(state.careData),
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
-                    onNotifications = { viewModel.openTool(AiraTool.Notifications) },
+                    onOpenYou = { viewModel.selectDestination(MainDestination.You) },
                     onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                 )
             },
@@ -339,6 +339,9 @@ private fun MainExperience(
                         modifier = Modifier,
                         journey = state.journeyData,
                         onOpenSection = viewModel::openJourneySection,
+                        onOpenLearn = {
+                            viewModel.selectDestination(MainDestination.Learn)
+                        },
                     )
                 MainDestination.Learn ->
                     LearnScreen(
@@ -524,7 +527,7 @@ private fun AiraAppHeader(
     notificationCount: Int,
     weeks: Int?,
     journey: String?,
-    onNotifications: () -> Unit,
+    onOpenYou: () -> Unit,
     onUrgentHelp: () -> Unit,
 ) {
     Surface(
@@ -553,22 +556,19 @@ private fun AiraAppHeader(
                     color = InkMuted,
                 )
             }
-            IconButton(onClick = onNotifications) {
-                BadgedBox(
-                    badge = {
-                        if (notificationCount > 0) {
-                            Badge(containerColor = Plum) {
-                                Text(notificationCount.toString())
-                            }
-                        }
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Open notifications",
-                        tint = Ink,
-                    )
-                }
+            // You, where the bell used to be.
+            //
+            // The bell opened a notifications sheet built from updatesCount —
+            // the same count, from the same care data, that Today already lists
+            // under what needs attention. Two doors onto one thing, one of them
+            // a glyph with a number on it. Today keeps the job; this slot now
+            // reaches profile, privacy and your data, which came off the tab bar.
+            IconButton(onClick = onOpenYou) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountCircle,
+                    contentDescription = "Your profile, privacy and data",
+                    tint = Ink,
+                )
             }
             // The urgent control carries its own name.
             //
