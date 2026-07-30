@@ -708,6 +708,72 @@ textarea:focus-visible, [tabindex]:focus-visible {
 /* Same fix as .care-context small: #698073 on the sage panel was 3.97:1. */
 .privacy-note small { margin-top: 3px; color: #55685d; font-size: 11px; }
 
+/* ── Today · the one next step (proactive-companion redesign) ─────────────────
+   The suggestion is the hero: it sits on the signature aubergine so the eye
+   lands on the single decision first. Everything else is quiet, below it. */
+.today { display: grid; gap: 22px; }
+.next-step {
+  position: relative; overflow: hidden;
+  padding: 34px 40px 30px; border-radius: 25px;
+  background: linear-gradient(120deg, #4d2052, #723779); color: #fff;
+  box-shadow: 0 22px 50px #501f542e;
+}
+.next-step:after {
+  content: ""; position: absolute; right: -120px; top: -140px;
+  width: 380px; height: 380px; border: 1px solid #ffffff22; border-radius: 50%;
+  box-shadow: 0 0 0 50px #ffffff08, 0 0 0 100px #ffffff06; pointer-events: none;
+}
+/* Calmer wash when there's nothing to decide — the screen should feel like rest, not emptiness. */
+.next-step.is-calm { background: linear-gradient(120deg, #45244a, #5d3560); }
+.next-step-context {
+  position: relative; z-index: 2; margin: 0 0 18px;
+  color: #dac7dd; font-size: 13px; font-weight: 700; letter-spacing: .02em;
+}
+.draft { position: relative; z-index: 2; max-width: 640px; }
+.draft-tag {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 0 13px;
+  padding: 5px 11px; border-radius: 20px; background: #ffffff1f; color: #f3e9f4;
+  font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+.draft-title {
+  margin: 0 0 10px; font-family: var(--serif); font-weight: 500;
+  font-size: clamp(28px, 3vw, 40px); line-height: 1.08; letter-spacing: -.03em;
+}
+.draft-detail { margin: 0; max-width: 540px; color: #ecdfed; font-size: 15px; line-height: 1.6; }
+.draft-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+.draft-confirm {
+  display: inline-flex; align-items: center; gap: 7px; padding: 12px 20px;
+  border: 0; border-radius: 12px; background: #fffdf9; color: var(--aubergine);
+  font-size: 14px; font-weight: 700; transition: transform .12s ease, box-shadow .12s ease;
+}
+.draft-confirm:hover { transform: translateY(-1px); box-shadow: 0 10px 22px #2c103029; }
+.draft-dismiss {
+  padding: 12px 18px; border: 1px solid #ffffff40; border-radius: 12px;
+  background: transparent; color: #f3e9f4; font-size: 14px; font-weight: 700;
+}
+.draft-dismiss:hover { background: #ffffff14; }
+.draft-why {
+  margin-top: 16px; padding: 4px 0; min-height: 24px; border: 0; background: transparent;
+  color: #cdb6d0; font-size: 13px; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.draft-why:hover { color: #fff; }
+.draft-why-text { margin: 8px 0 0; max-width: 520px; color: #e3d3e4; font-size: 13px; line-height: 1.55; }
+
+/* The quieter half of the screen — same proportions as the old dashboard grid. */
+.today-body { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, .75fr); gap: 22px; }
+.also-today { padding: 22px 24px; }
+.quick-plan-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+.quick-more { margin-top: 14px; color: var(--aubergine); }
+
+@media (max-width: 1050px) {
+  .today-body { grid-template-columns: 1fr; }
+  .next-step { padding: 30px 26px 26px; }
+}
+@media (max-width: 780px) {
+  .next-step { padding: 26px 22px 24px; }
+}
+
 /* ── Aira chat ───────────────────────────────────────────────────────────── */
 .chat-layout {
   height: calc(100vh - 152px); min-height: 560px;
