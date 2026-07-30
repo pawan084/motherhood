@@ -118,12 +118,44 @@ The femtech incumbents that failed publicly failed on **data-sharing/consent**; 
 1. **The One Next Step** — each day Aira composes a *single* drafted next step from stage + overdue care items + recent check-ins. Confirm / Edit / Not now.
 2. **Receptivity-timed check-in** — a gentle mood/energy check fired at a *good moment*, not a fixed alarm. If it signals elevated stress, Aira *proposes* (never auto-creates) a supportive action.
 3. **Appointment co-pilot** — ahead of a visit, Aira drafts a question list from logged symptoms + stage; afterward offers to log outcomes. Every item is a draft you approve.
+4. **Your Week with Aira (video)** — each new gestational week, Aira surfaces that week's short educational video (from the video catalog) as a suggest-only moment, with a check-in and appointment-prep as optional follow-ons. See *Educational Video Library* below.
 
 ### What the evidence says *not* to do
 - Don't promise anxiety relief (no trial support).
 - Don't lean on notification *frequency*.
 - Don't position Aira as therapy.
 - Don't over-collect data to personalize when stage-appropriate content earns trust more cheaply.
+
+---
+
+## Educational Video Library (planned feature)
+
+**Source:** an external topic catalog at `C:\Users\pawan\Desktop\Aira-Video-Topic-Catalog` — 100 clinician-review-gated video topics (catalog v1.0.0), each a structured record validated by `video-topic.schema.json`. It's a natural, high-value extension of the proactive-companion model.
+
+**Catalog shape (verified):** 100 topics — 37 pregnancy week-by-week, 12 symptoms, 10 nutrition, 8 movement/wellness, 8 tests/appointments, 10 labour/delivery, 8 postpartum, 7 newborn. Safety: 85 `clinical`, **8 `urgent`**, 7 `standard`. Formats: `weekly_update` (37), `explainer` (47), `safety_explainer` (8), `guided_session` (8). Timing: 37 `gestational_week`, 63 `on_demand`. All bilingual (en/hi). Every record ships `clinical_review: pending` with named specialties and `status: planned`.
+
+**Why it fits Aira (near 1:1):**
+- **Week timing ↔ Journey.** `timing.gestational_week` maps directly to Aira's live week countdown (`care.py:current_weeks`). "Your Week N with Aira" anchors the Journey screen.
+- **Content model already exists.** `content.py` is journey-keyed, week-banded, draft/published with `reviewed_by`, and *only serves published*. Videos extend this exact paradigm — a `video_topics` store with the same review lifecycle.
+- **Personalization inputs ↔ consent-gated context.** `journey_stage`, `gestational_week`, `recent_check_ins`, `care_plan` select which video to surface, using the same consent gate as memory. Stage/week selection needs little personal data (the research's "stage-appropriate beats deep personalization" finding).
+- **In-app actions ↔ existing surfaces.** `save_video`, `add_to_care_plan`, `weekly_check_in`, `prepare_appointment`, `ask_aira`, `contact_care_team`, `open_emergency_profile` map onto Aira's tools, chat action cards, and the urgent handoff.
+
+**Where videos surface (all suggest-only, per §0 autonomy model):**
+1. **Journey** — the library's home; each stage/week shows its relevant video(s), with the week-by-week video as the centerpiece.
+2. **Today** — a timely video can *be* the one next step ("Your Week 24 video is ready" → Watch / Not now), reusing the draft card.
+3. **Chat (Aira)** — when a user asks about a topic, Aira offers the matching *approved* video as an action card — never in place of the safety gate.
+4. **Learn** — on-demand browse/search of the 63 explainers + saved videos.
+
+**Safety & clinical posture (load-bearing):**
+- **The 8 urgent topics** (bleeding, reduced fetal movement, breathlessness, swelling, severe headache, water breaking, postpartum bleeding, newborn danger signs) are `safety_explainer`s that must **route to care, not reassure**: their CTA is `contact_care_team` / `open_emergency_profile` (Aira's existing urgent handoff). If a chat message trips the server-side red gate, the handoff may *also* surface the relevant urgent explainer — but the routing decision stays server-side and the video never replaces the "contact your care team" action. This is exactly the Ada/ChatGPT triage lesson: safe escalation is a capability separate from content.
+- **Only published, clinician-approved videos are ever served** — mirroring `content.py`. The review lifecycle (`planned → script_draft → clinical_review → approved → produced → published`) is tracked per topic with named specialties; the admin console gains a "Videos" surface for it, alongside content/prompts.
+- **Medical-visual policy:** generative AI may animate *approved* visuals but "must not invent clinical anatomy." Asset generation is gated behind clinical approval — keeping Aira firmly non-diagnostic and out of the regulated-device pathway.
+
+**Data model & API (sketch):**
+- `video_topics` table seeded from the catalog (all schema fields + produced asset URLs, captions, and translations once made).
+- `GET /v1/videos?journey=&week=&category=` (published only) · `GET /v1/videos/{id}` · `POST /v1/videos/{id}/save` · `GET /v1/videos/saved`. The Today/Journey builders select the timely video.
+- **Journey-stage mapping:** catalog `trying_to_conceive | pregnancy | postpartum` → Aira `trying | pregnant | postpartum`; `exploring` users see the on-demand library only.
+- i18n by user language (en/hi today); Android/web cache video *metadata*, stream media, and store saved ids offline.
 
 ---
 
