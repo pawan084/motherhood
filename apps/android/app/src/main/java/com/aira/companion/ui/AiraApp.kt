@@ -27,6 +27,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -174,6 +177,7 @@ private fun MainExperience(
     // `rememberScrollState` is already saveable, the positions survive both the
     // switch and process death without any screen having to know about it.
     val tabState = rememberSaveableStateHolder()
+    val pullState = rememberPullToRefreshState()
 
     // Refresh the journey-aware content whenever the user lands on Today/Journey.
     LaunchedEffect(state.destination) {
@@ -270,6 +274,35 @@ private fun MainExperience(
                     onRetry = { viewModel.retryLoad(context) },
                 )
             }
+            // Pull to refresh, on the tabs where "refresh" means something.
+            //
+            // Not on Aira: that screen is a conversation in a LazyColumn, where
+            // a downward drag at the top means "read what I said earlier", and
+            // hijacking it to reload would fight the gesture people already
+            // have. Not on You either — nothing there is a feed.
+            val pullable = state.destination in setOf(
+                MainDestination.Today,
+                MainDestination.Journey,
+                MainDestination.Care,
+                MainDestination.Learn,
+            )
+            PullToRefreshBox(
+                isRefreshing = pullable && state.refreshing,
+                onRefresh = { if (pullable) viewModel.refreshCurrent(context) },
+                modifier = Modifier.fillMaxSize(),
+                state = pullState,
+                indicator = {
+                    if (pullable) {
+                        Indicator(
+                            modifier = Modifier.align(Alignment.TopCenter),
+                            isRefreshing = state.refreshing,
+                            state = pullState,
+                            containerColor = Paper,
+                            color = Plum,
+                        )
+                    }
+                },
+            ) {
             tabState.SaveableStateProvider(state.destination) {
             when (state.destination) {
                 MainDestination.Today ->
@@ -372,6 +405,7 @@ private fun MainExperience(
                         priorities = state.todayData?.priorities.orEmpty(),
                         onReplayTutorial = viewModel::replayTutorial,
                     )
+            }
             }
             }
             }

@@ -266,6 +266,10 @@ data class AiraUiState(
      *  failed tells someone their symptom log is empty when it is not. */
     val timelineFailed: Boolean = false,
     val documentsFailed: Boolean = false,
+    /** A refresh the user asked for by pulling, as opposed to one the app
+     *  started on its own. Only this kind shows the spinner — a background
+     *  reload that draws one makes the screen look busy for no reason. */
+    val refreshing: Boolean = false,
     val showingCached: Boolean = false,
     /** When the cached copy on screen was stored (epoch millis), so the notice
      *  can say a time rather than the word "old". */

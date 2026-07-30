@@ -544,6 +544,28 @@ class AiraViewModel : ViewModel() {
         mergePending(context)
     }
 
+    /**
+     * A refresh the user asked for.
+     *
+     * Reuses retryLoad rather than inventing a second path, so pulling does
+     * exactly what the offline Retry button does — one definition of "load this
+     * screen again", not two that drift.
+     *
+     * The spinner is held briefly on purpose. The loaders are fire-and-forget
+     * coroutines with no single completion to await, and a spinner that vanishes
+     * the instant you release reads as though nothing happened. This is the one
+     * place a short fixed delay is the honest choice rather than a lazy one.
+     */
+    fun refreshCurrent(context: Context?) {
+        if (context == null) return
+        _uiState.update { it.copy(refreshing = true) }
+        retryLoad(context)
+        viewModelScope.launch {
+            kotlinx.coroutines.delay(700)
+            _uiState.update { it.copy(refreshing = false) }
+        }
+    }
+
     /** Retry whatever the current screen needs. */
     fun retryLoad(context: Context?) {
         if (context == null) return
