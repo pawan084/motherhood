@@ -251,10 +251,23 @@ private fun MainExperience(
             // stage. An honest empty screen beats a confident wrong one.
             if (state.loadFailed) {
                 OfflineNotice(
+                    // Keeps its own inset: this branch returns early, outside
+                    // the Column that carries the padding for the tabs.
                     modifier = Modifier.padding(padding),
                     onRetry = { viewModel.retryLoad(context) },
                 )
                 return@Scaffold
+            }
+            Column(modifier = Modifier.padding(padding)) {
+            // Cached content keeps the screen; it just says how old it is. The
+            // notice sits above the tab rather than replacing it, because what
+            // is underneath is real and useful — it is the one thing an offline
+            // user came here for.
+            if (state.showingCached) {
+                CachedNotice(
+                    savedAt = state.cachedAt,
+                    onRetry = { viewModel.retryLoad(context) },
+                )
             }
             tabState.SaveableStateProvider(state.destination) {
             when (state.destination) {
@@ -262,7 +275,7 @@ private fun MainExperience(
                     TodayScreen(
                         onDestination = viewModel::selectDestination,
                         onOpenTool = viewModel::openTool,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier,
                         today = state.todayData,
                         waiting = updatesCount(state.careData),
                     )
@@ -274,12 +287,12 @@ private fun MainExperience(
                         onQuickMessage = { haptics.confirm(); viewModel.quickMessage(it, context) },
                         onOpenTools = viewModel::openTools,
                         onOpenTool = viewModel::openTool,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier,
                     )
                 MainDestination.Journey ->
                     JourneyScreen(
                         onOpenTool = viewModel::openTool,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier,
                         journey = state.journeyData,
                         onOpenSection = viewModel::openJourneySection,
                     )
@@ -287,7 +300,7 @@ private fun MainExperience(
                     CareScreen(
                         onOpenTool = viewModel::openTool,
                         onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier,
                         care = state.careData,
                         loading = state.careLoading,
                         onMarkTaken = { haptics.confirm(); viewModel.markMedicineTaken(context, it) },
@@ -307,7 +320,7 @@ private fun MainExperience(
                 MainDestination.You ->
                     YouScreen(
                         onOpenTool = viewModel::openTool,
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier,
                         name = state.todayData?.name.orEmpty(),
                         weeks = state.todayData?.weeks,
                         journey = state.todayData?.journey,
@@ -332,6 +345,7 @@ private fun MainExperience(
                         priorities = state.todayData?.priorities.orEmpty(),
                         onReplayTutorial = viewModel::replayTutorial,
                     )
+            }
             }
             }
         }
@@ -557,6 +571,53 @@ private fun destinationSubtitle(
  * hospital, and it is not the user's mistake. It names the likely cause,
  * confirms nothing was lost, and offers one button.
  */
+/**
+ * A slim line above cached content saying how old it is.
+ *
+ * Separate from [OfflineNotice], which takes the whole screen because there is
+ * nothing to show. Here there IS something to show, and it is real — just not
+ * necessarily current. The date and time are stated rather than "recently",
+ * because the question this app gets opened for is often "have I taken it
+ * today?", and only a timestamp lets someone answer that for themselves.
+ */
+@Composable
+private fun CachedNotice(savedAt: Long?, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    val label = remember(savedAt) {
+        savedAt?.let {
+            val now = java.util.Calendar.getInstance()
+            val then = java.util.Calendar.getInstance().apply { timeInMillis = it }
+            val sameDay =
+                now.get(java.util.Calendar.YEAR) == then.get(java.util.Calendar.YEAR) &&
+                    now.get(java.util.Calendar.DAY_OF_YEAR) == then.get(java.util.Calendar.DAY_OF_YEAR)
+            val pattern = if (sameDay) "HH:mm" else "d MMM, HH:mm"
+            java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault())
+                .format(java.util.Date(it))
+        }
+    }
+    Surface(
+        modifier = modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+        color = AmberMist,
+        contentColor = Amber,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 14.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = if (label == null) {
+                    "Offline — showing your last saved copy"
+                } else {
+                    "Offline — showing what Aira had at $label"
+                },
+                style = MaterialTheme.typography.bodySmall,
+            )
+            TextButton(onClick = onRetry) { Text("Retry") }
+        }
+    }
+}
+
 @Composable
 private fun OfflineNotice(onRetry: () -> Unit, modifier: Modifier = Modifier) {
     Column(

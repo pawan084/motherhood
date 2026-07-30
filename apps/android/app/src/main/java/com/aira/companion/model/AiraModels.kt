@@ -206,6 +206,19 @@ data class AiraUiState(
      *  difference between "my phone has no signal" and "this app is broken",
      *  and only one of those is recoverable by the person holding it. */
     val loadFailed: Boolean = false,
+    /** A refresh failed, but there is a cached copy on screen.
+     *
+     *  Distinct from [loadFailed], which means there is nothing to show at all.
+     *  The two need different treatment: nothing-to-show earns the whole screen,
+     *  while stale-but-real content should stay put with a line saying how old
+     *  it is. Silently showing yesterday's medicines as though they were today's
+     *  would be the worse failure — this app is used to answer "have I taken
+     *  it?", and a confident wrong answer to that is not a smaller mistake than
+     *  no answer. */
+    val showingCached: Boolean = false,
+    /** When the cached copy on screen was stored (epoch millis), so the notice
+     *  can say a time rather than the word "old". */
+    val cachedAt: Long? = null,
     /** Check-ins and symptom logs. Both were write-only while the tools said
      *  "Add to timeline" — saved, then never shown again. */
     val timeline: List<CareItem> = emptyList(),

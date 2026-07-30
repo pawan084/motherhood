@@ -153,8 +153,12 @@ object AiraApi {
         request("PATCH", "/v1/care/context", body, ensureToken(ctx))
     }
 
-    suspend fun today(ctx: Context): TodayData {
-        val o = request("GET", "/v1/today", null, ensureToken(ctx))
+    suspend fun today(ctx: Context): TodayData = parseToday(getCached(ctx, "/v1/today"))
+
+    /** The last Today this device successfully loaded, or null. */
+    fun cachedToday(ctx: Context): Stale<TodayData>? = readCached(ctx, "/v1/today", ::parseToday)
+
+    private fun parseToday(o: JSONObject): TodayData {
         val na = o.optJSONObject("next_action")
         return TodayData(
             name = o.optString("name"),
@@ -174,8 +178,12 @@ object AiraApi {
         )
     }
 
-    suspend fun journey(ctx: Context): JourneyData {
-        val o = request("GET", "/v1/journey", null, ensureToken(ctx))
+    suspend fun journey(ctx: Context): JourneyData = parseJourney(getCached(ctx, "/v1/journey"))
+
+    fun cachedJourney(ctx: Context): Stale<JourneyData>? =
+        readCached(ctx, "/v1/journey", ::parseJourney)
+
+    private fun parseJourney(o: JSONObject): JourneyData {
         val arr = o.optJSONArray("sections")
         val sections = mutableListOf<JourneySection>()
         if (arr != null) {
@@ -284,8 +292,11 @@ object AiraApi {
 
     // ── care ─────────────────────────────────────────────────────────────────
 
-    suspend fun care(ctx: Context): CareData {
-        val o = request("GET", "/v1/care", null, ensureToken(ctx))
+    suspend fun care(ctx: Context): CareData = parseCare(getCached(ctx, "/v1/care"))
+
+    fun cachedCare(ctx: Context): Stale<CareData>? = readCached(ctx, "/v1/care", ::parseCare)
+
+    private fun parseCare(o: JSONObject): CareData {
         val plan = o.optJSONObject("care_plan") ?: JSONObject()
         return CareData(
             appointments = o.optJSONArray("appointments").toCareItems(),
@@ -423,16 +434,22 @@ object AiraApi {
         }
 
     suspend fun documents(ctx: Context): List<CareItem> =
-        request("GET", "/v1/care/documents", null, ensureToken(ctx))
-            .optJSONArray("items").toCareItems()
+        parseItems(getCached(ctx, "/v1/care/documents"))
+
+    fun cachedDocuments(ctx: Context): Stale<List<CareItem>>? =
+        readCached(ctx, "/v1/care/documents", ::parseItems)
+
+    private fun parseItems(o: JSONObject): List<CareItem> = o.optJSONArray("items").toCareItems()
 
     /**
      * Check-ins and symptom logs, newest first — the "timeline" the tools have
      * always named. Both kinds were write-only: saved, then never shown again.
      */
     suspend fun timeline(ctx: Context): List<CareItem> =
-        request("GET", "/v1/care/timeline", null, ensureToken(ctx))
-            .optJSONArray("items").toCareItems()
+        parseItems(getCached(ctx, "/v1/care/timeline"))
+
+    fun cachedTimeline(ctx: Context): Stale<List<CareItem>>? =
+        readCached(ctx, "/v1/care/timeline", ::parseItems)
 
     /**
      * Correct one field on a care item. Every kind used to be create-only, so a
@@ -798,6 +815,42 @@ object AiraApi {
     /** Forget the cached device token; the next call registers a fresh user. */
     fun clearSession(ctx: Context) {
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(KEY_TOKEN).apply()
+        // The cache holds this account's care data, so it goes with the session
+        // it belongs to. This one call covers all three ways a session ends:
+        // signing out, deleting the account, and a 401 from a revoked token.
+        // Leaving a file behind would mean the app still held records the
+        // server had already erased — and "delete removes everything" is a
+        // promise the screen makes in those words.
+        AiraCache.clearAll(ctx)
+    }
+
+    // ── cached reads ──────────────────────────────────────────────────────────
+    //
+    // A GET that also keeps its answer, and a way to read that answer back when
+    // there is no network. Both sides go through the same parser, so what you
+    // see offline is what you saw online — a second parser for cached bytes is
+    // how the two would quietly disagree.
+
+    /** A cached value and when it was stored, so the UI can say how old it is
+     *  instead of presenting yesterday's medicines as today's. */
+    data class Stale<T>(val value: T, val savedAt: Long)
+
+    private suspend fun getCached(ctx: Context, path: String): JSONObject {
+        val token = ensureToken(ctx)
+        val o = request("GET", path, null, token)
+        // Written after the request succeeds, so a failed or partial response
+        // never replaces a good cached copy.
+        AiraCache.write(ctx, AiraCache.userKey(token), path, o.toString())
+        return o
+    }
+
+    private fun <T> readCached(ctx: Context, path: String, parse: (JSONObject) -> T): Stale<T>? {
+        // Deliberately reads the token straight from storage rather than
+        // ensureToken(), which registers a new device user when none is held —
+        // a network call, in the one code path whose whole purpose is to work
+        // without the network.
+        val cached = AiraCache.read(ctx, AiraCache.userKey(cachedToken(ctx)), path) ?: return null
+        return runCatching { Stale(parse(JSONObject(cached.body)), cached.savedAt) }.getOrNull()
     }
 
     // ── transport ─────────────────────────────────────────────────────────────

@@ -405,15 +405,70 @@ class AiraViewModel : ViewModel() {
     fun loadToday(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {
+            // Paint the last known answer before asking for a new one. On a slow
+            // connection this is the difference between a blank screen and your
+            // medicines; on no connection it is the difference between the app
+            // working and the app being a retry button.
+            showCachedIfEmpty(context)
             try {
                 val data = AiraApi.today(context)
-                _uiState.update { it.copy(todayData = data, loadFailed = false) }
+                _uiState.update {
+                    it.copy(todayData = data, loadFailed = false,
+                            showingCached = false, cachedAt = null)
+                }
             } catch (_: Exception) {
-                // Only claim failure when there is nothing to show. A refresh
-                // that fails over content already on screen is not worth a
-                // banner — the content is still true, just not newer.
-                _uiState.update { it.copy(loadFailed = it.todayData == null) }
+                _uiState.update {
+                    it.copy(
+                        loadFailed = it.todayData == null,
+                        // Live data already on screen is not stale just because
+                        // a later refresh failed — only say "cached" when what
+                        // is showing actually came from the cache.
+                        showingCached = it.showingCached && it.todayData != null,
+                    )
+                }
             }
+        }
+    }
+
+    /**
+     * Fill the screen from disk when there is nothing on it yet.
+     *
+     * Only when empty: a successful load must never be overwritten by an older
+     * cached copy, and this runs on every visit to a tab. `cachedAt` keeps the
+     * OLDEST of whatever it put up, because a notice saying "as of 09:04" has
+     * to be true of everything under it, not just the newest piece.
+     */
+    private fun showCachedIfEmpty(context: Context) {
+        var oldest: Long? = null
+        fun note(at: Long) { oldest = minOf(oldest ?: at, at) }
+
+        val s = _uiState.value
+        val today = if (s.todayData == null) AiraApi.cachedToday(context) else null
+        val care = if (s.careData == null) AiraApi.cachedCare(context) else null
+        val journey = if (s.journeyData == null) AiraApi.cachedJourney(context) else null
+        val timeline = if (s.timeline.isEmpty()) AiraApi.cachedTimeline(context) else null
+        val documents = if (s.documents.isEmpty()) AiraApi.cachedDocuments(context) else null
+        today?.let { note(it.savedAt) }
+        care?.let { note(it.savedAt) }
+        journey?.let { note(it.savedAt) }
+        timeline?.let { note(it.savedAt) }
+        documents?.let { note(it.savedAt) }
+        val at = oldest ?: return
+
+        _uiState.update {
+            it.copy(
+                todayData = today?.value ?: it.todayData,
+                careData = care?.value ?: it.careData,
+                journeyData = journey?.value ?: it.journeyData,
+                timeline = timeline?.value ?: it.timeline,
+                documents = documents?.value ?: it.documents,
+                showingCached = true,
+                cachedAt = at,
+                // There is something real on screen now, so the whole-screen
+                // offline notice is no longer the right answer.
+                loadFailed = false,
+                careLoading = false,
+            )
         }
     }
 
@@ -471,11 +526,20 @@ class AiraViewModel : ViewModel() {
     fun loadJourney(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {
+            showCachedIfEmpty(context)
             try {
                 val data = AiraApi.journey(context)
-                _uiState.update { it.copy(journeyData = data, loadFailed = false) }
+                _uiState.update {
+                    it.copy(journeyData = data, loadFailed = false,
+                            showingCached = false, cachedAt = null)
+                }
             } catch (_: Exception) {
-                _uiState.update { it.copy(loadFailed = it.journeyData == null) }
+                _uiState.update {
+                    it.copy(
+                        loadFailed = it.journeyData == null,
+                        showingCached = it.showingCached && it.journeyData != null,
+                    )
+                }
             }
         }
     }
@@ -488,10 +552,14 @@ class AiraViewModel : ViewModel() {
     fun loadCare(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {
+            showCachedIfEmpty(context)
             _uiState.update { it.copy(careLoading = it.careData == null) }
             try {
                 val data = AiraApi.care(context)
-                _uiState.update { it.copy(careData = data, careLoading = false, loadFailed = false) }
+                _uiState.update {
+                    it.copy(careData = data, careLoading = false, loadFailed = false,
+                            showingCached = false, cachedAt = null)
+                }
                 // The server's list is the source of truth for what should
                 // fire, so scheduling follows every load rather than only
                 // creation — a reminder added on the web arrives here too, and
@@ -499,7 +567,11 @@ class AiraViewModel : ViewModel() {
                 ReminderScheduler.syncAll(context, data.reminders, data.appointments)
             } catch (_: Exception) {
                 _uiState.update {
-                    it.copy(careLoading = false, loadFailed = it.careData == null)
+                    it.copy(
+                        careLoading = false,
+                        loadFailed = it.careData == null,
+                        showingCached = it.showingCached && it.careData != null,
+                    )
                 }
             }
         }
@@ -617,9 +689,13 @@ class AiraViewModel : ViewModel() {
     fun loadTimeline(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {
+            showCachedIfEmpty(context)
             try {
                 _uiState.update { it.copy(timeline = AiraApi.timeline(context)) }
             } catch (_: Exception) {
+                // Silent by design: the timeline sits alongside content that has
+                // its own notice, so a second banner for the same lost
+                // connection would just be noise.
             }
         }
     }
@@ -659,6 +735,7 @@ class AiraViewModel : ViewModel() {
     fun loadDocuments(context: Context?) {
         if (context == null) return
         viewModelScope.launch(Dispatchers.IO) {
+            showCachedIfEmpty(context)
             try {
                 _uiState.update { it.copy(documents = AiraApi.documents(context)) }
             } catch (_: Exception) {

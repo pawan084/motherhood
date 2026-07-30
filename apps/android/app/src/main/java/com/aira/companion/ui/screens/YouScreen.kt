@@ -378,7 +378,12 @@ fun YouScreen(
                 text = "Download everything Aira holds for you — your records as a " +
                     "JSON file and your documents as the original files, in one zip. Or erase it. " +
                     "Deletion is immediate and cannot be undone — it removes your profile, " +
-                    "conversations, care items, memory, consent history and safety records.",
+                    "conversations, care items, memory, consent history and safety records, " +
+                    // Said out loud because the app now keeps a copy on this
+                    // phone so it works offline. A deletion that emptied the
+                    // server and left that copy sitting in app storage would
+                    // make this sentence untrue in the way that matters most.
+                    "and the offline copy on this phone.",
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
             )
