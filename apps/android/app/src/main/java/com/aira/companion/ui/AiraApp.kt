@@ -32,6 +32,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults.Indicator
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -90,8 +91,16 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
 
     LaunchedEffect(state.snackbarMessage) {
         state.snackbarMessage?.let { message ->
-            snackbarHostState.showSnackbar(message)
-            viewModel.clearSnackbar()
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = state.snackbarAction,
+                withDismissAction = state.snackbarAction == null,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                viewModel.undoDelete(context)
+            } else {
+                viewModel.clearSnackbar()
+            }
         }
     }
 

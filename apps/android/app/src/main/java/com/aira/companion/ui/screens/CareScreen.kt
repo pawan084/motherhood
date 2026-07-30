@@ -125,8 +125,23 @@ fun CareScreen(
     // alone meant a medicine taken today vanished from the screen until
     // tomorrow — so the list answered "what's left?" but never "what do I
     // take?", and there was no way to see you'd already taken it.
+    // Ordered by the time of day they happen, not by when they were typed.
+    //
+    // The server returns newest-created first, which is the order they were
+    // added and no order at all to read a day in: an 8am tablet sat below a
+    // 10pm one because it was entered second. Reading "what is left today" then
+    // means scanning every row instead of running down the list. Anything
+    // without a time sorts last — a reminder with no time is a note, and notes
+    // do not belong in the middle of a schedule.
     val medicines = care?.medicines.orEmpty().ifEmpty { care?.medicinesDue.orEmpty() }
+        .sortedWith(compareBy(nullsLast()) { minutesOfDay(it.subtitle) })
     val reminders = care?.reminders.orEmpty()
+        // Done ones drop to the bottom rather than out of sight: seeing what you
+        // have already dealt with is part of knowing the day is under control.
+        .sortedWith(
+            compareBy<CareItem> { it.done }
+                .thenBy(nullsLast()) { minutesOfDay(it.subtitle) },
+        )
     val stillLoading = loading && care == null
 
     Column(
@@ -610,4 +625,25 @@ private fun CareRow(
         }
         trailing?.invoke()
     }
+}
+
+/**
+ * The time of day in a care item's detail line, as minutes past midnight.
+ *
+ * The line is what the app already shows — "8:00 PM · Daily" — so this reads
+ * the same string the user does rather than a second field that could disagree
+ * with it. Null when there is no time in it, which sorts last.
+ */
+internal fun minutesOfDay(subtitle: String?): Int? {
+    val m = Regex("""(\d{1,2}):(\d{2})\s*(AM|PM)?""", RegexOption.IGNORE_CASE)
+        .find(subtitle.orEmpty()) ?: return null
+    var hour = m.groupValues[1].toIntOrNull() ?: return null
+    val minute = m.groupValues[2].toIntOrNull() ?: return null
+    val meridiem = m.groupValues[3].uppercase()
+    if (hour !in 0..23 || minute !in 0..59) return null
+    // 12 AM is midnight and 12 PM is noon — the pair a naive "+12 for PM" gets
+    // backwards, which would file a bedtime medicine first thing in the morning.
+    if (meridiem == "AM" && hour == 12) hour = 0
+    if (meridiem == "PM" && hour != 12) hour += 12
+    return hour * 60 + minute
 }

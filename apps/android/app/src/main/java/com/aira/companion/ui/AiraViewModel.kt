@@ -41,6 +41,10 @@ import kotlinx.coroutines.launch
  * no arguments.
  */
 class AiraViewModel : ViewModel() {
+    /** How long a removed row can be brought back. Long enough to notice the
+     *  snackbar and react, short enough that the delete is not left hanging. */
+    private val UNDO_WINDOW_MS = 5_000L
+
     private val _uiState = MutableStateFlow(AiraUiState())
     val uiState: StateFlow<AiraUiState> = _uiState.asStateFlow()
 
@@ -930,11 +934,80 @@ class AiraViewModel : ViewModel() {
             refreshTimelineAndDocs(it)
         }
 
-    fun deleteCareItem(context: Context?, id: String) =
-        write(context, "Removed.") {
-            AiraApi.deleteCareItem(it, id)
-            refreshTimelineAndDocs(it)
+    /**
+     * Remove a care item, with a few seconds to change your mind.
+     *
+     * Delete was immediate and final. In a list holding medicines, a mistaken
+     * tap on the wrong row is a medicine gone with nothing to bring it back —
+     * and the row next to the one people mean to press is the pattern this
+     * screen already had to widen its touch targets for.
+     *
+     * The row disappears at once and the SERVER call is what waits. Reversing a
+     * completed delete would mean recreating the item, which gives it a new id
+     * and a new created time — a different row wearing the same name. Deferring
+     * instead means undo is genuinely "never mind" rather than "make me another
+     * one".
+     *
+     * If the app dies inside the window the item survives on the server and
+     * comes back on the next load. That is the safe direction to fail in: a
+     * deletion that did not happen is recoverable, and one that happened
+     * without the user seeing it through is not.
+     */
+    private var pendingDelete: kotlinx.coroutines.Job? = null
+
+    fun deleteCareItem(context: Context?, id: String) {
+        if (context == null) {
+            notify("Not removed — Aira isn't connected right now.")
+            return
         }
+        // Any earlier pending delete commits now rather than being lost: a
+        // second delete must not silently cancel the first.
+        pendingDelete = null
+        removeItemLocally(id)
+        notify("Removed.", action = "Undo")
+        pendingDelete = viewModelScope.launch(Dispatchers.IO) {
+            kotlinx.coroutines.delay(UNDO_WINDOW_MS)
+            try {
+                AiraApi.deleteCareItem(context, id)
+                refreshTimelineAndDocs(context)
+                loadCare(context)
+            } catch (e: Exception) {
+                notify(saveFailureMessage(e, "Couldn't remove that"))
+                loadCare(context)
+            }
+        }
+    }
+
+    /** Cancel a delete that has not reached the server yet, and put the row
+     *  back from the source of truth rather than from memory. */
+    fun undoDelete(context: Context?) {
+        pendingDelete?.cancel()
+        pendingDelete = null
+        clearSnackbar()
+        loadCare(context)
+        context?.let { refreshTimelineAndDocsAsync(it) }
+    }
+
+    private fun refreshTimelineAndDocsAsync(context: Context) {
+        loadTimeline(context)
+        loadDocuments(context)
+    }
+
+    private fun removeItemLocally(id: String) {
+        _uiState.update { s ->
+            val care = s.careData
+            s.copy(
+                careData = care?.copy(
+                    reminders = care.reminders.filterNot { it.id == id },
+                    medicines = care.medicines.filterNot { it.id == id },
+                    medicinesDue = care.medicinesDue.filterNot { it.id == id },
+                    appointments = care.appointments.filterNot { it.id == id },
+                ),
+                timeline = s.timeline.filterNot { it.id == id },
+                documents = s.documents.filterNot { it.id == id },
+            )
+        }
+    }
 
     /** Check-ins and symptom logs — read back for the first time. */
     fun loadTimeline(context: Context?) {
@@ -1480,12 +1553,12 @@ class AiraViewModel : ViewModel() {
         }
     }
 
-    fun notify(message: String) {
-        _uiState.update { it.copy(snackbarMessage = message) }
+    fun notify(message: String, action: String? = null) {
+        _uiState.update { it.copy(snackbarMessage = message, snackbarAction = action) }
     }
 
     fun clearSnackbar() {
-        _uiState.update { it.copy(snackbarMessage = null) }
+        _uiState.update { it.copy(snackbarMessage = null, snackbarAction = null) }
     }
 
     fun resetDemo() {

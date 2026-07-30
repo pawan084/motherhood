@@ -290,6 +290,8 @@ data class AiraUiState(
     // about a safety system rather than decoration.
     val screeningDegraded: Boolean = false,
     val snackbarMessage: String? = null,
+    /** Set when the snackbar carries an action, e.g. "Undo" after a delete. */
+    val snackbarAction: String? = null,
     // The stored voice preference, and the partner invite most recently created.
     // Both used to be toasts that persisted nothing.
     val voicePrefs: VoicePrefs = VoicePrefs(),
