@@ -13,6 +13,7 @@ const NAV: { href: string; label: string; minRole?: string }[] = [
   { href: "/feedback", label: "Feedback" },
   { href: "/users", label: "Users" },
   { href: "/content", label: "Content" },
+  { href: "/videos", label: "Videos" },
   { href: "/prompts", label: "Prompts" },
   { href: "/system", label: "System" },
   { href: "/admins", label: "Admins", minRole: "owner" },

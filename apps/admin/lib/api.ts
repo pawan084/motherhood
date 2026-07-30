@@ -135,3 +135,22 @@ export type System = {
   providers: { name: string; status: string; ms: number | null; error?: string }[];
   auth: { app_token_required: boolean; google_signin: boolean };
 };
+export type VideoAdminItem = {
+  id: string; slug: string; title: string;
+  category: string; category_label: string; journeys: string[];
+  timing: { type: string; start_week: number | null; end_week: number | null };
+  content_format: string;
+  duration: { min_seconds: number; max_seconds: number };
+  description: string; safety_level: string;
+  in_app_actions: string[]; languages: string[];
+  status: string;
+  clinical_review: {
+    required: boolean; specialties: string[]; status: string;
+    reviewed_by?: string | null; reviewed_at?: number | null;
+  };
+  playable: boolean;
+};
+export type VideosAdminResp = {
+  items: VideoAdminItem[];
+  summary: { total: number; published: number; approved: number; pending: number; urgent: number };
+};

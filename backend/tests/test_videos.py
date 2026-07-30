@@ -1,8 +1,10 @@
 """Educational video library: the catalog served by journey/week, saved-for-later,
 and the safety posture (urgent topics carry their level so the client routes to
 care rather than reassure). Saved videos ride the export/delete fan-out like any
-other user data.
+other user data. The admin console reviews/publishes topics, which flips
+`playable` on the public endpoint.
 """
+from conftest import admin_login
 
 
 def _pregnant(client, headers, weeks=24):
@@ -106,3 +108,46 @@ def test_saved_videos_export_and_delete_with_account(client):
     d = client.post("/v1/account/delete", json={"confirm": "DELETE MY DATA"}, headers=h)
     assert d.status_code == 200, d.text
     assert "videos" in d.json()["deleted"]
+
+
+# ── admin: review + publish ──────────────────────────────────────────────────
+
+def test_admin_lists_all_videos_with_summary(client):
+    admin_login(client)
+    body = client.get("/admin/videos").json()
+    assert body["summary"]["total"] == 100
+    assert body["summary"]["urgent"] == 8
+    # Nothing is approved or published in the catalog seed.
+    assert body["summary"]["published"] == 0
+
+
+def test_admin_review_publishes_and_flips_playable(client, user):
+    h = user["headers"]
+    # Seed state: a topic is not playable until reviewed AND published.
+    assert client.get("/v1/videos/preg-week-24", headers=h).json()["playable"] is False
+
+    csrf = admin_login(client)
+    r = client.post("/admin/videos/preg-week-24/review",
+                    json={"review_status": "approved", "status": "published"}, headers=csrf)
+    assert r.status_code == 200, r.text
+    entry = r.json()["entry"]
+    assert entry["playable"] is True
+    assert entry["clinical_review"]["status"] == "approved"
+    assert entry["clinical_review"]["reviewed_by"]  # the acting admin's email
+
+    # The public endpoint reflects the review immediately.
+    after = client.get("/v1/videos/preg-week-24", headers=h).json()
+    assert after["playable"] is True and after["status"] == "published"
+
+
+def test_admin_review_rejects_bad_status(client):
+    csrf = admin_login(client)
+    r = client.post("/admin/videos/preg-week-05/review",
+                    json={"status": "not-a-real-status"}, headers=csrf)
+    assert r.status_code == 400
+
+
+def test_admin_review_unknown_video_is_404(client):
+    csrf = admin_login(client)
+    assert client.post("/admin/videos/nope-not-real/review",
+                       json={"status": "published"}, headers=csrf).status_code == 404

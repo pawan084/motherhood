@@ -32,6 +32,7 @@ import prompts
 import safety
 import security
 import services
+import videos
 
 log = logging.getLogger("aira.admin")
 ADMIN_SECRET = os.environ.get("ADMIN_JWT_SECRET", "dev-admin-secret-change-me")
@@ -363,6 +364,35 @@ def patch_content(key: str, body: ContentIn, admin=Depends(require_admin("suppor
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     _audit(admin["sub"], "content.edit", key)
+    return {"entry": entry}
+
+
+# ── videos (educational library review) ──────────────────────────────────────
+
+@router.get("/videos")
+def get_videos(admin=Depends(require_admin())):
+    return videos.admin_list()
+
+
+class VideoReviewIn(BaseModel):
+    review_status: str | None = None
+    status: str | None = None
+    note: str | None = None
+
+
+@router.post("/videos/{video_id}/review")
+def review_video(video_id: str, body: VideoReviewIn,
+                 admin=Depends(require_admin("support"))):
+    """Advance a topic's clinical review / publish state. Support+, since it is a
+    content decision that gates what the clients can play."""
+    try:
+        entry = videos.set_review(video_id, review_status=body.review_status,
+                                  status=body.status, actor=admin["sub"], note=body.note or "")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if entry is None:
+        raise HTTPException(status_code=404, detail="unknown video")
+    _audit(admin["sub"], "video.review", f"{video_id} status={body.status} review={body.review_status}")
     return {"entry": entry}
 
 

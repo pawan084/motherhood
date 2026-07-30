@@ -123,6 +123,14 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS video_saves ("
               " user_id TEXT, video_id TEXT, created REAL,"
               " PRIMARY KEY (user_id, video_id))")
+    # Per-topic clinical review + publish state, overlaid on the catalog seed
+    # (mirrors content.py: an admin edit overrides the in-code default). A topic
+    # becomes playable only once it is published AND approved here. Keyed by
+    # video_id, not user — this is moderation state, so it is NOT user data and
+    # does not ride the account export/delete fan-out.
+    c.execute("CREATE TABLE IF NOT EXISTS video_reviews ("
+              " video_id TEXT PRIMARY KEY, status TEXT, review_status TEXT,"
+              " reviewed_by TEXT, reviewed_at REAL, note TEXT)")
     c.commit()
     _conn = c
 
@@ -147,6 +155,40 @@ def _for_journey(journey: str | None) -> list[dict]:
         return [t for t in _TOPICS if journey in t["journeys"]]
     # `exploring` / unknown: the on-demand library, never stage-specific cards.
     return [t for t in _TOPICS if t["timing"]["type"] == "on_demand"]
+
+
+# ── review overlay ───────────────────────────────────────────────────────────
+# The catalog ships every topic as planned/pending; an admin advances it through
+# these before it can play. Kept as constants so the admin route validates
+# against the same list the clients understand.
+REVIEW_STATUSES = ("pending", "in_review", "approved", "changes_requested")
+PUBLISH_STATUSES = ("planned", "script_draft", "clinical_review", "approved", "produced", "published")
+
+
+def _review_map() -> dict[str, dict]:
+    init()
+    rows = _conn.execute(
+        "SELECT video_id, status, review_status, reviewed_by, reviewed_at, note FROM video_reviews"
+    ).fetchall()
+    return {r[0]: {"status": r[1], "review_status": r[2], "reviewed_by": r[3],
+                   "reviewed_at": r[4], "note": r[5]} for r in rows}
+
+
+def _resolved(t: dict, reviews: dict) -> dict:
+    """Overlay a topic's stored review/publish state on the catalog seed, so a
+    published+approved topic reports playable=true to the clients."""
+    rv = reviews.get(t["id"])
+    if not rv:
+        return t
+    status = rv["status"] or t["status"]
+    review_status = rv["review_status"] or t["clinical_review"]["status"]
+    return {
+        **t,
+        "status": status,
+        "clinical_review": {**t["clinical_review"], "status": review_status,
+                            "reviewed_by": rv["reviewed_by"], "reviewed_at": rv["reviewed_at"]},
+        "playable": status == "published" and review_status == "approved",
+    }
 
 
 def _saved_ids(uid: str) -> list[str]:
@@ -187,6 +229,50 @@ def _resolve_week(uid: str, given: int | None) -> int | None:
         return None
 
 
+# ── admin: review + publish (admin.py mounts the routes) ─────────────────────
+
+def admin_list() -> dict:
+    """Every topic with its resolved review/publish state, for the console."""
+    init()
+    reviews = _review_map()
+    items = [_resolved(t, reviews) for t in _TOPICS]
+    return {
+        "items": items,
+        "summary": {
+            "total": len(items),
+            "published": sum(1 for t in items if t["status"] == "published"),
+            "approved": sum(1 for t in items if t["clinical_review"]["status"] == "approved"),
+            "pending": sum(1 for t in items if t["clinical_review"]["status"] == "pending"),
+            "urgent": sum(1 for t in items if t["safety_level"] == "urgent"),
+        },
+    }
+
+
+def set_review(video_id: str, *, review_status: str | None, status: str | None,
+               actor: str, note: str = "") -> dict | None:
+    """Advance a topic's clinical review and/or publish state. Missing fields keep
+    their current value. Returns the resolved topic, or None if the id is unknown."""
+    init()
+    base = _BY_ID.get(video_id)
+    if base is None:
+        return None
+    cur = _review_map().get(video_id, {})
+    new_review = review_status or cur.get("review_status") or base["clinical_review"]["status"]
+    new_status = status or cur.get("status") or base["status"]
+    if new_review not in REVIEW_STATUSES:
+        raise ValueError(f"review_status must be one of: {', '.join(REVIEW_STATUSES)}")
+    if new_status not in PUBLISH_STATUSES:
+        raise ValueError(f"status must be one of: {', '.join(PUBLISH_STATUSES)}")
+    _conn.execute(
+        "INSERT INTO video_reviews (video_id, status, review_status, reviewed_by, reviewed_at, note) "
+        "VALUES (?,?,?,?,?,?) ON CONFLICT(video_id) DO UPDATE SET "
+        "status=excluded.status, review_status=excluded.review_status, "
+        "reviewed_by=excluded.reviewed_by, reviewed_at=excluded.reviewed_at, note=excluded.note",
+        (video_id, new_status, new_review, actor, time.time(), note))
+    _conn.commit()
+    return _resolved(base, _review_map())
+
+
 # ── routes ───────────────────────────────────────────────────────────────────
 
 @router.get("/videos")
@@ -214,9 +300,10 @@ def list_videos(uid: str = Depends(current_user),
                  if needle in t["title"].lower() or needle in t["description"].lower()]
 
     wv = video_for_week(j, w)
+    reviews = _review_map()
     return {
-        "items": [{**t, "saved": t["id"] in saved_ids} for t in items],
-        "week_video": ({**wv, "saved": wv["id"] in saved_ids} if wv else None),
+        "items": [{**_resolved(t, reviews), "saved": t["id"] in saved_ids} for t in items],
+        "week_video": ({**_resolved(wv, reviews), "saved": wv["id"] in saved_ids} if wv else None),
         "categories": _CATEGORIES,
         "saved_ids": sorted(saved_ids),
     }
@@ -226,7 +313,9 @@ def list_videos(uid: str = Depends(current_user),
 def saved_videos(uid: str = Depends(current_user)):
     """Saved topics, newest first. Declared before /videos/{id} so 'saved' is not
     captured as a video id."""
-    return {"items": [{**_BY_ID[i], "saved": True} for i in _saved_ids(uid) if i in _BY_ID]}
+    reviews = _review_map()
+    return {"items": [{**_resolved(_BY_ID[i], reviews), "saved": True}
+                      for i in _saved_ids(uid) if i in _BY_ID]}
 
 
 @router.get("/videos/{video_id}")
@@ -235,7 +324,7 @@ def get_video(video_id: str, uid: str = Depends(current_user)):
     t = _BY_ID.get(video_id)
     if not t:
         raise HTTPException(status_code=404, detail="unknown video")
-    return {**t, "saved": video_id in set(_saved_ids(uid))}
+    return {**_resolved(t, _review_map()), "saved": video_id in set(_saved_ids(uid))}
 
 
 @router.post("/videos/{video_id}/save")
