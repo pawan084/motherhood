@@ -85,40 +85,53 @@ fun JourneyScreen(
 
         Spacer(modifier = Modifier.height(22.dp))
 
-        AiraCard(containerColor = LilacMist) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    modifier = Modifier.size(58.dp),
-                    color = Plum,
-                    contentColor = Paper,
-                    shape = CircleShape,
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        // A pregnancy is a progression, so it is drawn as one: where you are,
+        // what is behind, what is coming. See JourneyPath for what was
+        // deliberately left out of the pattern this borrows from — no padlocks
+        // on weeks you have not reached, no ticks on weeks that merely passed,
+        // no streak.
+        //
+        // Only when there is a week to place someone on. Postpartum and trying
+        // to conceive are not a countdown, and stretching a pregnancy path over
+        // them with the labels changed would say something untrue about both —
+        // they keep the card, which states where they are without implying a
+        // direction of travel.
+        if (weeks != null) {
+            JourneyPath(
+                currentWeek = weeks,
+                thisWeekTitle = heroTitle,
+                thisWeekBody = heroBody,
+            )
+        } else {
+            AiraCard(containerColor = LilacMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        modifier = Modifier.size(58.dp),
+                        color = Plum,
+                        contentColor = Paper,
+                        shape = CircleShape,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = weeks?.toString() ?: journeyLabel(journey?.journey).take(1),
+                                text = journeyLabel(journey?.journey).take(1),
                                 style = MaterialTheme.typography.titleLarge,
-                            )
-                            Text(
-                                text = if (weeks != null) "weeks" else "stage",
-                                style = MaterialTheme.typography.labelSmall,
                             )
                         }
                     }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    SectionLabel("This week")
-                    Text(
-                        text = heroTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Ink,
-                    )
-                    Text(
-                        text = heroBody,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
+                    Spacer(modifier = Modifier.width(14.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        SectionLabel("Where you are")
+                        Text(
+                            text = heroTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Ink,
+                        )
+                        Text(
+                            text = heroBody,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
                 }
             }
         }
