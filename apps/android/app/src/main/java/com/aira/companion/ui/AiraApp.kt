@@ -333,6 +333,9 @@ private fun MainExperience(
                         onOpenLearn = {
                             viewModel.selectDestination(MainDestination.Learn)
                         },
+                        onOpenJourney = {
+                            viewModel.selectDestination(MainDestination.Journey)
+                        },
                     )
                 MainDestination.Aira ->
                     AiraChatScreen(

@@ -80,6 +80,8 @@ fun TodayScreen(
     journey: com.aira.companion.model.JourneyData? = null,
     onOpenSection: (com.aira.companion.model.JourneySection) -> Unit = {},
     onOpenLearn: () -> Unit = {},
+    /** Opens the journey page: the path, the reading and the videos. */
+    onOpenJourney: () -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -188,9 +190,25 @@ fun TodayScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        GradientHeroSurface(modifier = Modifier.fillMaxWidth()) {
+        GradientHeroSurface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    role = androidx.compose.ui.semantics.Role.Button,
+                    onClickLabel = "See where this sits in your pregnancy",
+                    onClick = onOpenJourney,
+                ),
+        ) {
             Column {
-                SectionLabel("Where you are")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("Where you are")
+                    Spacer(modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = Icons.Outlined.ChevronRight,
+                        contentDescription = null,
+                        tint = Plum,
+                    )
+                }
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -248,7 +266,10 @@ fun TodayScreen(
                         // The stage line moved up to the headline, so this card
                         // stops repeating it. It says where the tap goes
                         // instead, which is the one thing the row wasn't saying.
-                        // No title line here.
+                        // The card names where you are; tapping it shows
+                        // where that sits. It carried a chevron into the old
+                        // Journey tab, lost it when the tab was folded in, and
+                        // now has a destination worth having again.
                         //
                         // It was "Your journey" with a chevron into the Journey
                         // tab — a doorway to where you already are, now that the
@@ -368,36 +389,12 @@ fun TodayScreen(
         // the ones they add at the worst moments. A check-in at 3am should not
         // require finding a menu.
         Spacer(modifier = Modifier.height(22.dp))
-        // The journey, below the action rather than above it.
+        // The path and the reading moved to their own page.
         //
-        // Today exists to answer "what now", and this screen has already been
-        // fixed once for pushing that below the fold. So the arc of the
-        // pregnancy sits under "Do this next", where it is context rather than
-        // an obstacle — and the path is drawn without repeating this week's
-        // text, which the hero at the top already carries.
-        if (weeks != null) {
-            Spacer(modifier = Modifier.height(26.dp))
-            SectionLabel("Where this sits")
-            Spacer(modifier = Modifier.height(12.dp))
-            JourneyPath(currentWeek = weeks)
-        }
-
-        val sections = journey?.sections.orEmpty()
-        // One row, not four cards.
-        //
-        // Today had eighteen tappable things on it while claiming to offer "one
-        // clear next step instead of a feed". Four browse cards competing with
-        // the action above them is a feed. Reading is a thing people choose to
-        // do, not the thing Today is for, so it gets one door and Aira can
-        // still raise a topic in conversation when it is relevant.
-        if (sections.isNotEmpty()) {
-            Spacer(modifier = Modifier.height(22.dp))
-            TodayReadRow(
-                title = "Read and watch",
-                body = "${sections.size} topics for where you are, and short guided videos.",
-                onClick = onOpenLearn,
-            )
-        }
+        // Today is the answer to "what now". Where you are in the arc of a
+        // pregnancy is a different question — worth asking, not worth asking
+        // every time you open the app. It is one tap away from the card that
+        // already states the week, which is the natural place to look for it.
 
         // "Add something" moved off Today.
         //
