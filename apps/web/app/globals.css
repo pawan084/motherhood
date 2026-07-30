@@ -1188,6 +1188,45 @@ textarea:focus-visible, [tabindex]:focus-visible {
 .or-rule::before, .or-rule::after {
   content: ""; flex: 1; height: 1px; background: var(--line);
 }
+
+/* ── Login page (/login) ─────────────────────────────────────────────────── */
+.auth-page { min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; background: var(--ivory); }
+.auth-card {
+  width: min(440px, 100%); padding: 32px 30px 26px;
+  border: 1px solid var(--line); border-radius: 22px; background: var(--paper);
+  box-shadow: 0 26px 70px #2b1a2c16;
+}
+.auth-back {
+  display: inline-flex; align-items: center; gap: 6px; margin-bottom: 18px;
+  color: var(--muted); font-size: 13px; font-weight: 600; text-decoration: none;
+}
+.auth-back:hover { color: var(--aubergine); }
+.auth-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.auth-brand strong { font-family: var(--serif); font-size: 22px; font-weight: 500; color: var(--aubergine); }
+.auth-title { margin: 0 0 8px; font-family: var(--serif); font-size: 28px; font-weight: 500; letter-spacing: -.02em; color: var(--ink); }
+.auth-sub { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.auth-tabs { display: flex; gap: 4px; margin-bottom: 20px; padding: 4px; border-radius: 13px; background: var(--lilac-soft); }
+.auth-tabs button {
+  flex: 1; min-height: 38px; padding: 8px; border: 0; border-radius: 9px;
+  background: transparent; color: var(--muted); font-size: 14px; font-weight: 700;
+}
+.auth-tabs button.active { background: #fff; color: var(--aubergine); box-shadow: 0 1px 3px #2b1a2c14; }
+.auth-demo {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; margin-bottom: 8px; padding: 12px 18px;
+  border: 1px solid var(--aubergine); border-radius: 12px; background: var(--lilac-soft);
+  color: var(--aubergine); font-size: 14px; font-weight: 700;
+}
+.auth-demo:hover:not(:disabled) { background: var(--lilac); }
+.auth-demo:disabled { opacity: .6; }
+.auth-demo-note { margin: 0 0 20px; text-align: center; color: var(--muted); font-size: 12px; }
+.auth-hint { margin: -6px 0 14px; font-size: 13px; line-height: 1.6; }
+.auth-note { margin: 14px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.auth-links { margin-top: 18px; display: grid; gap: 8px; justify-items: center; text-align: center; }
+.auth-link { border: 0; background: transparent; color: var(--aubergine); font-size: 14px; font-weight: 700; }
+.auth-legal { margin: 0; color: var(--muted); font-size: 12px; }
+.auth-legal a { color: var(--aubergine); }
+
 .skeleton { border-radius: 12px; background: linear-gradient(90deg, #efe9e4, #f7f3ef, #efe9e4); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 

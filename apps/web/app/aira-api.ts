@@ -493,6 +493,29 @@ export function clearSession() {
   if (typeof localStorage !== "undefined") localStorage.removeItem(TOKEN_KEY);
 }
 
+/** Provision a one-tap demo: a FRESH anonymous user (so it never merges with
+ *  whatever is already in this browser), onboarded as a week-24 pregnancy and
+ *  pre-filled with a little care data, so the app opens looking lived-in. Uses
+ *  the ordinary endpoints — no special demo account on the server to keep in
+ *  sync, and every demo session is isolated. */
+export async function demoSignIn(): Promise<void> {
+  clearSession();
+  await AiraAPI.onboarding({
+    journey: "pregnant",
+    name: "Demo",
+    language: "English",
+    weeks: 24,
+    priorities: ["Better sleep", "Nutrition", "Visit preparation"],
+  });
+  // Best-effort sample content — a failed row shouldn't block entering the demo.
+  await Promise.allSettled([
+    AiraAPI.addMedicine({ name: "Prenatal vitamin", dose: "1 tablet", schedule: "Daily", time: "9:00 AM" }),
+    AiraAPI.addReminder({ title: "Drink a glass of water", time: "2:00 PM", repeat: "Daily" }),
+    AiraAPI.addAppointment({ doctor: "Dr. Nadia Rahman", place: "Riverside Clinic", when: "Thu 14 Aug, 10:30 AM" }),
+    AiraAPI.addCheckin({ feeling: "Tired", sleep_hours: 6, note: "woke at 3am" }),
+  ]);
+}
+
 /** Save an object to the user's device as a JSON file. */
 /**
  * Download everything as a zip: the records plus the Care Vault's actual files.

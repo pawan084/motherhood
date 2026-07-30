@@ -44,9 +44,10 @@ declare global {
   }
 }
 
-/** Load the GSI script once, shared across mounts. */
+/** Load the GSI script once, shared across mounts. Exported so the dedicated
+ *  /login page reuses the exact same loader rather than duplicating it. */
 let gsiPromise: Promise<void> | null = null;
-function loadGsi(): Promise<void> {
+export function loadGsi(): Promise<void> {
   if (typeof document === "undefined") return Promise.resolve();
   if (window.google?.accounts?.id) return Promise.resolve();
   if (!gsiPromise) {
