@@ -572,6 +572,7 @@ private fun destinationSubtitle(
         // three products rather than one. The subtitle now says which screen
         // you are on, which is the only thing that actually differs.
         MainDestination.Aira -> "Chat"
+        MainDestination.Learn -> "Short videos"
         MainDestination.Care -> "Your care"
         MainDestination.You -> "Settings"
     }
