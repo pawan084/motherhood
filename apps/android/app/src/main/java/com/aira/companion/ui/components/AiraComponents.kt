@@ -505,7 +505,12 @@ fun AiraBottomNavigation(
                     Icon(
                         imageVector = if (selectedItem) icon.active else icon.inactive,
                         contentDescription = destination.label,
-                        modifier = Modifier.size(21.dp),
+                        // The conversation is the product; the other two are
+                        // where its results are kept. With three tabs there is
+                        // room to say that with size instead of a tutorial.
+                        modifier = Modifier.size(
+                            if (destination == MainDestination.Aira) 30.dp else 22.dp,
+                        ),
                     )
                 },
                 label = {

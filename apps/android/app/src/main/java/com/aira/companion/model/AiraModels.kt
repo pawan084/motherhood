@@ -56,7 +56,6 @@ enum class MainDestination(
 val bottomBarDestinations: List<MainDestination> = listOf(
     MainDestination.Today,
     MainDestination.Aira,
-    MainDestination.Journey,
     MainDestination.Care,
 )
 

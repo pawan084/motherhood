@@ -2,6 +2,7 @@ package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.TrackChanges
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +74,12 @@ fun TodayScreen(
     /** Appointments, medicines due and open reminders — the same count the
      *  bell badges, so the two can't disagree. */
     waiting: Int = 0,
+    /** Journey folded in: this screen was already headed "Where you are", and
+     *  a second tab saying the same thing about the same week was two answers
+     *  to one question. */
+    journey: com.aira.companion.model.JourneyData? = null,
+    onOpenSection: (com.aira.companion.model.JourneySection) -> Unit = {},
+    onOpenLearn: () -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -102,6 +110,11 @@ fun TodayScreen(
     // "Loaded" means the server answered. Until it does, the screen says it is
     // still loading rather than asserting anything about the user's care.
     val loaded = today != null
+    // The week's detail, when the server has it. The headline above already
+    // carries the week's title, so this must not repeat it.
+    val heroSubtitle = journey?.body?.ifBlank { null }
+        ?: today?.contextLine?.ifBlank { null }
+        ?: "What's worth knowing right now"
     val plumRing = Plum
     Column(
         modifier =
@@ -235,26 +248,24 @@ fun TodayScreen(
                         // The stage line moved up to the headline, so this card
                         // stops repeating it. It says where the tap goes
                         // instead, which is the one thing the row wasn't saying.
-                        Text(
-                            text = "Your journey",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Ink,
-                        )
+                        // No title line here.
+                        //
+                        // It was "Your journey" with a chevron into the Journey
+                        // tab — a doorway to where you already are, now that the
+                        // tab is this page. Replacing it with the week's own
+                        // headline just repeated the h1 four lines above it.
+                        // What this card adds is the ring and the detail, so
+                        // that is all it carries.
                         Text(
                             text = if (loaded) {
-                                "What's worth knowing right now"
+                                heroSubtitle
                             } else {
                                 "Not loaded yet."
                             },
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = InkMuted,
                         )
                     }
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = "Open Journey",
-                        tint = Plum,
-                    )
                 }
                 // The "6h sleep / Steady mood / None new concern" pills that used
                 // to sit here were invented readings — nothing in the app had
@@ -357,6 +368,41 @@ fun TodayScreen(
         // the ones they add at the worst moments. A check-in at 3am should not
         // require finding a menu.
         Spacer(modifier = Modifier.height(22.dp))
+        // The journey, below the action rather than above it.
+        //
+        // Today exists to answer "what now", and this screen has already been
+        // fixed once for pushing that below the fold. So the arc of the
+        // pregnancy sits under "Do this next", where it is context rather than
+        // an obstacle — and the path is drawn without repeating this week's
+        // text, which the hero at the top already carries.
+        if (weeks != null) {
+            Spacer(modifier = Modifier.height(26.dp))
+            SectionLabel("Where this sits")
+            Spacer(modifier = Modifier.height(12.dp))
+            JourneyPath(currentWeek = weeks)
+        }
+
+        val sections = journey?.sections.orEmpty()
+        if (sections.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(22.dp))
+            SectionLabel("Read about")
+            Spacer(modifier = Modifier.height(9.dp))
+            sections.forEach { section ->
+                TodayReadRow(
+                    title = section.title,
+                    body = section.text,
+                    onClick = { onOpenSection(section) },
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+            TodayReadRow(
+                title = "Short guided videos",
+                body = "Picked for where you are, and saveable for later.",
+                onClick = onOpenLearn,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(26.dp))
         SectionLabel("Add something")
         Spacer(modifier = Modifier.height(10.dp))
         Row(
@@ -493,6 +539,33 @@ private fun QuickAdd(
                 text = label,
                 style = MaterialTheme.typography.labelMedium,
                 color = Ink,
+            )
+        }
+    }
+}
+
+/** A reading or watching entry on Today. Deliberately plainer than the Journey
+ *  cards it replaces — this screen already carries a hero and an action card,
+ *  and a third weight of card below them made the page read as three competing
+ *  headlines rather than one page. */
+@Composable
+private fun TodayReadRow(title: String, body: String, onClick: () -> Unit) {
+    AiraCard(
+        modifier = Modifier.clickable(
+            role = androidx.compose.ui.semantics.Role.Button,
+            onClickLabel = "Open $title",
+            onClick = onClick,
+        ),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleSmall, color = Ink)
+                Text(body, style = MaterialTheme.typography.bodySmall, color = InkMuted)
+            }
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = InkMuted,
             )
         }
     }

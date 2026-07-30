@@ -192,7 +192,14 @@ private fun MainExperience(
     LaunchedEffect(state.destination) {
         when (state.destination) {
             // Today shows medicines/appointments too, so it needs Care as well.
-            MainDestination.Today -> { viewModel.loadToday(context); viewModel.loadCare(context) }
+            // Journey content loads with Today now that it lives there. Without
+            // this the "Read about" sections would only ever appear if someone
+            // had happened to open the old tab before it was removed.
+            MainDestination.Today -> {
+                viewModel.loadToday(context)
+                viewModel.loadCare(context)
+                viewModel.loadJourney(context)
+            }
             MainDestination.Aira -> viewModel.loadChatHistory(context)
             MainDestination.Journey -> viewModel.loadJourney(context)
             MainDestination.Care -> {
@@ -321,6 +328,11 @@ private fun MainExperience(
                         modifier = Modifier,
                         today = state.todayData,
                         waiting = updatesCount(state.careData),
+                        journey = state.journeyData,
+                        onOpenSection = viewModel::openJourneySection,
+                        onOpenLearn = {
+                            viewModel.selectDestination(MainDestination.Learn)
+                        },
                     )
                 MainDestination.Aira ->
                     AiraChatScreen(
