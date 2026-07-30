@@ -1,0 +1,5284 @@
+{
+  "catalog_version": "1.0.0",
+  "product": "Aira Maternal Wellness",
+  "generated_on": "2026-07-30",
+  "default_visual_style": "premium 2.5D editorial cartoon",
+  "medical_safety_notice": "Topic records are production plans, not medical advice. Every script, visual, subtitle and translation requires review by the listed clinical specialties before publication.",
+  "topic_count": 100,
+  "category_counts": {
+    "pregnancy_week_by_week": 37,
+    "pregnancy_symptoms": 12,
+    "nutrition": 10,
+    "movement_and_wellness": 8,
+    "tests_and_appointments": 8,
+    "labour_and_delivery": 10,
+    "postpartum_recovery": 8,
+    "newborn_care": 7
+  },
+  "topics": [
+    {
+      "id": "preg-week-04",
+      "slug": "pregnancy-week-4-beginning-the-journey",
+      "title": "Pregnancy Week 4: Beginning the Journey",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 4,
+        "end_week": 4
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Early pregnancy changes, confirming pregnancy and the first gentle next steps.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-05",
+      "slug": "pregnancy-week-5-early-development-and-new-changes",
+      "title": "Pregnancy Week 5: Early Development and New Changes",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 5,
+        "end_week": 5
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "What early development may look like and how the mother may begin to feel.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-06",
+      "slug": "pregnancy-week-6-managing-early-symptoms",
+      "title": "Pregnancy Week 6: Managing Early Symptoms",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 6,
+        "end_week": 6
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Common early symptoms, hydration and when symptoms need professional attention.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-07",
+      "slug": "pregnancy-week-7-nausea-fatigue-and-daily-care",
+      "title": "Pregnancy Week 7: Nausea, Fatigue and Daily Care",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 7,
+        "end_week": 7
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Practical ways to organise daily care while energy and appetite may fluctuate.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-08",
+      "slug": "pregnancy-week-8-preparing-for-the-first-visits",
+      "title": "Pregnancy Week 8: Preparing for the First Visits",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 8,
+        "end_week": 8
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "What to record, what to bring and useful questions for an early prenatal appointment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-09",
+      "slug": "pregnancy-week-9-nutrition-without-overwhelm",
+      "title": "Pregnancy Week 9: Nutrition Without Overwhelm",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 9,
+        "end_week": 9
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A simple approach to meals, hydration and supplements discussed with the care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-10",
+      "slug": "pregnancy-week-10-your-body-and-baby-this-week",
+      "title": "Pregnancy Week 10: Your Body and Baby This Week",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 10,
+        "end_week": 10
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A calm overview of maternal changes and medically reviewed fetal development.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-11",
+      "slug": "pregnancy-week-11-understanding-screening-conversations",
+      "title": "Pregnancy Week 11: Understanding Screening Conversations",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 11,
+        "end_week": 11
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "How to prepare for discussions about optional prenatal screening and testing.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-12",
+      "slug": "pregnancy-week-12-closing-the-first-trimester",
+      "title": "Pregnancy Week 12: Closing the First Trimester",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 12,
+        "end_week": 12
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "What may change near the end of the first trimester and what to discuss at the next visit.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-13",
+      "slug": "pregnancy-week-13-entering-a-new-trimester",
+      "title": "Pregnancy Week 13: Entering a New Trimester",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 13,
+        "end_week": 13
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A transition guide covering energy, symptoms, movement and upcoming care.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-14",
+      "slug": "pregnancy-week-14-gentle-movement-and-comfort",
+      "title": "Pregnancy Week 14: Gentle Movement and Comfort",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 14,
+        "end_week": 14
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Safe movement questions, posture and ways to respond to changing comfort needs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-15",
+      "slug": "pregnancy-week-15-body-changes-with-confidence",
+      "title": "Pregnancy Week 15: Body Changes With Confidence",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 15,
+        "end_week": 15
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Normal body changes, emotional wellbeing and questions worth saving for a visit.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-16",
+      "slug": "pregnancy-week-16-movement-awareness-begins",
+      "title": "Pregnancy Week 16: Movement Awareness Begins",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 16,
+        "end_week": 16
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "How early fetal movement may be described and why experiences differ between pregnancies.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-17",
+      "slug": "pregnancy-week-17-sleep-posture-and-daily-energy",
+      "title": "Pregnancy Week 17: Sleep, Posture and Daily Energy",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 17,
+        "end_week": 17
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Supporting sleep and comfort as the body continues to change.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-18",
+      "slug": "pregnancy-week-18-preparing-for-the-anatomy-scan",
+      "title": "Pregnancy Week 18: Preparing for the Anatomy Scan",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 18,
+        "end_week": 18
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "What an anatomy scan is designed to review and how to prepare questions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-19",
+      "slug": "pregnancy-week-19-growth-nutrition-and-hydration",
+      "title": "Pregnancy Week 19: Growth, Nutrition and Hydration",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 19,
+        "end_week": 19
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A mother-first guide to nutrition, hydration and changing energy needs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-20",
+      "slug": "pregnancy-week-20-the-halfway-check-in",
+      "title": "Pregnancy Week 20: The Halfway Check-In",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 20,
+        "end_week": 20
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A reflective check-in covering body, baby, emotions and the next appointment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-21",
+      "slug": "pregnancy-week-21-common-discomforts-and-support",
+      "title": "Pregnancy Week 21: Common Discomforts and Support",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 21,
+        "end_week": 21
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Recognising common discomforts and knowing when to contact the care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-22",
+      "slug": "pregnancy-week-22-noticing-movement-patterns",
+      "title": "Pregnancy Week 22: Noticing Movement Patterns",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 22,
+        "end_week": 22
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "An introduction to becoming familiar with the baby's individual movement pattern.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-23",
+      "slug": "pregnancy-week-23-hydration-cramps-and-rest",
+      "title": "Pregnancy Week 23: Hydration, Cramps and Rest",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 23,
+        "end_week": 23
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "How hydration, rest and symptom notes can support a useful care conversation.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-24",
+      "slug": "pregnancy-week-24-movement-energy-and-visit-preparation",
+      "title": "Pregnancy Week 24: Movement, Energy and Visit Preparation",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 24,
+        "end_week": 24
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A personalised weekly update focused on maternal energy, movement and appointment questions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-25",
+      "slug": "pregnancy-week-25-preparing-for-glucose-screening",
+      "title": "Pregnancy Week 25: Preparing for Glucose Screening",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 25,
+        "end_week": 25
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A plain-language introduction to glucose screening and care-team instructions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-26",
+      "slug": "pregnancy-week-26-fatigue-iron-and-care-questions",
+      "title": "Pregnancy Week 26: Fatigue, Iron and Care Questions",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 26,
+        "end_week": 26
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Why persistent fatigue deserves discussion and how to prepare useful questions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-27",
+      "slug": "pregnancy-week-27-preparing-for-the-third-trimester",
+      "title": "Pregnancy Week 27: Preparing for the Third Trimester",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 27,
+        "end_week": 27
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A simple review of upcoming care, practical planning and emotional wellbeing.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-28",
+      "slug": "pregnancy-week-28-movement-awareness-and-appointments",
+      "title": "Pregnancy Week 28: Movement Awareness and Appointments",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 28,
+        "end_week": 28
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Fetal movement awareness, common appointments and personalised reminders.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-29",
+      "slug": "pregnancy-week-29-sleep-heartburn-and-comfort",
+      "title": "Pregnancy Week 29: Sleep, Heartburn and Comfort",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 29,
+        "end_week": 29
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Comfort-focused strategies to discuss with the care team when sleep or heartburn is difficult.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-30",
+      "slug": "pregnancy-week-30-growth-and-birth-planning",
+      "title": "Pregnancy Week 30: Growth and Birth Planning",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 30,
+        "end_week": 30
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Beginning informed birth-preference discussions without creating pressure.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-31",
+      "slug": "pregnancy-week-31-swelling-comfort-and-warning-signs",
+      "title": "Pregnancy Week 31: Swelling, Comfort and Warning Signs",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 31,
+        "end_week": 31
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Understanding common swelling while clearly identifying signs needing urgent assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-32",
+      "slug": "pregnancy-week-32-baby-position-and-practical-preparation",
+      "title": "Pregnancy Week 32: Baby Position and Practical Preparation",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 32,
+        "end_week": 32
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A reviewed explanation of fetal position and practical preparation for later pregnancy.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-33",
+      "slug": "pregnancy-week-33-building-the-hospital-bag",
+      "title": "Pregnancy Week 33: Building the Hospital Bag",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 33,
+        "end_week": 33
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A calm, customisable hospital-bag checklist for mother, baby and partner.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-34",
+      "slug": "pregnancy-week-34-recognising-possible-preterm-labour",
+      "title": "Pregnancy Week 34: Recognising Possible Preterm Labour",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 34,
+        "end_week": 34
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Clear signs that require prompt contact with the maternity care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-35",
+      "slug": "pregnancy-week-35-late-pregnancy-tests-and-decisions",
+      "title": "Pregnancy Week 35: Late-Pregnancy Tests and Decisions",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 35,
+        "end_week": 35
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Preparing for local late-pregnancy tests, appointments and shared decisions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-36",
+      "slug": "pregnancy-week-36-early-labour-signs-and-readiness",
+      "title": "Pregnancy Week 36: Early Labour Signs and Readiness",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 36,
+        "end_week": 36
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "How to distinguish possible labour signs and follow the care team's contact plan.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-37",
+      "slug": "pregnancy-week-37-approaching-term-calmly",
+      "title": "Pregnancy Week 37: Approaching Term Calmly",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 37,
+        "end_week": 37
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Daily care, movement awareness, emotional preparation and care-team contact guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-38",
+      "slug": "pregnancy-week-38-labour-readiness-without-pressure",
+      "title": "Pregnancy Week 38: Labour Readiness Without Pressure",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 38,
+        "end_week": 38
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "Preparing practically and emotionally while recognising that every timeline differs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-39",
+      "slug": "pregnancy-week-39-due-dates-are-estimates",
+      "title": "Pregnancy Week 39: Due Dates Are Estimates",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 39,
+        "end_week": 39
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "What the due date means, daily wellbeing and questions for the next appointment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "preg-week-40",
+      "slug": "pregnancy-week-40-next-steps-with-your-care-team",
+      "title": "Pregnancy Week 40: Next Steps With Your Care Team",
+      "category": "pregnancy_week_by_week",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "gestational_week",
+        "start_week": 40,
+        "end_week": 40
+      },
+      "content_format": "weekly_update",
+      "recommended_duration_seconds": {
+        "minimum": 120,
+        "maximum": 240
+      },
+      "description": "A calm overview of monitoring, follow-up and shared decisions after the estimated due date.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "weekly_check_in",
+        "prepare_appointment",
+        "save_video"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "your_week_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-nausea",
+      "slug": "nausea-and-vomiting-in-pregnancy",
+      "title": "Nausea and Vomiting in Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Common patterns, hydration, care-team conversations and signs needing assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-fatigue",
+      "slug": "why-pregnancy-fatigue-can-feel-so-strong",
+      "title": "Why Pregnancy Fatigue Can Feel So Strong",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A mother-first explanation of fatigue, rest, daily planning and when to discuss testing.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-heartburn",
+      "slug": "heartburn-and-indigestion-during-pregnancy",
+      "title": "Heartburn and Indigestion During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Understanding common triggers and preparing safe questions for the care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-constipation",
+      "slug": "constipation-during-pregnancy",
+      "title": "Constipation During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Hydration, nutrition, movement and medication questions to discuss with a professional.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-back-pelvic-pain",
+      "slug": "back-and-pelvic-pain-during-pregnancy",
+      "title": "Back and Pelvic Pain During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Comfort, movement modifications and signs that require professional assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-headache",
+      "slug": "headaches-during-pregnancy-what-to-notice",
+      "title": "Headaches During Pregnancy: What to Notice",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Tracking severity and associated symptoms while identifying urgent warning signs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-swelling",
+      "slug": "swelling-during-pregnancy-expected-or-urgent",
+      "title": "Swelling During Pregnancy: Expected or Urgent?",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A clear distinction between common swelling and warning signs needing prompt care.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-sleep",
+      "slug": "sleep-problems-during-pregnancy",
+      "title": "Sleep Problems During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Positioning, routines, emotional wellbeing and questions for persistent sleep difficulty.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-breathlessness",
+      "slug": "breathlessness-during-pregnancy",
+      "title": "Breathlessness During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Common experiences, pacing and signs that require urgent assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-cramps",
+      "slug": "cramps-and-abdominal-discomfort-in-pregnancy",
+      "title": "Cramps and Abdominal Discomfort in Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "How to describe location, timing and severity to the care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-reduced-movement",
+      "slug": "reduced-fetal-movement-what-to-do",
+      "title": "Reduced Fetal Movement: What to Do",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Immediate care-team contact guidance without delaying for AI reassurance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "symptom-bleeding-fluid",
+      "slug": "bleeding-or-fluid-leakage-during-pregnancy",
+      "title": "Bleeding or Fluid Leakage During Pregnancy",
+      "category": "pregnancy_symptoms",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A safety-first guide directing users to timely professional assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "is_this_normal",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-balanced-plate",
+      "slug": "building-a-balanced-pregnancy-plate",
+      "title": "Building a Balanced Pregnancy Plate",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A flexible meal framework that respects culture, appetite, access and care-team advice.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-folate",
+      "slug": "folate-and-folic-acid-why-they-matter",
+      "title": "Folate and Folic Acid: Why They Matter",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A plain-language explainer covering food sources, supplements and professional guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-iron",
+      "slug": "iron-haemoglobin-and-pregnancy-fatigue",
+      "title": "Iron, Haemoglobin and Pregnancy Fatigue",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Understanding iron needs, common test discussions and safe supplement guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-protein",
+      "slug": "protein-during-pregnancy",
+      "title": "Protein During Pregnancy",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Practical plant and animal protein options without rigid meal rules.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-hydration",
+      "slug": "hydration-during-pregnancy",
+      "title": "Hydration During Pregnancy",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Simple hydration habits and signs of dehydration requiring attention.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-food-safety",
+      "slug": "food-safety-during-pregnancy",
+      "title": "Food Safety During Pregnancy",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Handling, storage and local guidance for foods with higher infection risk.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-vegetarian",
+      "slug": "vegetarian-and-vegan-pregnancy-nutrition",
+      "title": "Vegetarian and Vegan Pregnancy Nutrition",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Key nutrients and questions to review with a dietitian or maternity clinician.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-glucose",
+      "slug": "eating-well-with-gestational-diabetes-guidance",
+      "title": "Eating Well With Gestational Diabetes Guidance",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Supporting an individual clinical plan without offering generic treatment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-nausea",
+      "slug": "eating-when-nausea-changes-your-appetite",
+      "title": "Eating When Nausea Changes Your Appetite",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Small practical options and warning signs for poor intake or dehydration.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "nutrition-postpartum",
+      "slug": "postpartum-nutrition-for-recovery",
+      "title": "Postpartum Nutrition for Recovery",
+      "category": "nutrition",
+      "journey_stage": [
+        "trying_to_conceive",
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Flexible nutrition and hydration support for recovery and feeding choices.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "registered_dietitian",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "character_animation",
+        "reusable_template": "aira_explains",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "movement-walking",
+      "slug": "walking-safely-during-pregnancy",
+      "title": "Walking Safely During Pregnancy",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A guided, adaptable walking session with clear stop signs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "movement-pelvic-floor",
+      "slug": "pelvic-floor-awareness-in-pregnancy",
+      "title": "Pelvic-Floor Awareness in Pregnancy",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A physiotherapist-reviewed introduction to coordination rather than pressure or perfection.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "movement-posture",
+      "slug": "posture-and-back-comfort",
+      "title": "Posture and Back Comfort",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Gentle position changes and daily movement ideas for common discomfort.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "movement-yoga",
+      "slug": "gentle-prenatal-yoga-flow",
+      "title": "Gentle Prenatal Yoga Flow",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A short trimester-appropriate sequence with modifications and stop guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "wellness-breathing",
+      "slug": "two-minute-aira-breathing-reset",
+      "title": "Two-Minute Aira Breathing Reset",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A calming visual breathing session for moments of overwhelm.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "wellness-sleep",
+      "slug": "pregnancy-sleep-wind-down",
+      "title": "Pregnancy Sleep Wind-Down",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A short relaxation session using breath, body awareness and a calm voice.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "wellness-labour-breathing",
+      "slug": "breathing-practice-for-labour",
+      "title": "Breathing Practice for Labour",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A non-promissory practice session to include in broader birth preparation.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "movement-postpartum",
+      "slug": "gentle-postpartum-movement",
+      "title": "Gentle Postpartum Movement",
+      "category": "movement_and_wellness",
+      "journey_stage": [
+        "pregnancy",
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "guided_session",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A recovery-sensitive introduction that adapts to birth experience and clinical advice.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "pelvic_health_physiotherapist",
+          "obstetrician"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "guided_character_animation",
+        "reusable_template": "do_it_with_me",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-first-visit",
+      "slug": "preparing-for-the-first-prenatal-appointment",
+      "title": "Preparing for the First Prenatal Appointment",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Health history, medicines, questions and practical preparation.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-ultrasound",
+      "slug": "ultrasound-basics-what-it-can-and-cannot-show",
+      "title": "Ultrasound Basics: What It Can and Cannot Show",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A plain-language guide that avoids diagnosing or interpreting personal results.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-screening-diagnostic",
+      "slug": "screening-tests-versus-diagnostic-tests",
+      "title": "Screening Tests Versus Diagnostic Tests",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Understanding the difference and preparing for informed discussions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-anatomy-scan",
+      "slug": "preparing-for-the-anatomy-scan",
+      "title": "Preparing for the Anatomy Scan",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Purpose, possible outcomes and useful questions for the care team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-glucose-screening",
+      "slug": "understanding-pregnancy-glucose-screening",
+      "title": "Understanding Pregnancy Glucose Screening",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "What the screening is for and why local instructions should be followed.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-blood-pressure",
+      "slug": "blood-pressure-and-urine-checks-in-pregnancy",
+      "title": "Blood Pressure and Urine Checks in Pregnancy",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Why routine monitoring matters and which symptoms need urgent care.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "test-vaccination",
+      "slug": "vaccination-conversations-during-pregnancy",
+      "title": "Vaccination Conversations During Pregnancy",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "How to prepare for a local, individualised discussion with a clinician.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "appointment-copilot",
+      "slug": "how-to-prepare-better-questions-for-your-appointment",
+      "title": "How to Prepare Better Questions for Your Appointment",
+      "category": "tests_and_appointments",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Turning check-ins, symptoms and concerns into a concise visit agenda.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "motion_graphics_with_reviewed_medical_illustration",
+        "reusable_template": "appointment_ready",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-true-false",
+      "slug": "possible-labour-understanding-the-signs",
+      "title": "Possible Labour: Understanding the Signs",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Contraction patterns, associated signs and when to contact the maternity unit.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-contractions",
+      "slug": "how-to-time-contractions",
+      "title": "How to Time Contractions",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A simple guided timer and the care team's contact thresholds.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-water-breaking",
+      "slug": "what-if-your-waters-break",
+      "title": "What If Your Waters Break?",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "What to notice, what to record and when to contact the maternity team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-hospital-bag",
+      "slug": "hospital-bag-checklist",
+      "title": "Hospital Bag Checklist",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A practical, editable checklist for mother, baby and support person.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-birth-plan",
+      "slug": "creating-flexible-birth-preferences",
+      "title": "Creating Flexible Birth Preferences",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Values, comfort, communication and alternatives without promising a specific birth.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-pain-relief",
+      "slug": "pain-relief-options-during-labour",
+      "title": "Pain-Relief Options During Labour",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A neutral overview for discussion with the local maternity team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-induction",
+      "slug": "understanding-induction-of-labour",
+      "title": "Understanding Induction of Labour",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Why induction may be discussed, common stages and questions to ask.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-vaginal-birth",
+      "slug": "what-happens-during-vaginal-birth",
+      "title": "What Happens During Vaginal Birth?",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A clinically reviewed, non-graphic process overview.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-caesarean",
+      "slug": "what-happens-during-a-caesarean-birth",
+      "title": "What Happens During a Caesarean Birth?",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Preparation, the operating-room journey, recovery and partner expectations.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "labour-partner-role",
+      "slug": "how-a-birth-partner-can-help",
+      "title": "How a Birth Partner Can Help",
+      "category": "labour_and_delivery",
+      "journey_stage": [
+        "pregnancy"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Practical comfort, advocacy, communication and logistics.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "anaesthetist"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_procedure_animation",
+        "reusable_template": "prepare_together",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-first-day",
+      "slug": "the-first-24-hours-after-birth",
+      "title": "The First 24 Hours After Birth",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Common checks, rest, feeding support and questions for the maternity team.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-vaginal-recovery",
+      "slug": "recovery-after-vaginal-birth",
+      "title": "Recovery After Vaginal Birth",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Comfort, bleeding, stitches, pelvic health and signs needing assessment.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-caesarean-recovery",
+      "slug": "recovery-after-a-caesarean-birth",
+      "title": "Recovery After a Caesarean Birth",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Mobility, wound care, pain discussions and urgent warning signs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-bleeding",
+      "slug": "postpartum-bleeding-what-to-monitor",
+      "title": "Postpartum Bleeding: What to Monitor",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A safety-first overview of expected changes and urgent bleeding signs.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-pelvic-floor",
+      "slug": "pelvic-floor-recovery-after-birth",
+      "title": "Pelvic-Floor Recovery After Birth",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Gentle awareness, recovery timelines and when to seek physiotherapy.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-mental-health",
+      "slug": "baby-blues-anxiety-and-postpartum-depression",
+      "title": "Baby Blues, Anxiety and Postpartum Depression",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Recognising emotional changes and finding professional support without stigma.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-rest-support",
+      "slug": "rest-sleep-and-asking-for-help",
+      "title": "Rest, Sleep and Asking for Help",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Practical partner and family support during early recovery.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "postpartum-checkup",
+      "slug": "preparing-for-your-postpartum-check-up",
+      "title": "Preparing for Your Postpartum Check-Up",
+      "category": "postpartum_recovery",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Physical recovery, mental wellbeing, feeding, contraception and unanswered questions.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "obstetrician",
+          "midwife",
+          "mental_health_professional"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "mixed_character_and_reviewed_medical_illustration",
+        "reusable_template": "recovery_with_aira",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-feeding-cues",
+      "slug": "understanding-newborn-feeding-cues",
+      "title": "Understanding Newborn Feeding Cues",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Early hunger and fullness cues across feeding choices.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-latch-support",
+      "slug": "breastfeeding-latch-when-to-ask-for-help",
+      "title": "Breastfeeding Latch: When to Ask for Help",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A reviewed visual guide that encourages skilled feeding support.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-burping",
+      "slug": "burping-and-holding-a-newborn",
+      "title": "Burping and Holding a Newborn",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Gentle positions and signs of discomfort to discuss with a professional.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "standard",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-diaper-cord",
+      "slug": "diapering-and-umbilical-cord-care",
+      "title": "Diapering and Umbilical Cord Care",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Clean, simple care steps based on local clinician guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-safe-sleep",
+      "slug": "creating-a-safer-newborn-sleep-space",
+      "title": "Creating a Safer Newborn Sleep Space",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "A safety-focused setup using current local guidance.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-crying",
+      "slug": "understanding-newborn-crying",
+      "title": "Understanding Newborn Crying",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Common reasons, calming approaches and caregiver coping.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "ask_aira",
+        "save_video",
+        "add_to_care_plan"
+      ],
+      "safety_level": "clinical",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    },
+    {
+      "id": "newborn-urgent-signs",
+      "slug": "when-a-newborn-needs-urgent-medical-care",
+      "title": "When a Newborn Needs Urgent Medical Care",
+      "category": "newborn_care",
+      "journey_stage": [
+        "postpartum"
+      ],
+      "timing": {
+        "type": "on_demand"
+      },
+      "content_format": "safety_explainer",
+      "recommended_duration_seconds": {
+        "minimum": 90,
+        "maximum": 240
+      },
+      "description": "Clear signs directing parents to immediate professional help.",
+      "personalization_inputs": [
+        "journey_stage",
+        "gestational_week",
+        "language",
+        "recent_check_ins",
+        "care_plan"
+      ],
+      "in_app_actions": [
+        "contact_care_team",
+        "open_emergency_profile",
+        "save_video"
+      ],
+      "safety_level": "urgent",
+      "clinical_review": {
+        "required": true,
+        "specialties": [
+          "paediatrician",
+          "neonatal_nurse",
+          "lactation_consultant"
+        ],
+        "status": "pending"
+      },
+      "ai_production": {
+        "visual_style": "premium 2.5D editorial cartoon",
+        "generation_mode": "reviewed_demonstration_animation",
+        "reusable_template": "baby_care_basics",
+        "medical_visual_policy": "Use clinician-approved illustrations for anatomy, fetal development, tests, procedures and emergency signs. Generative AI may animate approved visuals but must not invent clinical anatomy."
+      },
+      "languages": [
+        "en",
+        "hi"
+      ],
+      "priority": 1,
+      "status": "planned"
+    }
+  ]
+}

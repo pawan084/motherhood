@@ -34,6 +34,7 @@ import privacy
 import prompts
 import safety
 import security
+import videos
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -78,6 +79,7 @@ app.include_router(consent.router)
 app.include_router(feedback.router)
 app.include_router(prefs.router)
 app.include_router(partner.router)
+app.include_router(videos.router)
 app.include_router(privacy.router)
 app.include_router(legal.router)
 
@@ -106,6 +108,7 @@ def _startup():
     chat.init()
     prefs.init()
     partner.init()
+    videos.init()
     prompts.init()
     prompts.seed_defaults()
 

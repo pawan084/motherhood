@@ -42,6 +42,7 @@ import partner
 import prefs
 import safety
 import security
+import videos
 from accounts import current_user
 
 log = logging.getLogger("aira.privacy")
@@ -58,6 +59,7 @@ _SOURCES = (
     ("prefs", prefs),
     ("partner", partner),
     ("safety", safety),
+    ("videos", videos),
     ("events", analytics_store),
     ("account", accounts),
 )
