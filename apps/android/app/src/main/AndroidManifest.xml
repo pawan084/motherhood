@@ -48,6 +48,13 @@
             </intent-filter>
         </activity>
 
+        <!-- The Done and Snooze buttons on a reminder. Not exported: nothing
+             outside this app has any business marking someone's reminders
+             done. -->
+        <receiver
+            android:name=".reminders.ReminderActionReceiver"
+            android:exported="false" />
+
         <!-- Hands a downloaded document to a viewer as a content:// URI with a
              one-shot read grant, so opening a scan never exports the file or
              makes it readable by anything that didn't receive the grant. -->

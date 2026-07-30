@@ -45,7 +45,9 @@ import java.util.Locale
  */
 object ReminderScheduler {
     const val CHANNEL_ID = "aira_reminders"
-    private const val WORK_PREFIX = "aira_reminder_"
+    // Not private: the snooze action re-enqueues under the same unique name,
+    // so a snoozed reminder replaces its own pending work instead of stacking.
+    internal const val WORK_PREFIX = "aira_reminder_"
 
     /** Whether this build can post notifications at all, per the OS. */
     fun canNotify(context: Context): Boolean =
@@ -198,6 +200,10 @@ object ReminderScheduler {
     }
 
     internal const val KEY_ID = "id"
+
+    /** Set on the tap intent so MainActivity knows to open Care rather than
+     *  dropping the user on Today to go looking. */
+    const val EXTRA_OPEN_CARE = "aira.open_care"
     internal const val KEY_TITLE = "title"
     internal const val KEY_DETAIL = "detail"
 }
@@ -214,11 +220,34 @@ class ReminderWorker(
         if (!ReminderScheduler.canNotify(applicationContext)) return Result.success()
 
         ReminderScheduler.ensureChannel(applicationContext)
+        // Tapping it opens the thing it is about. It used to open MainActivity
+        // with no extras, so every reminder — for any item, at any hour —
+        // landed on Today and left you to find it. A notification that does not
+        // take you to its own subject is a poke, not a reminder.
         val open = PendingIntent.getActivity(
             applicationContext,
             id.hashCode(),
             Intent(applicationContext, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                .putExtra(ReminderScheduler.EXTRA_OPEN_CARE, true)
+                .putExtra(ReminderScheduler.KEY_ID, id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+
+        // Appointment nudges carry no time in their detail line, which is also
+        // what stops them repeating. "Done" does not apply to a visit — you do
+        // not tick off a scan from a notification the evening before — so the
+        // buttons are only offered on the kind they mean something for.
+        val isReminder = ReminderScheduler.nextOccurrence(detail) != null
+
+        fun actionIntent(action: String) = PendingIntent.getBroadcast(
+            applicationContext,
+            (action + id).hashCode(),
+            Intent(applicationContext, ReminderActionReceiver::class.java)
+                .setAction(action)
+                .putExtra(ReminderScheduler.KEY_ID, id)
+                .putExtra(ReminderScheduler.KEY_TITLE, title)
+                .putExtra(ReminderScheduler.KEY_DETAIL, detail),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(applicationContext, ReminderScheduler.CHANNEL_ID)
@@ -231,6 +260,12 @@ class ReminderWorker(
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
             .setContentIntent(open)
+            .apply {
+                if (isReminder) {
+                    addAction(0, "Done", actionIntent(ReminderActions.ACTION_DONE))
+                    addAction(0, "Snooze 15 min", actionIntent(ReminderActions.ACTION_SNOOZE))
+                }
+            }
             .build()
         NotificationManagerCompat.from(applicationContext)
             .notify(id.hashCode(), notification)

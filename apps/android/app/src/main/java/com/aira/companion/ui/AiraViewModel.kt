@@ -93,10 +93,14 @@ class AiraViewModel : ViewModel() {
             }
             if (user != null && user.onboarded) {
                 AppPrefs.markOnboarded(context)
+                // Read and cleared before the update, so a notification tap that
+                // arrived while this was in flight still decides where we land.
+                val requested = pendingDestination
+                pendingDestination = null
                 _uiState.update {
                     it.copy(
                         stage = AppStage.Main,
-                        destination = MainDestination.Today,
+                        destination = requested ?: MainDestination.Today,
                         language = user.language.ifBlank { it.language },
                         journey = JourneyType.entries.firstOrNull { j ->
                             j.name.equals(user.journey, ignoreCase = true) ||
@@ -398,6 +402,25 @@ class AiraViewModel : ViewModel() {
                 loadCare(context)
             } catch (_: Exception) {
             }
+        }
+    }
+
+    /**
+     * Where a notification tap wants to land.
+     *
+     * Held rather than applied when the session is still resolving. Setting the
+     * destination directly at that point looks correct and is not: restoreSession
+     * finishes a moment later and sets Today for every onboarded user, so the tap
+     * silently lost its destination. Caught by tapping one — the code read as
+     * though it worked.
+     */
+    private var pendingDestination: MainDestination? = null
+
+    fun requestDestination(destination: MainDestination) {
+        if (_uiState.value.stage == AppStage.Main) {
+            selectDestination(destination)
+        } else {
+            pendingDestination = destination
         }
     }
 

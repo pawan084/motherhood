@@ -1,5 +1,6 @@
 package com.aira.companion
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.compose.setContent
@@ -12,6 +13,8 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import com.aira.companion.data.AppPrefs
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.MainDestination
+import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.security.AppLock
 import com.aira.companion.ui.AiraApp
 import com.aira.companion.ui.AiraViewModel
@@ -75,6 +78,31 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    /**
+     * A reminder notification was tapped: open Care, where the item lives.
+     *
+     * Also handled in onNewIntent, because the activity is usually already
+     * running — FLAG_ACTIVITY_CLEAR_TOP reuses it rather than creating a new
+     * one, and a deep link that only works from cold start is a deep link that
+     * usually does not work.
+     *
+     * Safe to run while locked. This only sets which destination the app will
+     * show; the lock decides WHETHER it is shown, and nothing is composed until
+     * the OS confirms. So tapping a reminder on a locked phone asks for the
+     * fingerprint and then lands on Care — which is what tapping it meant.
+     */
+    private fun routeFromNotification(intent: Intent?) {
+        if (intent?.getBooleanExtra(ReminderScheduler.EXTRA_OPEN_CARE, false) == true) {
+            viewModel.requestDestination(MainDestination.Care)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        routeFromNotification(intent)
+    }
+
     private fun askToUnlock() {
         AppLock.prompt(this, onSuccess = { unlocked = true })
     }
@@ -94,6 +122,7 @@ class MainActivity : FragmentActivity() {
 
         super.onCreate(savedInstanceState)
         unlocked = !AppPrefs.appLockEnabled(this)
+        routeFromNotification(intent)
         enableEdgeToEdge()
         setContent {
             AiraTheme {
