@@ -74,6 +74,29 @@ def gemini_json(system: str, user: str, temperature: float = 0.4,
     return data if isinstance(data, dict) else {}
 
 
+def gemini_stream(system: str, user: str, temperature: float = 0.6,
+                  max_tokens: int | None = None, model: str | None = None):
+    """Yield the model's answer as it arrives.
+
+    Used only for the conversational reply. Everything else here stays one-shot:
+    the safety classifier is a decision, not a performance, and streaming a
+    decision would mean acting on half of one.
+    """
+    from google.genai import types  # lazy, as above
+    cfg = types.GenerateContentConfig(
+        temperature=temperature,
+        max_output_tokens=max_tokens or _MAX_TOKENS,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+    for chunk in _client().models.generate_content_stream(
+            model=model or GEMINI_MODEL,
+            contents=[f"{system}\n\n{user}"],
+            config=cfg):
+        text = getattr(chunk, "text", None)
+        if text:
+            yield text
+
+
 def gemini_text(system: str, user: str, temperature: float = 0.6,
                 max_tokens: int | None = None, model: str | None = None) -> str:
     return _generate(system, user, temperature, max_tokens or _MAX_TOKENS, model, json_out=False)

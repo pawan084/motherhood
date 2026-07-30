@@ -18,6 +18,7 @@ import time
 import uuid
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 import accounts
@@ -205,3 +206,122 @@ def chat_history(uid: str = Depends(current_user), limit: int = 50):
     items = [{"ts": r[0], "role": r[1], "text": r[2], "safety_level": r[3]}
              for r in reversed(rows)]
     return {"items": items}
+
+
+# ── streaming ────────────────────────────────────────────────────────────────
+
+def _stream_events(uid: str, message: str, history: list[dict]):
+    """The same turn as chat_turn, emitted as it becomes known.
+
+    Newline-delimited JSON rather than SSE: there is one consumer, it is our own
+    client, and NDJSON is a line read instead of a protocol.
+
+    The order is the point. The safety gate runs to completion BEFORE anything
+    is emitted, and a RED result ends the stream with the urgent handoff and no
+    reply at all. Streaming a decision would mean acting on half of one, and the
+    half of "you should call your care team" that arrives first is a sentence
+    that reads like reassurance.
+    """
+    u = accounts.get_user(uid) or {}
+    journey = u.get("journey") or "exploring"
+
+    result = safety.screen(message, history, {"journey": journey})
+    safety.record(uid, message, result)
+    _save(uid, "user", message, result["level"])
+    base_safety = {"level": result["level"], "categories": result["categories"],
+                   "degraded": result["degraded"]}
+    yield json.dumps({"type": "safety", **base_safety}) + "\n"
+
+    if result["level"] == safety.RED:
+        payload = _urgent_payload(uid)
+        _save(uid, "aira", payload["headline"], "red")
+        yield json.dumps({"type": "urgent", "urgent_help": payload}) + "\n"
+        return
+
+    trust_label = _TRUST_LABEL.get(result["level"], "wellness")
+    if not services.configured():
+        reply = ("I'm here with you. I can help you organise a next step, or show "
+                 "you when contacting your care team would be safer.")
+        _save(uid, "aira", reply, result["level"])
+        yield json.dumps({"type": "chunk", "text": reply}) + "\n"
+        yield json.dumps({"type": "done", "trust_label": trust_label,
+                          "action_card": None, "degraded_llm": True,
+                          "disclaimer_needed": result["level"] == safety.AMBER}) + "\n"
+        return
+
+    system = prompts.fill(
+        prompts.resolve("aira.system", prompts.AIRA_SYSTEM),
+        journey_phrase=_journey_phrase(journey), name=u.get("name") or "there",
+        language=u.get("language") or "English", trust_label=trust_label)
+    mem = memory.context_summary(uid)
+    if mem:
+        system += f"\nApproved context you may use: {mem}"
+    convo = "\n".join(f"{h['role']}: {h['content']}" for h in history[-8:])
+    user = (f"Conversation so far:\n{convo}\n\n" if convo else "") + \
+           f"The person's latest message:\n{message}\n\n{prompts.AIRA_STREAM_SCHEMA}"
+
+    prose: list[str] = []
+    tail = ""
+    seen_delimiter = False
+    try:
+        for piece in services.gemini_stream(system, user, temperature=0.6):
+            if seen_delimiter:
+                tail += piece
+                continue
+            tail += piece
+            if prompts.STREAM_DELIMITER in tail:
+                before, tail = tail.split(prompts.STREAM_DELIMITER, 1)
+                if before:
+                    prose.append(before)
+                    yield json.dumps({"type": "chunk", "text": before}) + "\n"
+                seen_delimiter = True
+                continue
+            # Hold back only as much as could still turn out to be the
+            # delimiter, so the person sees words rather than a stall.
+            keep = len(prompts.STREAM_DELIMITER) - 1
+            if len(tail) > keep:
+                out, tail = tail[:-keep], tail[-keep:]
+                prose.append(out)
+                yield json.dumps({"type": "chunk", "text": out}) + "\n"
+    except Exception as e:  # noqa: BLE001
+        log.warning("stream failed: %s", e)
+
+    if not seen_delimiter and tail:
+        prose.append(tail)
+        yield json.dumps({"type": "chunk", "text": tail}) + "\n"
+
+    reply = "".join(prose).strip()
+    if not reply:
+        reply = "I'm here. Tell me a little more and we'll take it one step at a time."
+        yield json.dumps({"type": "chunk", "text": reply}) + "\n"
+
+    card, disclaimer = None, result["level"] == safety.AMBER
+    if seen_delimiter:
+        try:
+            extra = json.loads(tail.strip() or "{}")
+            raw_card = extra.get("action_card")
+            if isinstance(raw_card, dict) and raw_card.get("tool"):
+                card = {"tool": str(raw_card.get("tool")),
+                        "title": str(raw_card.get("title") or ""),
+                        "detail": str(raw_card.get("detail") or "")}
+            disclaimer = bool(extra.get("disclaimer_needed", disclaimer))
+        except (ValueError, TypeError):
+            # A malformed tail costs the card, not the answer. The prose has
+            # already been delivered and is the part that mattered.
+            log.warning("stream tail was not JSON")
+
+    _save(uid, "aira", reply, result["level"])
+    yield json.dumps({"type": "done", "trust_label": trust_label,
+                      "action_card": card, "disclaimer_needed": disclaimer}) + "\n"
+
+
+@router.post("/chat/turn/stream")
+def chat_turn_stream(body: TurnIn, uid: str = Depends(current_user)):
+    message = (body.message or "").strip()
+    history = security.sanitize_history(body.history)
+    return StreamingResponse(
+        _stream_events(uid, message, history),
+        media_type="application/x-ndjson",
+        # Proxies that buffer would defeat the point of this endpoint.
+        headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
+    )

@@ -42,6 +42,24 @@ AIRA_SYSTEM = (
 # The single free-form reply schema. The classifier already set safety, so the
 # model returns the reply text, an optional single action card, and nothing that
 # could be read as a prescription.
+AIRA_STREAM_SCHEMA = (
+    "Write your message to the person first, as plain prose — no JSON, no "
+    "markdown fences, nothing before it.\n"
+    "Then, on its own line, write exactly ---AIRA--- and after it a JSON object "
+    'with these keys: "action_card": either null, or an object {"tool": one of '
+    '["checkin","reminder","appointment","upload","wellness","symptom","careplan","support"], '
+    '"title": a short label, "detail": one short line} describing the ONE next '
+    "step that would help — use null when no action is warranted. "
+    '"disclaimer_needed": true if this reply touches anything the person should '
+    "confirm with their care team, else false."
+)
+
+# The prose comes first on purpose: it is what the person is waiting for, and it
+# can start rendering before the model has decided anything about a card. A
+# schema that put the JSON first would stream a wall of syntax and then the
+# answer, which is slower to read than not streaming at all.
+STREAM_DELIMITER = "---AIRA---"
+
 AIRA_REPLY_SCHEMA = (
     "Respond with ONLY a JSON object (no markdown fences) with these keys: "
     '"reply": your message to the person as a plain string. '
