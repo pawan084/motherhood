@@ -58,6 +58,8 @@ fun AiraChatScreen(
     state: AiraUiState,
     onDraftChange: (String) -> Unit,
     onSend: () -> Unit,
+    /** Send a message that never reached the server. */
+    onRetry: (Long) -> Unit = {},
     onQuickMessage: (String) -> Unit,
     onOpenTools: () -> Unit,
     onOpenTool: (AiraTool) -> Unit,
@@ -107,7 +109,13 @@ fun AiraChatScreen(
             }
 
             items(state.messages, key = { it.id }) { message ->
-                ChatBubble(text = message.text, fromAira = message.fromAira, at = message.at)
+                ChatBubble(
+                    text = message.text,
+                    fromAira = message.fromAira,
+                    at = message.at,
+                    failed = message.failed,
+                    onRetry = { onRetry(message.id) },
+                )
             }
 
             // Waiting for a reply showed nothing at all — no spinner, no

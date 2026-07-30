@@ -3,6 +3,8 @@ package com.aira.companion.ui.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +68,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -291,6 +295,7 @@ fun ChoiceCard(
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun ChatBubble(
     text: String,
     fromAira: Boolean,
@@ -300,7 +305,12 @@ fun ChatBubble(
      *  once history survived a restart and last night's worry sat above this
      *  morning's question. */
     at: Double? = null,
+    /** Never reached the server. The bubble says so and offers to try again. */
+    failed: Boolean = false,
+    onRetry: (() -> Unit)? = null,
 ) {
+    val clipboard = LocalClipboardManager.current
+    val haptics = rememberAiraHaptics()
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (fromAira) Arrangement.Start else Arrangement.End,
@@ -338,7 +348,22 @@ fun ChatBubble(
                 },
             shadowElevation = if (fromAira) 1.dp else 0.dp,
         ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp)) {
+            Column(
+                modifier = Modifier
+                    // Long-press to copy. There was no way to keep anything
+                    // Aira said — not a phone number, not a question worth
+                    // taking to an appointment. Long-press is where people
+                    // already reach for this in every other messaging app.
+                    .combinedClickable(
+                        onClick = {},
+                        onLongClick = {
+                            clipboard.setText(AnnotatedString(text))
+                            haptics.confirm()
+                        },
+                        onLongClickLabel = "Copy message",
+                    )
+                    .padding(horizontal = 16.dp, vertical = 13.dp),
+            ) {
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -350,6 +375,21 @@ fun ChatBubble(
                         style = MaterialTheme.typography.labelSmall,
                         color = if (fromAira) InkMuted else Paper.copy(alpha = 0.75f),
                     )
+                }
+                if (failed) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Not sent",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Paper,
+                        )
+                        if (onRetry != null) {
+                            TextButton(onClick = onRetry) {
+                                Text("Try again", color = Paper)
+                            }
+                        }
+                    }
                 }
             }
         }

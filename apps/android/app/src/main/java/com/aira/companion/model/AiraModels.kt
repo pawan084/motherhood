@@ -92,6 +92,13 @@ data class ChatMessage(
      *  not be placed against the day it happened — which matters once history
      *  survives a restart and yesterday's worry sits above today's. */
     val at: Double? = null,
+    /** This message never reached the server.
+     *
+     *  Shown on the bubble, because the alternative is a message that looks
+     *  sent and is not — in an app where the thing typed may be "I've been
+     *  bleeding since this morning", believing it was received is the worst
+     *  outcome available. */
+    val failed: Boolean = false,
 )
 
 data class OnboardingAnswer(

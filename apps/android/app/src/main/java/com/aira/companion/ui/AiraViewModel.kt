@@ -1354,20 +1354,28 @@ class AiraViewModel : ViewModel() {
      * green/amber append a trust-labelled reply. Falls back to the local keyword
      * gate + a calm reply when the backend is unreachable or unset.
      */
-    private fun dispatch(text: String, context: Context?) {
-        val history = _uiState.value.messages.map {
-            (if (it.fromAira) "assistant" else "user") to it.text
-        }
+    private fun dispatch(text: String, context: Context?, resendId: Long? = null) {
+        val history = _uiState.value.messages
+            .filterNot { it.failed }
+            .map { (if (it.fromAira) "assistant" else "user") to it.text }
+        // Kept so the exact bubble can be marked failed, or cleared on a
+        // successful resend. Matching on text would pick the wrong one when
+        // somebody sends the same short message twice, which people do.
+        val messageId = resendId ?: System.nanoTime()
         _uiState.update {
             it.copy(
-                messages = it.messages + ChatMessage(
-                    System.nanoTime(), fromAira = false, text = text, at = nowSeconds(),
-                ),
+                messages = if (resendId != null) {
+                    it.messages.map { m -> if (m.id == resendId) m.copy(failed = false) else m }
+                } else {
+                    it.messages + ChatMessage(
+                        messageId, fromAira = false, text = text, at = nowSeconds(),
+                    )
+                },
                 sending = true,
             )
         }
         if (context == null) {
-            applyOfflineReply(text)
+            applyOfflineReply(text, messageId)
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
@@ -1400,30 +1408,47 @@ class AiraViewModel : ViewModel() {
                     }
                 }
             } catch (_: Exception) {
-                applyOfflineReply(text)
+                applyOfflineReply(text, messageId)
             }
         }
     }
 
-    private fun applyOfflineReply(text: String) {
-        if (SafetyKeywords.looksUrgent(text)) {
-            _uiState.update {
-                it.copy(sending = false, urgentHelpOpen = true, activeTool = null, toolsOpen = false)
-            }
-        } else {
-            _uiState.update {
-                it.copy(
-                    sending = false,
-                    messages = it.messages + ChatMessage(
-                        id = System.nanoTime(),
-                        fromAira = true,
-                        text = "I've understood that. I can help organise the next step, or show " +
-                            "you when contacting your care team would be safer.",
-                        trustLabel = "wellness",
-                        at = nowSeconds(),
-                    ),
-                )
-            }
+    /** Send a message that failed, again. */
+    fun resendMessage(id: Long, context: Context?) {
+        val message = _uiState.value.messages.firstOrNull { it.id == id } ?: return
+        dispatch(message.text, context, resendId = id)
+    }
+
+    /**
+     * The message did not reach the server.
+     *
+     * This used to answer as though it had. It appended "I've understood that.
+     * I can help organise the next step..." and labelled it `wellness` — a reply
+     * to something Aira never saw, carrying a trust label asserting a screening
+     * that never ran, while the message itself was dropped with no way to send
+     * it. Someone typing "I've been bleeding since this morning" on a bad
+     * connection got a calm acknowledgement and no delivery.
+     *
+     * Now the bubble says it did not send and offers to try again. The keyword
+     * floor still runs first and still opens the urgent handoff, because that
+     * is the whole reason the floor exists — it is the one thing that must work
+     * with no server.
+     */
+    private fun applyOfflineReply(text: String, messageId: Long) {
+        val urgent = SafetyKeywords.looksUrgent(text)
+        _uiState.update { state ->
+            state.copy(
+                sending = false,
+                urgentHelpOpen = urgent || state.urgentHelpOpen,
+                activeTool = if (urgent) null else state.activeTool,
+                toolsOpen = if (urgent) false else state.toolsOpen,
+                messages = state.messages.map {
+                    if (it.id == messageId) it.copy(failed = true) else it
+                },
+                // The header already carries the degraded-screening state; this
+                // says the narrower, more urgent thing: nothing was sent.
+                screeningDegraded = true,
+            )
         }
     }
 
