@@ -791,10 +791,16 @@ class AiraViewModel : ViewModel() {
             // Says whether it will actually arrive. Notifications can be off at
             // the OS level, and a "Reminder saved." that quietly never fires is
             // the failure this whole feature exists to prevent.
-            if (context != null && ReminderScheduler.canNotify(context)) {
-                "Reminder saved. Aira will notify you."
-            } else {
-                "Reminder saved. Turn on notifications to be reminded."
+            when {
+                context == null || !ReminderScheduler.canNotify(context) ->
+                    "Reminder saved. Turn on notifications to be reminded."
+                // Permission granted is not the same as being allowed to run
+                // when the time comes. Saying "Aira will notify you" on a phone
+                // whose battery manager defers background work is a promise the
+                // app cannot keep, and it is discovered by missing a dose.
+                ReminderScheduler.remindersMayBeDelayed(context) ->
+                    "Reminder saved. It may arrive late while battery saving is on."
+                else -> "Reminder saved. Aira will notify you."
             },
             queued = "Saved on this phone. Aira will send it — and start " +
                 "reminding you — once you're back online.",

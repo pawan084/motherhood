@@ -8,6 +8,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.provider.Settings
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -57,6 +59,31 @@ object ReminderScheduler {
         } else {
             NotificationManagerCompat.from(context).areNotificationsEnabled()
         }
+
+    /**
+     * Whether the OS is likely to hold reminders back.
+     *
+     * Permission to post a notification is not the same as being allowed to run
+     * at the moment one is due. WorkManager is deferrable by design: under Doze
+     * it waits for a maintenance window, and several manufacturers' battery
+     * managers go further and stop background work outright unless the app is
+     * exempted by hand. On those phones "Aira will notify you" is a promise the
+     * app cannot keep, and the person finds out by missing a dose.
+     *
+     * This does not ask for the exemption. Requesting it directly is a heavier
+     * permission than a reminder needs; the honest move is to say what may
+     * happen and offer the settings screen where they can decide.
+     */
+    fun remindersMayBeDelayed(context: Context): Boolean {
+        val power = context.getSystemService(PowerManager::class.java) ?: return false
+        return !power.isIgnoringBatteryOptimizations(context.packageName)
+    }
+
+    /** The system screen listing which apps are exempt, so the user chooses
+     *  there rather than being asked for a permission in a dialog. */
+    fun batterySettingsIntent(): Intent =
+        Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

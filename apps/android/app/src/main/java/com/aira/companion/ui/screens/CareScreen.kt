@@ -47,6 +47,7 @@ import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.SkeletonRows
 import com.aira.companion.ui.components.ToolListRow
 import com.aira.companion.ui.theme.Amber
+import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -104,6 +105,10 @@ fun CareScreen(
     timelineFailed: Boolean = false,
     documentsFailed: Boolean = false,
     onRetry: (() -> Unit)? = null,
+    /** The OS may defer background work on this phone, so a reminder can
+     *  arrive after its time. See ReminderScheduler.remindersMayBeDelayed. */
+    remindersMayBeDelayed: Boolean = false,
+    onOpenBatterySettings: () -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -227,6 +232,34 @@ fun CareScreen(
                         }
                     },
                 )
+            }
+        }
+
+        // Said here, not only in the snackbar when one is saved.
+        //
+        // A snackbar is gone in three seconds and only appears at the moment of
+        // saving; somebody who set a reminder last week and has been quietly
+        // missing it needs to find the reason where the reminders are. Only
+        // shown when there is something to be delayed.
+        if (reminders.isNotEmpty() && remindersMayBeDelayed) {
+            Spacer(modifier = Modifier.height(14.dp))
+            AiraCard(containerColor = AmberMist) {
+                Text(
+                    text = "Reminders may arrive late",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Ink,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "This phone's battery saving can hold back background " +
+                        "work, so a reminder may come through later than its time. " +
+                        "Allowing Aira to run in the background fixes it.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                TextButton(onClick = onOpenBatterySettings) {
+                    Text("Open battery settings", color = Plum)
+                }
             }
         }
 

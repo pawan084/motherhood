@@ -333,6 +333,16 @@ private fun MainExperience(
                         timelineFailed = state.timelineFailed,
                         documentsFailed = state.documentsFailed,
                         onRetry = { viewModel.retryLoad(context) },
+                        remindersMayBeDelayed =
+                            ReminderScheduler.remindersMayBeDelayed(context),
+                        onOpenBatterySettings = {
+                            // Best-effort: a few ROMs do not expose this screen,
+                            // and crashing on a settings shortcut would be a
+                            // worse outcome than the notice standing on its own.
+                            runCatching {
+                                context.startActivity(ReminderScheduler.batterySettingsIntent())
+                            }
+                        },
                     )
                 MainDestination.You ->
                     YouScreen(
