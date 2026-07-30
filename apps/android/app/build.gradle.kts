@@ -36,6 +36,12 @@ android {
         // release use — never commit a production token).
         val airaAppToken = (project.findProperty("airaAppToken") as String?) ?: ""
         buildConfigField("String", "AIRA_APP_TOKEN", "\"$airaAppToken\"")
+
+        // Optional application-id suffix so a dev build can install ALONGSIDE an
+        // existing install (e.g. `-PappIdSuffix=.dev` -> com.aira.companion.dev).
+        // Default is empty, so normal builds are unchanged.
+        (project.findProperty("appIdSuffix") as String?)?.takeIf { it.isNotBlank() }
+            ?.let { applicationIdSuffix = it }
     }
 
     buildTypes {
