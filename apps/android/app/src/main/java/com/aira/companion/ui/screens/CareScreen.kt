@@ -43,6 +43,8 @@ import com.aira.companion.data.CareItem
 import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.EditableRow
+import com.aira.companion.ui.components.dayLabel
+import com.aira.companion.ui.components.dayOf
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.SkeletonRows
 import com.aira.companion.ui.components.ToolListRow
@@ -403,7 +405,26 @@ fun CareScreen(
             footnote = "Logging is tracking, not diagnosis. Anything that worries " +
                 "you is worth taking to your care team rather than waiting for a pattern.",
         ) {
+            // Grouped by the day it happened, newest day first.
+            //
+            // A flat run of "Headache / Tired / Headache" is a list of words. A
+            // record is read for its shape — three bad nights in a row, nothing
+            // for a fortnight — and that shape is invisible without the days in
+            // it. This is also the view someone scrolls through in front of a
+            // midwife, where "when" is the first question asked.
+            var lastDay: java.time.LocalDate? = null
             timeline.forEach { entry ->
+                val day = entry.created?.let { dayOf(it) }
+                if (day != null && day != lastDay) {
+                    lastDay = day
+                    Spacer(modifier = Modifier.height(if (entry === timeline.first()) 2.dp else 12.dp))
+                    Text(
+                        text = dayLabel(entry.created),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Plum,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
                 CareRow(
                     item = entry,
                     icon = if (entry.kind == "symptom") {

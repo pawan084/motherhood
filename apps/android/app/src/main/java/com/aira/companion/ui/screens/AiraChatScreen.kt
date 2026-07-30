@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.ui.components.ChatBubble
+import com.aira.companion.ui.components.dayLabel
+import com.aira.companion.ui.components.dayOf
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
 import com.aira.companion.ui.theme.Ink
@@ -108,7 +111,27 @@ fun AiraChatScreen(
                 }
             }
 
-            items(state.messages, key = { it.id }) { message ->
+            // A day heading whenever the conversation crosses midnight.
+            //
+            // History survives a restart now, so last night's worry sits
+            // directly above this morning's question with nothing between them.
+            // In an app people re-read to work out whether something has been
+            // going on for one day or four, that gap is the information.
+            itemsIndexed(state.messages, key = { _, m -> m.id }) { index, message ->
+                val day = message.at?.let { dayOf(it) }
+                val previousDay = state.messages.getOrNull(index - 1)?.at?.let { dayOf(it) }
+                if (day != null && day != previousDay) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = dayLabel(message.at),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
                 ChatBubble(
                     text = message.text,
                     fromAira = message.fromAira,

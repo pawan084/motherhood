@@ -1126,6 +1126,10 @@ data class CareItem(
      *  ends up silently changing what it didn't understand. */
     val time: String? = null,
     val repeat: String? = null,
+    /** When this was recorded, in unix seconds. Distinct from [at], which is
+     *  when an appointment HAPPENS — a symptom logged on Tuesday about a pain
+     *  that started Sunday has one of these and not the other. */
+    val created: Double? = null,
     /** Documents: what to hand a viewer when opening the file. */
     val contentType: String? = null,
     /** Written with no signal and not yet sent. Shown on the row, because a
@@ -1289,6 +1293,10 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 title = title,
                 subtitle = subtitle,
                 at = o.optDoubleOrNull("at"),
+                // The server has always sent this and no client read it, so a
+                // timeline of check-ins and symptoms had no dates to group by —
+                // a health record with no days in it.
+                created = o.optDoubleOrNull("created"),
                 takenToday = o.optBoolean("taken_today", false),
                 time = o.optStringOrNull("time"),
                 repeat = o.optStringOrNull("repeat"),

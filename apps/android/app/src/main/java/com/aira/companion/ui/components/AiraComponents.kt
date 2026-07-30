@@ -397,21 +397,17 @@ fun ChatBubble(
 }
 
 /**
- * A message time a person would say out loud: "14:32" for today, "Yesterday
- * 22:10" before that, then the date. Absolute rather than "3 hours ago",
- * because the useful question about a 3am message is which night it was.
+ * Just the clock time. The day is carried by the separator above the run of
+ * messages now, so repeating it on every bubble said the same thing five times
+ * down a screen — and the two could drift, which is worse than either.
+ *
+ * Still absolute rather than "3 hours ago": the useful question about a 3am
+ * message is which night it was.
  */
-private fun formatMessageTime(epochSeconds: Double): String {
-    val at = java.time.Instant.ofEpochMilli((epochSeconds * 1000).toLong())
+private fun formatMessageTime(epochSeconds: Double): String =
+    java.time.Instant.ofEpochMilli((epochSeconds * 1000).toLong())
         .atZone(java.time.ZoneId.systemDefault())
-    val time = at.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
-    val today = java.time.LocalDate.now()
-    return when (at.toLocalDate()) {
-        today -> time
-        today.minusDays(1) -> "Yesterday $time"
-        else -> at.format(java.time.format.DateTimeFormatter.ofPattern("d MMM, HH:mm"))
-    }
-}
+        .format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
 
 @Composable
 fun SectionLabel(
