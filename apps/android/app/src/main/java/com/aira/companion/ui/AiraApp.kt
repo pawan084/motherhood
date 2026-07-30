@@ -363,6 +363,14 @@ private fun MainExperience(
                         modifier = Modifier,
                         videos = state.videos,
                         weekVideo = state.weekVideo,
+                        // Only for a pregnant caller with a known week: the
+                        // server refuses to guess a stage, and neither should
+                        // this. Anyone else simply has no weekly card, which is
+                        // correct rather than missing.
+                        weekWithoutVideo = state.todayData
+                            ?.takeIf { state.weekVideo == null }
+                            ?.takeIf { it.journey.equals("pregnant", ignoreCase = true) }
+                            ?.weeks,
                         categories = state.videoCategories,
                         savedIds = state.savedVideoIds,
                         loading = state.videosLoading,

@@ -57,6 +57,9 @@ fun LearnScreen(
     modifier: Modifier = Modifier,
     videos: List<VideoTopic> = emptyList(),
     weekVideo: VideoTopic? = null,
+    /** Set when this is a pregnant caller with a known week and the catalogue
+     *  has nothing for it. The card used to vanish silently — see below. */
+    weekWithoutVideo: Int? = null,
     categories: List<VideoCategory> = emptyList(),
     savedIds: Set<String> = emptySet(),
     loading: Boolean = false,
@@ -86,6 +89,31 @@ fun LearnScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = InkMuted,
         )
+
+        // Weeks 41 and 42 have no week-by-week topic, and neither do 1 to 3.
+        //
+        // The card simply disappeared, which is worst exactly where it matters:
+        // someone overdue is anxious and checking daily, and an app that showed
+        // them a weekly card every week until their due date and then quietly
+        // stopped reads as having nothing left to say to them. Say what is
+        // happening instead.
+        if (weekVideo == null && weekWithoutVideo != null) {
+            Spacer(Modifier.height(20.dp))
+            AiraCard(containerColor = LilacMist) {
+                SectionLabel("Your week with Aira")
+                Text(
+                    "No week $weekWithoutVideo video yet",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Ink,
+                )
+                Text(
+                    "The topics below still apply. Anything that worries you is " +
+                        "worth taking to your care team rather than waiting.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+        }
 
         if (weekVideo != null) {
             Spacer(Modifier.height(20.dp))
