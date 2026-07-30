@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -55,6 +57,7 @@ import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.updatesCount
 import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.ui.components.AiraBottomNavigation
+import com.aira.companion.ui.components.animationsEnabled
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.rememberAiraHaptics
 import com.aira.companion.ui.screens.AiraChatScreen
@@ -320,8 +323,25 @@ private fun MainExperience(
                     }
                 },
             ) {
-            tabState.SaveableStateProvider(state.destination) {
-            when (state.destination) {
+            // A short crossfade between tabs.
+            //
+            // Switching was an instant cut, which on a screen that changes
+            // entirely reads as a flicker — you cannot tell whether the app
+            // moved or redrew. 180ms is enough to say "this is a different
+            // place" and short enough not to be a thing you wait through.
+            //
+            // Zero when the system's animator scale is off. Someone who turned
+            // animation off has already said so once, and the reasons for
+            // turning it off apply more in an app used during pregnancy and
+            // after birth, not less.
+            val motion = animationsEnabled()
+            Crossfade(
+                targetState = state.destination,
+                animationSpec = tween(durationMillis = if (motion) 180 else 0),
+                label = "tab",
+            ) { destination ->
+            tabState.SaveableStateProvider(destination) {
+            when (destination) {
                 MainDestination.Today ->
                     TodayScreen(
                         onDestination = viewModel::selectDestination,
@@ -444,6 +464,7 @@ private fun MainExperience(
                         priorities = state.todayData?.priorities.orEmpty(),
                         onReplayTutorial = viewModel::replayTutorial,
                     )
+            }
             }
             }
             }

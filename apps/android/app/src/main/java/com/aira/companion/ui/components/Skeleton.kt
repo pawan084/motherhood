@@ -25,6 +25,23 @@ import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
 
 /**
+ * Whether this phone wants animation at all.
+ *
+ * Shared with the screen transition. Someone who has turned animation off has
+ * said so once, to the system, and should not have to say it again per feature —
+ * and two implementations of "is motion allowed" is two that can disagree.
+ */
+@Composable
+internal fun animationsEnabled(): Boolean {
+    val ctx = LocalContext.current
+    return remember(ctx) {
+        runCatching {
+            Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
+        }.getOrDefault(true)
+    }
+}
+
+/**
  * The shape of what is coming, while it is still coming.
  *
  * Screens used to go from blank — or the word "Loading…" — straight to full
@@ -43,16 +60,6 @@ import com.aira.companion.ui.theme.OutlineSoft
  * past — reasons that apply more, not less, to an app used during pregnancy
  * and after birth. The placeholder still appears; it simply holds still.
  */
-@Composable
-private fun animationsEnabled(): Boolean {
-    val ctx = LocalContext.current
-    return remember(ctx) {
-        runCatching {
-            Settings.Global.getFloat(ctx.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f
-        }.getOrDefault(true)
-    }
-}
-
 @Composable
 fun SkeletonBlock(
     modifier: Modifier = Modifier,
