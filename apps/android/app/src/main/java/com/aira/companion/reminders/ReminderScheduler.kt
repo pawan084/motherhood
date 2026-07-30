@@ -231,6 +231,15 @@ object ReminderScheduler {
     /** Set on the tap intent so MainActivity knows to open Care rather than
      *  dropping the user on Today to go looking. */
     const val EXTRA_OPEN_CARE = "aira.open_care"
+
+    /** Everything Aira posts belongs to one group, so a day with a morning
+     *  tablet, an evening tablet and tomorrow's scan is one entry in the shade
+     *  rather than three competing ones. */
+    internal const val GROUP_KEY = "aira_reminders"
+
+    /** Fixed id for the summary, so re-posting replaces it instead of stacking
+     *  a second summary on top of the first. */
+    internal const val SUMMARY_ID = 1_000_001
     internal const val KEY_TITLE = "title"
     internal const val KEY_DETAIL = "detail"
 }
@@ -286,6 +295,7 @@ class ReminderWorker(
             .setContentText(detail.ifBlank { null })
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+            .setGroup(ReminderScheduler.GROUP_KEY)
             .setContentIntent(open)
             .apply {
                 if (isReminder) {
@@ -294,8 +304,28 @@ class ReminderWorker(
                 }
             }
             .build()
-        NotificationManagerCompat.from(applicationContext)
-            .notify(id.hashCode(), notification)
+        val manager = NotificationManagerCompat.from(applicationContext)
+        manager.notify(id.hashCode(), notification)
+
+        // The summary that makes the group a group.
+        //
+        // Android 7 and up needs one, or grouped children are shown loose and
+        // the grouping does nothing. It deliberately carries no titles: the
+        // children already show them, and a summary line reading "Iron tablet,
+        // Folic acid" on a lock screen says more about somebody, to whoever is
+        // holding the phone, than any one of them does alone.
+        manager.notify(
+            ReminderScheduler.SUMMARY_ID,
+            NotificationCompat.Builder(applicationContext, ReminderScheduler.CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Reminders from Aira")
+                .setGroup(ReminderScheduler.GROUP_KEY)
+                .setGroupSummary(true)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .build(),
+        )
 
         // Book tomorrow's before finishing, so a daily reminder keeps going
         // without the app being opened.

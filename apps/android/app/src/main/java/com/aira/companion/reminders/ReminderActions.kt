@@ -51,6 +51,7 @@ class ReminderActionReceiver : BroadcastReceiver() {
         // pressed, and leaving the notification up reads as it not having
         // worked, which invites a second press.
         NotificationManagerCompat.from(context).cancel(id.hashCode())
+        clearSummaryIfLast(context)
 
         when (intent.action) {
             ReminderActions.ACTION_DONE ->
@@ -108,4 +109,23 @@ class ReminderDoneWorker(
             Result.retry()
         }
     }
+}
+
+/**
+ * Remove the group summary once nothing is left under it.
+ *
+ * Android does not do this for you: dealing with the last reminder leaves
+ * "Reminders from Aira" sitting in the shade with nothing beneath it, which
+ * reads as an outstanding reminder that cannot be opened or dismissed into
+ * anything. Counting what is actually still posted is the only way to know.
+ */
+private fun clearSummaryIfLast(context: Context) {
+    val manager = context.getSystemService(android.app.NotificationManager::class.java) ?: return
+    val remaining = runCatching {
+        manager.activeNotifications.count {
+            it.id != ReminderScheduler.SUMMARY_ID &&
+                it.notification.group == ReminderScheduler.GROUP_KEY
+        }
+    }.getOrDefault(1)
+    if (remaining == 0) manager.cancel(ReminderScheduler.SUMMARY_ID)
 }
