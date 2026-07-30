@@ -730,19 +730,19 @@ class AiraViewModel : ViewModel() {
      * The three cases below are the ones that actually happen, and each has a
      * different thing for the person to do.
      */
-    internal fun saveFailureMessage(e: Exception): String {
+    internal fun saveFailureMessage(e: Exception, lead: String = "Not saved"): String {
         val raw = e.message.orEmpty()
         return when {
             e is java.net.UnknownHostException ||
                 e is java.net.ConnectException ||
                 e is java.net.SocketTimeoutException ->
-                "Not saved — Aira can't reach the server. Check your connection and try again."
+                "$lead — Aira can't reach the server. Check your connection and try again."
             raw.contains("401") || raw.contains("403") ->
-                "Not saved — your session ended. Open Aira again to sign back in."
+                "$lead — your session ended. Open Aira again to sign back in."
             // A 4xx with a message is the server explaining a rule the input
             // broke, which is the one case worth quoting verbatim.
-            raw.isNotBlank() && raw.length < 120 -> "Not saved — $raw"
-            else -> "Not saved. Try again in a moment."
+            raw.isNotBlank() && raw.length < 120 -> "$lead — $raw"
+            else -> "$lead. Try again in a moment."
         }
     }
 
@@ -778,13 +778,88 @@ class AiraViewModel : ViewModel() {
             "Saved on this phone. Aira will add it once you're back online.",
         ) { AiraApi.addMedicine(it, name, dose, time) }
 
-    fun markMedicineTaken(context: Context?, id: String) =
-        write(context, "Marked as taken.") { AiraApi.markMedicineTaken(it, id) }
+    // ── the two toggles ─────────────────────────────────────────────────────
+    //
+    // These moved the screen only after the server agreed, so on a slow
+    // connection a tap did nothing visible for a second or more. The natural
+    // response to a control that does not respond is to press it again, and on
+    // "Taken" that is the one place in this app where pressing twice is a
+    // question about medication rather than a UI annoyance.
+    //
+    // They now move immediately and go back if the server refuses. Going back
+    // has to be VISIBLE — a tick that quietly un-ticks itself while someone is
+    // looking away is worse than one that never moved, because they will
+    // remember ticking it. So the row reverts and a message says what happened.
 
-    fun setReminderDone(context: Context?, id: String, done: Boolean) =
-        write(context, if (done) "Reminder done." else "Reminder reopened.") {
-            AiraApi.setReminderDone(it, id, done)
+    fun markMedicineTaken(context: Context?, id: String) {
+        if (context == null) {
+            notify("Not saved — Aira isn't connected right now.")
+            return
         }
+        val before = _uiState.value.careData
+        setTakenLocally(id, true)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.markMedicineTaken(context, id)
+                notify("Marked as taken.")
+                loadCare(context)
+            } catch (e: Exception) {
+                // Put the screen back exactly as it was, not to a guess at what
+                // it was: restoring the whole snapshot cannot leave a second
+                // row wrong if two taps overlapped.
+                _uiState.update { it.copy(careData = before) }
+                notify(saveFailureMessage(e, "Couldn't record that dose"))
+            }
+        }
+    }
+
+    fun setReminderDone(context: Context?, id: String, done: Boolean) {
+        if (context == null) {
+            notify("Not saved — Aira isn't connected right now.")
+            return
+        }
+        val before = _uiState.value.careData
+        setDoneLocally(id, done)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                AiraApi.setReminderDone(context, id, done)
+                notify(if (done) "Reminder done." else "Reminder reopened.")
+                loadCare(context)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(careData = before) }
+                notify(saveFailureMessage(e, "Couldn't update that reminder"))
+            }
+        }
+    }
+
+    private fun setTakenLocally(id: String, taken: Boolean) {
+        _uiState.update { s ->
+            val care = s.careData ?: return@update s
+            fun mark(list: List<CareItem>) =
+                list.map { if (it.id == id) it.copy(takenToday = taken, done = taken) else it }
+            s.copy(
+                careData = care.copy(
+                    medicines = mark(care.medicines),
+                    // Due is what Today counts, so it has to move with the row
+                    // or the badge keeps claiming a dose is outstanding.
+                    medicinesDue = care.medicinesDue.filterNot { taken && it.id == id },
+                ),
+            )
+        }
+    }
+
+    private fun setDoneLocally(id: String, done: Boolean) {
+        _uiState.update { s ->
+            val care = s.careData ?: return@update s
+            s.copy(
+                careData = care.copy(
+                    reminders = care.reminders.map {
+                        if (it.id == id) it.copy(done = done) else it
+                    },
+                ),
+            )
+        }
+    }
 
     // ── correcting and removing ─────────────────────────────────────────────
     //

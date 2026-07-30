@@ -631,6 +631,13 @@ fun EditableRow(
      *  has a time and a repeat as well as a name, and renaming it inline would
      *  quietly offer only a third of what needs changing. */
     onEditInstead: (() -> Unit)? = null,
+    /** False for a row that exists only on this phone and has not been sent.
+     *
+     *  Editing or removing it would act on an id the server has never seen, so
+     *  the controls are not rendered at all rather than shown and failing. A
+     *  disabled-looking button still invites the press; an absent one says the
+     *  row is not ready yet, which is the truth. */
+    actionsEnabled: Boolean = true,
     content: @Composable RowScope.() -> Unit,
 ) {
     var editing by remember(label) { mutableStateOf(false) }
@@ -688,6 +695,7 @@ fun EditableRow(
                 // finger target and the node a screen reader aims at were the
                 // drawing rather than the control. On the one pair of buttons
                 // that sit side by side and where the wrong one deletes.
+                if (actionsEnabled) {
                 IconButton(
                     onClick = { onEditInstead?.invoke() ?: run { editing = true } },
                     modifier = Modifier
@@ -713,6 +721,7 @@ fun EditableRow(
                         tint = InkMuted,
                         modifier = Modifier.size(18.dp),
                     )
+                }
                 }
             }
         }

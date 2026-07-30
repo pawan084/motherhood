@@ -246,10 +246,14 @@ fun CareScreen(
                     // most worth changing and now the one with consequences —
                     // it decides when the notification arrives.
                     onEditInstead = { onEditReminder(rem) },
+                    actionsEnabled = !rem.pending,
                 ) {
                     Checkbox(
                         checked = rem.done,
                         onCheckedChange = { onReminderDone(rem.id, it) },
+                        // An unsent reminder has no server id, so "done" has
+                        // nothing to mark. Disabled rather than failing on tap.
+                        enabled = !rem.pending,
                         // Without this the box announces as "checkbox, not
                         // ticked" and nothing else: it has its own click
                         // handler, so Compose doesn't fold the row's title into
@@ -275,6 +279,18 @@ fun CareScreen(
                                 rem.subtitle,
                                 style = MaterialTheme.typography.bodySmall,
                                 color = InkMuted,
+                            )
+                        }
+                        // Reminders draw their own row rather than CareRow, so
+                        // the unsent marker has to be repeated here. Found by
+                        // adding a reminder with the server down and seeing the
+                        // row appear with no marker at all — the build was
+                        // clean, and the label existed, just not on this list.
+                        if (rem.pending) {
+                            Text(
+                                "Waiting to send",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Amber,
                             )
                         }
                     }
@@ -485,6 +501,9 @@ private fun CareRow(
         onRename = { onRename(item.id, renameField, it) },
         onDelete = { onDelete(item.id) },
         modifier = Modifier.padding(vertical = 6.dp),
+        // Same reason as the reminder rows: an item that has not reached the
+        // server has no id to rename or delete.
+        actionsEnabled = !item.pending,
     ) {
         Icon(imageVector = icon, contentDescription = null, tint = tint)
         Spacer(modifier = Modifier.width(11.dp))
