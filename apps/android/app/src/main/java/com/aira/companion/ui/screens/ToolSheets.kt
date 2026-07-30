@@ -1064,14 +1064,14 @@ private fun CompanionTool() {
         AiraCard {
             Text("A gentle imagined character", style = MaterialTheme.typography.titleMedium, color = Ink)
             Text(
-                "A private connection experience—not a prediction.",
+                "A private connection experience — not a prediction.",
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
             )
             Spacer(Modifier.height(14.dp))
             InfoBanner(
                 icon = Icons.Outlined.Security,
-                text = "Illustrative only—not a prediction of appearance, health, personality or genetics.",
+                text = "Illustrative only — not a prediction of appearance, health, personality or genetics.",
                 color = AmberMist,
                 contentColor = Amber,
             )

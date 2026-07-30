@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.MonitorHeart
 import androidx.compose.material.icons.outlined.Mood
 import androidx.compose.material.icons.outlined.Shield
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +57,7 @@ import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+import com.aira.companion.ui.theme.Urgent
 
 /**
  * Everything the user has recorded, in one shape.
@@ -481,6 +483,13 @@ fun CareScreen(
 
         Spacer(modifier = Modifier.height(18.dp))
 
+        // The same red as the header control, because it is the same control.
+        //
+        // This took Material's default outlined colours, so the app's most
+        // safety-critical action rendered neutral grey at the foot of Care while
+        // the header showed it in red — the bigger target being the quieter one.
+        // Someone scrolling to the end of their record because they are worried
+        // is exactly who this is for.
         OutlinedButton(
             onClick = onUrgentHelp,
             modifier =
@@ -488,6 +497,8 @@ fun CareScreen(
                     .fillMaxWidth()
                     .heightIn(min = 52.dp),
             shape = RoundedCornerShape(16.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Urgent),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Urgent),
         ) {
             Icon(
                 imageVector = Icons.Outlined.LocalHospital,

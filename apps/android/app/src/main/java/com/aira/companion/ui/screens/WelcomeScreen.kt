@@ -207,7 +207,7 @@ fun WelcomeScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "Wellness support—not diagnosis or emergency care.",
+                text = "Wellness support — not diagnosis or emergency care.",
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 style = MaterialTheme.typography.bodySmall,
                 color = InkMuted,
