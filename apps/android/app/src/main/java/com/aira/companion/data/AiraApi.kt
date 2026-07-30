@@ -88,6 +88,63 @@ object AiraApi {
         return TurnResult.from(res)
     }
 
+    /**
+     * A turn, read as it arrives.
+     *
+     * The server emits newline-delimited JSON: a safety event first, then text,
+     * then a done event. [onEvent] is called on the IO thread for each line —
+     * the caller marshals to the UI.
+     *
+     * Streaming is attempted, not depended on. A proxy that buffers, an old
+     * build, anything that makes this fail leaves the caller free to fall back
+     * to the one-shot endpoint; this returns false rather than throwing so that
+     * decision stays with the caller.
+     */
+    suspend fun chatTurnStream(
+        ctx: Context,
+        message: String,
+        history: List<Pair<String, String>> = emptyList(),
+        onEvent: (JSONObject) -> Unit,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val token = ensureToken(ctx)
+        val body = JSONObject().put("message", message).put(
+            "history",
+            JSONArray().apply {
+                history.forEach { (role, content) ->
+                    put(JSONObject().put("role", role).put("content", content))
+                }
+            },
+        )
+        val conn = (URL("$base/v1/chat/turn/stream").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15000
+            // No read timeout: the gaps between tokens are the point, and a
+            // short one would cut somebody off mid-sentence.
+            readTimeout = 0
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/x-ndjson")
+            if (appToken.isNotBlank()) setRequestProperty("X-App-Token", appToken)
+            setRequestProperty("Authorization", "Bearer $token")
+            doOutput = true
+        }
+        try {
+            conn.outputStream.use { it.write(body.toString().toByteArray()) }
+            if (conn.responseCode !in 200..299) return@withContext false
+            conn.inputStream.bufferedReader().useLines { lines ->
+                lines.forEach { line ->
+                    if (line.isNotBlank()) {
+                        runCatching { JSONObject(line) }.getOrNull()?.let(onEvent)
+                    }
+                }
+            }
+            true
+        } catch (_: Exception) {
+            false
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     suspend fun onboarding(ctx: Context, journey: String, name: String?, language: String?,
                            priorities: List<String>, weeks: Int?) {
         val token = ensureToken(ctx)

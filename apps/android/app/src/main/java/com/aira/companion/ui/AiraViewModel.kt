@@ -1585,6 +1585,11 @@ class AiraViewModel(
             return
         }
         viewModelScope.launch(Dispatchers.IO) {
+            // Try the streaming turn first, and fall back to the one-shot one if
+            // it does not get going. Anything between here and the server — a
+            // proxy that buffers, an older build — can stop a stream, and the
+            // reply matters more than the way it arrives.
+            if (streamTurn(context, text, history, messageId)) return@launch
             try {
                 val res = AiraApi.chatTurn(context, text, history)
                 _uiState.update { it.copy(screeningDegraded = res.degraded) }
@@ -1640,6 +1645,90 @@ class AiraViewModel(
      * is the whole reason the floor exists — it is the one thing that must work
      * with no server.
      */
+    /**
+     * A turn read as it arrives. Returns false if nothing usable came back, so
+     * the caller can fall back rather than leaving somebody with a half-turn.
+     *
+     * The reply bubble is created on the FIRST chunk, not before. An empty
+     * bubble waiting to be filled is a promise the stream might not keep — and
+     * on a red turn there is no reply at all, so a bubble would have to be
+     * taken away again in front of the person it was shown to.
+     */
+    private suspend fun streamTurn(
+        context: Context,
+        text: String,
+        history: List<Pair<String, String>>,
+        messageId: Long,
+    ): Boolean {
+        var replyId: Long? = null
+        var got = false
+        val ok = AiraApi.chatTurnStream(context, text, history) { event ->
+            when (event.optString("type")) {
+                "safety" ->
+                    _uiState.update { it.copy(screeningDegraded = event.optBoolean("degraded")) }
+
+                "urgent" -> {
+                    got = true
+                    _uiState.update {
+                        it.copy(
+                            sending = false,
+                            urgentHelpOpen = true,
+                            activeTool = null,
+                            toolsOpen = false,
+                        )
+                    }
+                }
+
+                "chunk" -> {
+                    val piece = event.optString("text")
+                    if (piece.isNotEmpty()) {
+                        got = true
+                        val id = replyId ?: System.nanoTime().also { replyId = it }
+                        _uiState.update { s ->
+                            val existing = s.messages.firstOrNull { it.id == id }
+                            s.copy(
+                                sending = true,
+                                messages = if (existing == null) {
+                                    s.messages + ChatMessage(
+                                        id = id, fromAira = true, text = piece,
+                                        at = nowSeconds(),
+                                    )
+                                } else {
+                                    s.messages.map {
+                                        if (it.id == id) it.copy(text = it.text + piece) else it
+                                    }
+                                },
+                            )
+                        }
+                    }
+                }
+
+                "done" -> {
+                    got = true
+                    val label = event.optStringOrNull("trust_label")
+                    val id = replyId
+                    _uiState.update { s ->
+                        s.copy(
+                            sending = false,
+                            messages = s.messages.map {
+                                if (it.id == id) it.copy(trustLabel = label) else it
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        if (!ok || !got) {
+            // Nothing usable arrived. Anything half-drawn is removed so the
+            // fallback does not append a second reply beneath a stub.
+            replyId?.let { id ->
+                _uiState.update { s -> s.copy(messages = s.messages.filterNot { it.id == id }) }
+            }
+            return false
+        }
+        return true
+    }
+
     private fun applyOfflineReply(text: String, messageId: Long) {
         val urgent = SafetyKeywords.looksUrgent(text)
         _uiState.update { state ->
