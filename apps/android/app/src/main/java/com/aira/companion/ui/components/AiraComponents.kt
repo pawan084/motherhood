@@ -67,6 +67,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -477,6 +479,20 @@ private val destinationIcons =
         MainDestination.You to DestinationIcon(Icons.Filled.Person, Icons.Outlined.Person),
     )
 
+/**
+ * Three destinations, with the conversation raised out of the row.
+ *
+ * Aira is not a peer of the other two. Today and Care are where the results of
+ * a conversation are kept; the conversation is the product. As a same-sized tab
+ * between them it read as one of three filing cabinets, so it is now a filled
+ * circle lifted above the bar — the one thing on the screen that looks pressable
+ * from across a room.
+ *
+ * Raised with an offset inside a Box that reserves the extra height, rather than
+ * by letting it overflow. An overflowing child is clipped by the Scaffold slot on
+ * some devices and not others, which is a bug that only appears on hardware
+ * nobody tested.
+ */
 @Composable
 fun AiraBottomNavigation(
     selected: MainDestination,
@@ -484,52 +500,107 @@ fun AiraBottomNavigation(
     modifier: Modifier = Modifier,
 ) {
     val haptics = rememberAiraHaptics()
-    NavigationBar(
-        modifier = modifier,
-        containerColor = Paper,
-        tonalElevation = 0.dp,
-    ) {
-        bottomBarDestinations.forEach { destination ->
-            val selectedItem = selected == destination
-            val icon = destinationIcons.getValue(destination)
-            NavigationBarItem(
-                selected = selectedItem,
-                onClick = {
-                    // Only on an actual change. Re-tapping the tab you are
-                    // already on is not a navigation, and buzzing for it teaches
-                    // people the feedback means nothing.
-                    if (!selectedItem) haptics.select()
-                    onSelect(destination)
-                },
-                icon = {
-                    Icon(
-                        imageVector = if (selectedItem) icon.active else icon.inactive,
-                        contentDescription = destination.label,
-                        // The conversation is the product; the other two are
-                        // where its results are kept. With three tabs there is
-                        // room to say that with size instead of a tutorial.
-                        modifier = Modifier.size(
-                            if (destination == MainDestination.Aira) 30.dp else 22.dp,
+    val lift = 26.dp
+    Box(modifier = modifier.fillMaxWidth()) {
+        NavigationBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            containerColor = Paper,
+            tonalElevation = 0.dp,
+        ) {
+            bottomBarDestinations.forEach { destination ->
+                if (destination == MainDestination.Aira) {
+                    // Its slot stays in the row so the other two keep their
+                    // thirds; the button itself is drawn above, in the Box.
+                    Spacer(modifier = Modifier.weight(1f))
+                    return@forEach
+                }
+                val selectedItem = selected == destination
+                val icon = destinationIcons.getValue(destination)
+                NavigationBarItem(
+                    selected = selectedItem,
+                    onClick = {
+                        // Only on an actual change. Re-tapping the tab you are
+                        // already on is not a navigation, and buzzing for it
+                        // teaches people the feedback means nothing.
+                        if (!selectedItem) haptics.select()
+                        onSelect(destination)
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = if (selectedItem) icon.active else icon.inactive,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp),
+                        )
+                    },
+                    label = {
+                        Text(
+                            text = destination.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                        )
+                    },
+                    colors =
+                        NavigationBarItemDefaults.colors(
+                            selectedIconColor = Plum,
+                            selectedTextColor = Plum,
+                            indicatorColor = LilacMist,
+                            unselectedIconColor = InkMuted,
+                            unselectedTextColor = InkMuted,
                         ),
-                    )
+                )
+            }
+        }
+
+        val airaSelected = selected == MainDestination.Aira
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 2.dp),
+        ) {
+            Surface(
+                onClick = {
+                    if (!airaSelected) haptics.select()
+                    onSelect(MainDestination.Aira)
                 },
-                label = {
-                    Text(
-                        text = destination.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
+                shape = CircleShape,
+                color = Plum,
+                contentColor = Paper,
+                // Lifted and shadowed so it reads as sitting on top of the bar
+                // rather than punched into it.
+                shadowElevation = 8.dp,
+                modifier = Modifier
+                    .size(62.dp)
+                    .semantics {
+                        contentDescription = "Aira, the conversation"
+                        role = Role.Tab
+                        // Qualified: the composable's own `selected` parameter
+                        // shadows the semantics property of the same name.
+                        this.selected = airaSelected
+                    },
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = if (airaSelected) {
+                            Icons.Filled.AutoAwesome
+                        } else {
+                            Icons.Outlined.AutoAwesome
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
                     )
-                },
-                colors =
-                    NavigationBarItemDefaults.colors(
-                        selectedIconColor = Plum,
-                        selectedTextColor = Plum,
-                        indicatorColor = LilacMist,
-                        unselectedIconColor = InkMuted,
-                        unselectedTextColor = InkMuted,
-                    ),
+                }
+            }
+            Text(
+                text = MainDestination.Aira.label,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (airaSelected) Plum else InkMuted,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 2.dp),
             )
         }
+        // Reserves the height the lifted button needs, so nothing is clipped.
+        Spacer(modifier = Modifier.height(lift))
     }
 }
 
