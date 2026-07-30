@@ -1044,6 +1044,64 @@ textarea:focus-visible, [tabindex]:focus-visible {
 }
 .goal-grid button.selected { border-color: var(--aubergine); background: var(--lilac-soft); color: var(--aubergine); font-weight: 650; }
 
+/* ── Onboarding · companion-guided setup ─────────────────────────────────────
+   Aira sits beside you (the aubergine aside, same brand language as the Today
+   hero) while you answer one calm question at a time. */
+.onboarding-wrap.onboarding-shell { max-width: 940px; }
+.onboarding-shell { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 22px; align-items: start; }
+.onboarding-aside {
+  position: relative; overflow: hidden; align-self: stretch;
+  padding: 28px 26px; border-radius: 22px; color: #fff;
+  background: linear-gradient(150deg, #4d2052, #6d3570);
+}
+.onboarding-aside .eyebrow { color: #dac7dd; }
+.aside-hint {
+  margin: 10px 0 22px; font-family: var(--serif); font-weight: 500;
+  font-size: 24px; line-height: 1.15; letter-spacing: -.02em; color: #fff;
+}
+.setup-steps { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 12px; }
+.setup-steps li { display: flex; align-items: center; gap: 11px; color: #d3c1d5; font-size: 14px; font-weight: 600; }
+.setup-steps li.current { color: #fff; }
+.setup-steps li.done { color: #e8dced; }
+.step-dot {
+  width: 24px; height: 24px; flex: 0 0 auto; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid #ffffff3d; background: transparent;
+  font-size: 12px; font-weight: 700; color: #e8dced;
+}
+.setup-steps li.current .step-dot { background: #fffdf9; border-color: #fffdf9; color: var(--aubergine); }
+.setup-steps li.done .step-dot { background: #ffffff26; border-color: transparent; color: #fff; }
+.onboarding-aside .onboarding-progress { margin: 0 0 20px; }
+.onboarding-aside .onboarding-progress i { background: #ffffff30; }
+.onboarding-aside .onboarding-progress i.done { background: #fff; }
+.aside-privacy { display: flex; align-items: flex-start; gap: 8px; margin: 0; color: #e0d0e2; font-size: 12.5px; line-height: 1.5; }
+.aside-privacy svg { flex: 0 0 auto; margin-top: 2px; }
+
+.onboarding-main { padding: 30px 32px; }
+.onboarding-main h2 { margin: 8px 0; font-family: var(--serif); font-size: clamp(26px, 3vw, 36px); font-weight: 500; letter-spacing: -.025em; }
+.onboarding-main > p { margin: 0 0 22px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+.onboarding-summary {
+  margin: 20px 0 6px; padding: 15px 16px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--lilac-soft);
+}
+.onboarding-summary .eyebrow { color: var(--aubergine); }
+.onboarding-summary p { margin: 6px 0 0; color: var(--ink); font-size: 14px; line-height: 1.5; }
+.onboarding-summary p + p { color: var(--muted); font-size: 13px; }
+.onboarding-back {
+  margin-top: 16px; padding: 6px 0; min-height: 24px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: transparent; color: var(--muted); font-size: 13px; font-weight: 650;
+}
+.onboarding-back:hover { color: var(--aubergine); }
+
+@media (max-width: 780px) {
+  .onboarding-shell { grid-template-columns: 1fr; gap: 16px; }
+  .onboarding-aside { padding: 22px; }
+  .aside-hint { margin-bottom: 16px; font-size: 21px; }
+  .setup-steps { display: none; } /* the progress bar carries the step count on mobile */
+  .onboarding-aside .onboarding-progress { margin-bottom: 14px; }
+  .onboarding-main { padding: 22px; }
+}
+
 .banner {
   display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding: 13px 16px;
   border: 1px solid #ecd8a8; border-radius: 12px; background: #fdf7e9; color: #8a5f21; font-size: 13px;
