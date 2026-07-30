@@ -703,10 +703,32 @@ object AiraApi {
         request("PUT", "/v1/emergency-profile", body, ensureToken(ctx))
     }
 
-    suspend fun reportAnswer(ctx: Context, kind: String, message: String) {
+    suspend fun reportAnswer(ctx: Context, kind: String, message: String, ref: String? = null) {
         request(
             "POST", "/v1/feedback/report",
-            JSONObject().put("kind", kind).put("message", message),
+            JSONObject().put("kind", kind).put("message", message)
+                .put("ref", ref ?: JSONObject.NULL),
+            ensureToken(ctx),
+        )
+    }
+
+    /**
+     * Say a reply helped, against the turn it was about.
+     *
+     * `ref` is a timestamp, not the reply. The text of the turn is already in
+     * chat_turns, exported with the account and deleted with it; copying it into
+     * the feedback table would put the same sentence about somebody's pregnancy
+     * in a second place, with its own lifetime and its own access rules. A
+     * reviewer who needs the words goes through the path that already governs
+     * reading them.
+     */
+    suspend fun rateAnswer(ctx: Context, helpful: Boolean, ref: String?) {
+        request(
+            "POST", "/v1/feedback",
+            JSONObject()
+                .put("kind", "general")
+                .put("message", if (helpful) "Marked helpful in chat" else "Marked unhelpful in chat")
+                .put("ref", ref ?: JSONObject.NULL),
             ensureToken(ctx),
         )
     }

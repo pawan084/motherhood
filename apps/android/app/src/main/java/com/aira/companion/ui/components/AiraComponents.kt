@@ -311,6 +311,9 @@ fun ChatBubble(
     /** Never reached the server. The bubble says so and offers to try again. */
     failed: Boolean = false,
     onRetry: (() -> Unit)? = null,
+    /** Aira replies only, and only until it has been answered. */
+    onRate: ((helpful: Boolean) -> Unit)? = null,
+    rated: Boolean = false,
 ) {
     val clipboard = LocalClipboardManager.current
     val haptics = rememberAiraHaptics()
@@ -378,6 +381,40 @@ fun ChatBubble(
                         style = MaterialTheme.typography.labelSmall,
                         color = if (fromAira) InkMuted else Paper.copy(alpha = 0.75f),
                     )
+                }
+                // Was this any use?
+                //
+                // Quiet, but on every reply rather than behind a long-press: the
+                // point is to hear about an answer that was wrong, and a control
+                // people have to discover is one that only the confident use.
+                // The global feedback form could not say WHICH reply, which made
+                // the most useful reports the hardest ones to file.
+                if (fromAira && onRate != null) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    if (rated) {
+                        Text(
+                            text = "Thanks",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = InkMuted,
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(onClick = { onRate(true) }) {
+                                Text(
+                                    "Helpful",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = InkMuted,
+                                )
+                            }
+                            TextButton(onClick = { onRate(false) }) {
+                                Text(
+                                    "Not helpful",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = InkMuted,
+                                )
+                            }
+                        }
+                    }
                 }
                 if (failed) {
                     Spacer(modifier = Modifier.height(6.dp))

@@ -1499,6 +1499,42 @@ class AiraViewModel(
         _uiState.update { it.copy(urgentHelpOpen = false, urgentMessage = null) }
     }
 
+    /**
+     * Whether a reply helped, sent against the turn it was about.
+     *
+     * "Not helpful" goes to /feedback/report rather than general feedback,
+     * because that endpoint forces a review-worthy kind. In an app that answers
+     * questions about a pregnancy, a reply somebody marks wrong is worth a
+     * person looking at it; filing it as generic feedback would put it in the
+     * same pile as "the button is too small".
+     *
+     * The row acknowledges either way. A control that does nothing visible is
+     * one somebody presses twice and then stops trusting.
+     */
+    fun rateReply(context: Context?, message: ChatMessage, helpful: Boolean) {
+        _uiState.update { s ->
+            s.copy(messages = s.messages.map { if (it.id == message.id) it.copy(rated = true) else it })
+        }
+        notify(if (helpful) "Thank you — noted." else "Thank you. This one will be looked at.")
+        if (context == null) return
+        val ref = message.at?.let { "chat@${it.toLong()}" }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (helpful) {
+                    AiraApi.rateAnswer(context, true, ref)
+                } else {
+                    AiraApi.reportAnswer(
+                        context, "clinical", "Marked unhelpful in chat", ref,
+                    )
+                }
+            } catch (_: Exception) {
+                // Deliberately silent. The person has already been thanked, and
+                // a failure notice here would make them think their objection
+                // was lost — when the useful thing is that they told us at all.
+            }
+        }
+    }
+
     fun updateDraft(value: String) {
         _uiState.update { it.copy(chatDraft = value) }
         saved[KEY_DRAFT] = value

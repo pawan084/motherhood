@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
+import com.aira.companion.model.ChatMessage
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.dayLabel
@@ -63,6 +64,7 @@ fun AiraChatScreen(
     onSend: () -> Unit,
     /** Send a message that never reached the server. */
     onRetry: (Long) -> Unit = {},
+    onRate: (ChatMessage, Boolean) -> Unit = { _, _ -> },
     onQuickMessage: (String) -> Unit,
     onOpenTools: () -> Unit,
     onOpenTool: (AiraTool) -> Unit,
@@ -138,6 +140,14 @@ fun AiraChatScreen(
                     at = message.at,
                     failed = message.failed,
                     onRetry = { onRetry(message.id) },
+                    // Not offered on the canned welcome line, which has no
+                    // server turn behind it to attach the answer to.
+                    onRate = if (message.fromAira && message.at != null) {
+                        { helpful -> onRate(message, helpful) }
+                    } else {
+                        null
+                    },
+                    rated = message.rated,
                 )
             }
 

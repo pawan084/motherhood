@@ -344,6 +344,9 @@ private fun MainExperience(
                         onDraftChange = viewModel::updateDraft,
                         onSend = { haptics.confirm(); viewModel.sendMessage(context) },
                         onRetry = { viewModel.resendMessage(it, context) },
+                        onRate = { message, helpful ->
+                            viewModel.rateReply(context, message, helpful)
+                        },
                         onQuickMessage = { haptics.confirm(); viewModel.quickMessage(it, context) },
                         onOpenTools = viewModel::openTools,
                         onOpenTool = viewModel::openTool,

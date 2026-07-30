@@ -111,6 +111,9 @@ data class ChatMessage(
      *  not be placed against the day it happened — which matters once history
      *  survives a restart and yesterday's worry sits above today's. */
     val at: Double? = null,
+    /** Set once the person has said whether this reply helped, so the row can
+     *  stop asking. Local to the session; the server holds the feedback. */
+    val rated: Boolean = false,
     /** This message never reached the server.
      *
      *  Shown on the bubble, because the alternative is a message that looks
