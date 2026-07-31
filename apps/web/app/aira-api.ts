@@ -371,6 +371,10 @@ export type VideoTopic = {
   status: string;
   clinical_review: { required: boolean; specialties: string[]; status: string };
   playable: boolean;
+  /** Where the video is, when there is one. Null for every topic today — the
+   *  topics are written, not filmed. `playable` already requires this to be
+   *  present, so the two move together. */
+  media_url: string | null;
   saved?: boolean;
 };
 export type VideosResponse = {

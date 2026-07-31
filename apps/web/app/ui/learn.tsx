@@ -206,11 +206,15 @@ export default function Learn({
             </div>
             <div className="modal-body">
               <div className="video-stage">
-                {selected.playable ? (
-                  <>
-                    <Play size={26} />
-                    <span>Ready to watch.</span>
-                  </>
+                {/* "Ready to watch" with nothing to open is the same inert
+                    control as a play glyph on an unfilmed topic. `playable`
+                    already requires a media_url, so this checks both and the
+                    link is the thing that makes the claim true. */}
+                {selected.playable && selected.media_url ? (
+                  <a className="video-watch" href={selected.media_url}
+                     target="_blank" rel="noreferrer">
+                    <Play size={26} /> Watch
+                  </a>
                 ) : (
                   <span>In production — this video isn&apos;t ready to play yet.</span>
                 )}
