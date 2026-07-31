@@ -128,6 +128,33 @@ fun LearnScreen(
                     color = InkMuted,
                 )
                 Spacer(Modifier.height(12.dp))
+                // The same readiness state as every other card. This one is the
+                // most prominent thing on the screen, and it was the only one
+                // that said nothing about whether it could be watched.
+                if (weekVideo.playable && !weekVideo.mediaUrl.isNullOrBlank()) {
+                    PrimaryButton(
+                        label = if (weekVideo.mediaIsPlaceholder) "Open placeholder" else "Watch",
+                        onClick = { onWatch(weekVideo) },
+                        modifier = Modifier.fillMaxWidth(),
+                        trailingIcon = null,
+                    )
+                    if (weekVideo.mediaIsPlaceholder) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            text = "Not the real video — a stand-in while this is filmed.",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = InkMuted,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                } else {
+                    Text(
+                        text = "In production — we'll tell you when it's ready.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = InkMuted,
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
                 PrimaryButton(
                     label = if (savedIds.contains(weekVideo.id)) "Saved for later" else "Save for later",
                     onClick = { onToggleSave(weekVideo.id) },
@@ -259,11 +286,23 @@ private fun VideoCard(
             // that became ready looked identical to one that had not.
             if (video.playable && !video.mediaUrl.isNullOrBlank()) {
                 PrimaryButton(
-                    label = "Watch",
+                    // The label distinguishes the two, because the button does
+                    // not. Opening a stand-in under a clinical title while the
+                    // control says plain "Watch" would be the most convincing
+                    // false claim in the app.
+                    label = if (video.mediaIsPlaceholder) "Open placeholder" else "Watch",
                     onClick = { onWatch(video) },
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = null,
                 )
+                if (video.mediaIsPlaceholder) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        text = "Not the real video — a stand-in while this is filmed.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = InkMuted,
+                    )
+                }
                 Spacer(Modifier.height(8.dp))
             } else {
                 Text(

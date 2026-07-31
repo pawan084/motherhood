@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from "react";
 import { Bookmark, BookmarkCheck, Clock, FileText, Play, Search, Siren, Sparkles, X } from "lucide-react";
-import { AiraAPI, videoDurationLabel, type VideosResponse, type VideoTopic } from "../aira-api";
+import { AiraAPI, mediaHref, videoDurationLabel, type VideosResponse, type VideoTopic } from "../aira-api";
 
 const WEEK_DISMISS_KEY = "aira.learn.week_dismissed";
 function readDismissedWeeks(): string[] {
@@ -211,9 +211,12 @@ export default function Learn({
                     already requires a media_url, so this checks both and the
                     link is the thing that makes the claim true. */}
                 {selected.playable && selected.media_url ? (
-                  <a className="video-watch" href={selected.media_url}
+                  <a className="video-watch" href={mediaHref(selected.media_url)}
                      target="_blank" rel="noreferrer">
-                    <Play size={26} /> Watch
+                    <Play size={26} />
+                    {selected.media_is_placeholder
+                      ? " Open placeholder — not the real video"
+                      : " Watch"}
                   </a>
                 ) : (
                   <span>In production — this video isn&apos;t ready to play yet.</span>

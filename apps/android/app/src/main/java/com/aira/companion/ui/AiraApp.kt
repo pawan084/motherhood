@@ -407,7 +407,12 @@ private fun MainExperience(
                             video.mediaUrl?.takeIf { it.isNotBlank() }?.let { url ->
                                 runCatching {
                                     context.startActivity(
-                                        Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                        Intent(
+                                            Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(
+                                                com.aira.companion.data.AiraApi.absoluteUrl(url),
+                                            ),
+                                        )
                                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                                     )
                                 }

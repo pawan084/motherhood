@@ -96,3 +96,69 @@ def test_the_overlay_does_allow_a_real_video():
                       "note": ""}}
 
     assert videos._resolved(seed, reviews)["playable"] is True
+
+
+# ── the demo placeholder ─────────────────────────────────────────────────────
+
+def test_demo_media_is_off_unless_asked_for():
+    """The most important assertion about the placeholder.
+
+    A stand-in that ships by accident is worse than the honest "in production"
+    state it replaces, because it is the same claim in its most convincing form:
+    a play button under a clinical title that opens something generic.
+    """
+    assert videos.DEMO_MEDIA is False, "AIRA_DEMO_MEDIA is set in this environment"
+
+
+def test_no_placeholder_url_while_demo_media_is_off():
+    assert videos._demo_media_url({"id": "preg-week-24"}) is None
+    assert videos._normalise({"id": "x", "title": "t", "category": "nutrition"})["media_url"] is None
+
+
+def test_the_placeholder_page_is_absent_without_demo_media(client, user):
+    """Not merely unlinked — absent. A production build has no such page even if
+    a client asks for one by hand."""
+    r = client.get("/v1/videos/preg-week-24/placeholder", headers=user["headers"])
+
+    assert r.status_code == 404
+
+
+def test_demo_media_still_respects_the_review_gate(monkeypatch):
+    """The placeholder may stand in for a file. It may not stand in for a
+    clinician having read the thing."""
+    monkeypatch.setattr(videos, "DEMO_MEDIA", True)
+
+    unapproved = videos._normalise({
+        "id": "t1", "title": "t", "category": "nutrition", "status": "published",
+        "clinical_review": {"status": "pending"},
+    })
+
+    assert unapproved["media_url"] is not None, "demo media should still be offered"
+    assert unapproved["playable"] is False, "an unreviewed topic became playable"
+
+
+def test_demo_media_marks_itself_as_a_placeholder(monkeypatch):
+    """So a client can label it. A stand-in the UI presents as the real video is
+    exactly the failure this whole switch is guarded for."""
+    monkeypatch.setattr(videos, "DEMO_MEDIA", True)
+
+    t = videos._normalise({
+        "id": "t1", "title": "t", "category": "nutrition", "status": "published",
+        "clinical_review": {"status": "approved"},
+    })
+
+    assert t["playable"] is True
+    assert t["media_is_placeholder"] is True
+
+
+def test_real_media_is_never_marked_a_placeholder(monkeypatch):
+    monkeypatch.setattr(videos, "DEMO_MEDIA", True)
+
+    t = videos._normalise({
+        "id": "t1", "title": "t", "category": "nutrition", "status": "published",
+        "clinical_review": {"status": "approved"},
+        "media_url": "https://cdn.example/real.mp4",
+    })
+
+    assert t["media_url"] == "https://cdn.example/real.mp4"
+    assert t["media_is_placeholder"] is False

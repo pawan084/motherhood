@@ -16,12 +16,14 @@ just carries the `safety_level` so it can.
 Only the "saved" list is per-user, so that is the sole table here and the only
 thing export/delete touch (privacy.py fans out over export_user/delete_user).
 """
+import html
 import json
 import logging
 import os
 import time
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import HTMLResponse
 
 import accounts
 import care
@@ -36,6 +38,20 @@ _conn = None
 
 _CATALOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                              "data", "video_catalog.json")
+
+# A stand-in so the playback path can be exercised before anything is filmed.
+#
+# OFF unless AIRA_DEMO_MEDIA is set, and it must stay that way. A placeholder
+# that a user cannot tell from a real video is worse than the honest "in
+# production" state it replaces: tapping Watch on "Week 31: Swelling and Warning
+# Signs" and getting something generic is precisely the kind of claim this app
+# has spent its life removing. So the stand-in is served by us, says what it is
+# in its first line, and never appears in a build that has not asked for it.
+#
+# Third-party sample footage was the obvious alternative and is worse on every
+# count: an outbound dependency, unreviewed content, and a video that looks like
+# it is trying to be the real thing.
+DEMO_MEDIA = os.environ.get("AIRA_DEMO_MEDIA", "").strip().lower() in ("1", "true", "yes")
 
 # Catalog stage -> Aira journey. `exploring` has no catalog stage; those users get
 # the on-demand library (see _for_journey).
@@ -88,7 +104,11 @@ def _normalise(t: dict) -> dict:
         # Where the video actually is. No catalogue entry has one today — the
         # topics are written, not filmed — so this is None for every topic and
         # the clients show an honest "in production" state.
-        "media_url": (t.get("media_url") or "").strip() or None,
+        "media_url": (t.get("media_url") or "").strip() or _demo_media_url(t),
+        # True when `media_url` is the stand-in rather than a produced video, so
+        # a client can label it instead of presenting it as the real thing.
+        # Always false in a normal build.
+        "media_is_placeholder": bool(DEMO_MEDIA and not (t.get("media_url") or "").strip()),
         # Playable requires something to play.
         #
         # This used to be `status == "published" and review approved`, which is
@@ -100,12 +120,23 @@ def _normalise(t: dict) -> dict:
         #
         # Three conditions, all necessary: produced, cleared by a clinician, and
         # actually somewhere.
+        # In demo mode the stand-in counts as media, so the Watch path can be
+        # walked end to end. The review gate is NOT bypassed: a topic still has
+        # to be published and approved, because that is the part a placeholder
+        # must not be allowed to fake.
         "playable": (
             t.get("status") == "published"
             and review.get("status") == "approved"
-            and bool((t.get("media_url") or "").strip())
+            and bool((t.get("media_url") or "").strip() or _demo_media_url(t))
         ),
     }
+
+
+def _demo_media_url(t: dict) -> str | None:
+    """The stand-in's address, when this build has asked for one."""
+    if not DEMO_MEDIA:
+        return None
+    return f"/v1/videos/{t['id']}/placeholder"
 
 
 def _load_catalog() -> None:
@@ -214,6 +245,41 @@ def _resolved(t: dict, reviews: dict) -> dict:
         "playable": (status == "published" and review_status == "approved"
                      and bool(t.get("media_url"))),
     }
+
+
+@router.get("/videos/{video_id}/placeholder", include_in_schema=False)
+def video_placeholder(video_id: str):
+    """A stand-in for a video that has not been made.
+
+    Exists so the Watch path can be walked before anything is filmed. It says so
+    in its own first line, because a placeholder somebody mistakes for the real
+    video is worse than no video at all — this app's whole posture is that it
+    does not claim things it cannot do, and a screen that plays generic footage
+    under a clinical title is that claim in its most convincing form.
+
+    404s unless AIRA_DEMO_MEDIA is set, so a production build has no such page
+    even if a client somehow asks for one.
+    """
+    if not DEMO_MEDIA:
+        raise HTTPException(status_code=404, detail="not found")
+    _load_catalog()
+    topic = _BY_ID.get(video_id)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="unknown video")
+    title = html.escape(topic["title"])
+    return HTMLResponse(
+        "<!doctype html><meta charset='utf-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>Placeholder</title>"
+        "<style>body{margin:0;min-height:100vh;display:grid;place-items:center;"
+        "background:#2E1A33;color:#F7F2F5;font:16px/1.55 system-ui,sans-serif;"
+        "padding:28px;text-align:center}p{max-width:32ch}"
+        "strong{display:block;font-size:20px;margin-bottom:14px}"
+        "em{display:block;margin-top:18px;opacity:.75;font-size:14px}</style>"
+        "<div><p><strong>This is a placeholder, not a video.</strong>"
+        f"It stands in for &ldquo;{title}&rdquo;, which has not been filmed yet."
+        "<em>Shown only in builds with demo media switched on.</em></p></div>",
+    )
 
 
 def _saved_ids(uid: str) -> list[str]:

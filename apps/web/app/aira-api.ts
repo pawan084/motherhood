@@ -383,6 +383,10 @@ export type VideoTopic = {
    *  topics are written, not filmed. `playable` already requires this to be
    *  present, so the two move together. */
   media_url: string | null;
+  /** True when media_url is the backend's stand-in rather than a produced
+   *  video, so the screen can say so instead of presenting it as the real
+   *  thing. False in any build without demo media switched on. */
+  media_is_placeholder: boolean;
   saved?: boolean;
 };
 export type VideosResponse = {
@@ -392,6 +396,12 @@ export type VideosResponse = {
   saved_ids: string[];
 };
 /** "2–4 min" from a topic's recommended duration range. */
+/** An API-relative path made absolute, so a served placeholder can be opened.
+ *  Anything already absolute is returned untouched. */
+export function mediaHref(path: string): string {
+  return /^https?:\/\//.test(path) ? path : `${BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 export function videoDurationLabel(v: VideoTopic): string {
   const lo = Math.max(1, Math.round(v.duration.min_seconds / 60));
   const hi = Math.max(lo, Math.round(v.duration.max_seconds / 60));

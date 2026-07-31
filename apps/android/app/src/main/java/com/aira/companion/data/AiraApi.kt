@@ -38,6 +38,15 @@ object AiraApi {
     private const val KEY_TOKEN = "session_token"
     private val base = BuildConfig.AIRA_API_BASE.trimEnd('/')
 
+    /** An API-relative path made absolute against this build's backend.
+     *
+     *  `media_url` comes back relative when it is served by us, and an intent
+     *  cannot open "/v1/videos/x/placeholder". Anything already absolute is
+     *  returned untouched, so a CDN URL keeps working when there is one. */
+    fun absoluteUrl(path: String): String =
+        if (path.startsWith("http://") || path.startsWith("https://")) path
+        else base + (if (path.startsWith("/")) path else "/$path")
+
     // The backend's coarse edge gate (`X-App-Token`). Blank against a zero-config
     // dev server; REQUIRED in production, where app.py refuses to boot without
     // APP_SHARED_SECRET and every route 401s before identity is even checked.
@@ -327,6 +336,7 @@ object AiraApi {
             reviewStatus = review?.optString("status") ?: "pending",
             playable = o.optBoolean("playable", false),
             mediaUrl = o.optStringOrNull("media_url"),
+            mediaIsPlaceholder = o.optBoolean("media_is_placeholder", false),
             saved = o.optBoolean("saved", false),
         )
     }

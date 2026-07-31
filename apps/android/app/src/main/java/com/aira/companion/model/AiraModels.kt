@@ -369,6 +369,10 @@ data class VideoTopic(
     val playable: Boolean,
     /** Where the video is, when there is one. Null for every topic today. */
     val mediaUrl: String?,
+    /** True when [mediaUrl] is the backend's stand-in rather than a produced
+     *  video. The screen says so: a placeholder somebody mistakes for the real
+     *  thing is worse than the honest "in production" state it replaces. */
+    val mediaIsPlaceholder: Boolean,
     val saved: Boolean,
 )
 
