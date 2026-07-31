@@ -219,7 +219,15 @@ fun JourneyScreen(
             )
             Spacer(modifier = Modifier.height(15.dp))
             PrimaryButton(
-                label = "Ask Aira about this",
+                // Named after what opens.
+                //
+                // This said "Ask Aira about this", which is the phrase the web
+                // client uses for a button that opens the conversation — and
+                // there it does. Here it opens the appointment sheet, so the
+                // one phrase meant two different things depending on which
+                // client you were holding, and on this one it promised a chat
+                // and produced a form.
+                label = "Prepare for a visit",
                 onClick = { onOpenTool(AiraTool.Appointment) },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = Icons.Outlined.ArrowForward,
