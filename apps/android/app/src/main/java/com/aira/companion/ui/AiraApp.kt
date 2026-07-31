@@ -475,10 +475,11 @@ private fun MainExperience(
                         onCreateAccount = { viewModel.openAuth(context, AuthMode.SignUp) },
                         onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },
                         journeyType = state.journey,
-                        onSaveProfile = { n, j, l, w, p ->
-                            viewModel.saveProfile(context, n, j, l, w, p)
+                        onSaveProfile = { n, j, l, w, p, d ->
+                            viewModel.saveProfile(context, n, j, l, w, p, d)
                         },
                         weeksReported = state.todayData?.weeksReported,
+                        dueDate = state.todayData?.dueDate,
                         priorities = state.todayData?.priorities.orEmpty(),
                         onReplayTutorial = viewModel::replayTutorial,
                     )

@@ -1,5 +1,9 @@
 package com.aira.companion.ui.screens
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -106,9 +110,12 @@ fun YouScreen(
         language: String,
         weeks: Int?,
         priorities: List<String>?,
-    ) -> Unit = { _, _, _, _, _ -> },
+        dueDate: String?,
+    ) -> Unit = { _, _, _, _, _, _ -> },
     /** What the user last told us, for the editor to prefill. */
     weeksReported: Int? = null,
+    /** ISO due date, when one is set. */
+    dueDate: String? = null,
     priorities: List<String> = emptyList(),
     /** Replay the intro. It was shown once on first run — when someone is
      *  least able to absorb it — and then unreachable forever. */
@@ -182,9 +189,10 @@ fun YouScreen(
                 initialJourney = journeyType,
                 initialLanguage = language,
                 initialWeeks = weeksReported,
+                initialDueDate = dueDate,
                 initialPriorities = priorities,
-                onSave = { n, j, l, w, p ->
-                    onSaveProfile(n, j, l, w, p)
+                onSave = { n, j, l, w, p, d ->
+                    onSaveProfile(n, j, l, w, p, d)
                     editingProfile = false
                 },
             )
@@ -475,13 +483,15 @@ fun YouScreen(
  * a stale number to be re-committed as if it were current.
  */
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun ProfileEditor(
     initialName: String,
     initialJourney: JourneyType?,
     initialLanguage: String,
     initialWeeks: Int?,
+    initialDueDate: String?,
     initialPriorities: List<String>,
-    onSave: (String, JourneyType?, String, Int?, List<String>?) -> Unit,
+    onSave: (String, JourneyType?, String, Int?, List<String>?, String?) -> Unit,
 ) {
     var name by remember(initialName) { mutableStateOf(initialName) }
     var journey by remember(initialJourney) { mutableStateOf(initialJourney) }
@@ -489,6 +499,8 @@ private fun ProfileEditor(
         mutableStateOf(initialLanguage.ifBlank { "English" })
     }
     var weeks by remember(initialWeeks) { mutableStateOf(initialWeeks?.toString().orEmpty()) }
+    var due by remember(initialDueDate) { mutableStateOf(initialDueDate.orEmpty()) }
+    var pickingDate by remember { mutableStateOf(false) }
     val chosen = remember(initialPriorities) { initialPriorities.toMutableStateList() }
 
     AiraCard {
@@ -530,6 +542,59 @@ private fun ProfileEditor(
         // The week, which the server advances on its own from whatever was
         // last reported — so this is a correction, not a weekly chore.
         if (journey == JourneyType.Pregnant) {
+            Spacer(modifier = Modifier.height(16.dp))
+            SectionLabel("When is your baby due?")
+            OutlinedTextField(
+                value = due,
+                onValueChange = {},
+                readOnly = true,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Choose a date") },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                trailingIcon = {
+                    Row {
+                        if (due.isNotBlank()) {
+                            TextButton(onClick = { due = "" }) { Text("Clear") }
+                        }
+                        TextButton(onClick = { pickingDate = true }) { Text("Pick") }
+                    }
+                },
+            )
+            Text(
+                // Says which number is in charge, because two inputs for one
+                // thing is confusing unless the app admits the ordering.
+                text = if (due.isBlank()) {
+                    "A due date is exact, so Aira never has to guess how much " +
+                        "time has passed. If you add one it replaces the week below."
+                } else {
+                    "Aira works your week out from this date, so it stays right " +
+                        "on its own."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+
+            if (pickingDate) {
+                val state = rememberDatePickerState()
+                DatePickerDialog(
+                    onDismissRequest = { pickingDate = false },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            state.selectedDateMillis?.let { millis ->
+                                due = java.time.Instant.ofEpochMilli(millis)
+                                    .atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+                            }
+                            pickingDate = false
+                        }) { Text("Use this date") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pickingDate = false }) { Text("Cancel") }
+                    },
+                ) { DatePicker(state = state) }
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
             SectionLabel("How many weeks")
             OutlinedTextField(
@@ -582,6 +647,8 @@ private fun ProfileEditor(
                     language,
                     weeks.toIntOrNull()?.takeIf { journey == JourneyType.Pregnant },
                     chosen.toList(),
+                    // Empty string is a deliberate clear; null means "leave it".
+                    due.takeIf { journey == JourneyType.Pregnant },
                 )
             },
             modifier = Modifier.fillMaxWidth(),

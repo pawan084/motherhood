@@ -276,10 +276,14 @@ object AiraApi {
      * the user has just said rather than from the day they first onboarded.
      */
     suspend fun updateCareContext(ctx: Context, weeks: Int? = null,
-                                  priorities: List<String>? = null) {
+                                  priorities: List<String>? = null,
+                                  dueDate: String? = null) {
         val body = JSONObject()
         if (weeks != null) body.put("weeks", weeks)
         if (priorities != null) body.put("priorities", JSONArray(priorities))
+        // An empty string is a deliberate clear, so it is sent rather than
+        // treated as "no change" — the server falls back to the reported week.
+        if (dueDate != null) body.put("due_date", dueDate)
         request("PATCH", "/v1/care/context", body, ensureToken(ctx))
     }
 
@@ -296,6 +300,7 @@ object AiraApi {
             contextLine = o.optString("context_line"),
             weeks = o.optIntOrNull("weeks"),
             weeksReported = o.optIntOrNull("weeks_reported"),
+            dueDate = o.optStringOrNull("due_date"),
             nextAction = na?.let {
                 TodayNextAction(
                     tool = it.optString("tool"),

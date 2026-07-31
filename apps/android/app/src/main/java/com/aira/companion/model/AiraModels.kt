@@ -287,6 +287,9 @@ data class TodayData(
     val weeks: Int?,
     /** The week as last reported, before the server advanced it. */
     val weeksReported: Int? = null,
+    /** ISO date. When set, this is what the week is derived from — a fixed
+     *  point that cannot drift, unlike a reported week carried forward. */
+    val dueDate: String? = null,
     val nextAction: TodayNextAction?,
     val priorities: List<String>,
 )

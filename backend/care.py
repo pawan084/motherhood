@@ -347,6 +347,9 @@ def today(uid: str = Depends(current_user)):
         # rather than the advanced number — otherwise every save would nudge
         # the date forward by however long it had been.
         "weeks_reported": ctx.get("weeks_reported"),
+        # The due date, when there is one, so an editor can prefill with it and
+        # show which of the two numbers is actually driving the week.
+        "due_date": ctx.get("due_date"),
         "next_action": action,
         # No `all_clear` here. It was hardcoded True and read by nobody — a field
         # that would have been actively wrong the first time a client trusted it,

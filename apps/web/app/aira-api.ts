@@ -144,6 +144,9 @@ export type TodayData = {
    *  week has passed, press save without touching it, and the pregnancy has
    *  silently gained seven days. */
   weeks_reported: number | null;
+  /** ISO due date. When set it is what the week is derived from — a fixed point
+   *  that cannot drift, unlike a reported week carried forward. */
+  due_date: string | null;
   next_action: NextAction;
   priorities: string[];
 };
@@ -420,7 +423,7 @@ export const AiraAPI = {
    *  it, so a week mistyped during onboarding could not be corrected here at
    *  all. Setting it restarts the clock server-side, counting forward from what
    *  was just entered. */
-  updateCareContext: (p: { weeks?: number | null; priorities?: string[] }) =>
+  updateCareContext: (p: { weeks?: number | null; priorities?: string[]; due_date?: string }) =>
     req<TodayData>("/v1/care/context", { method: "PATCH", body: JSON.stringify(p) }),
 
   // the safety-gated turn

@@ -1170,6 +1170,7 @@ class AiraViewModel(
         language: String,
         weeks: Int? = null,
         priorities: List<String>? = null,
+        dueDate: String? = null,
     ) =
         write(context, "Profile saved.", refreshCare = false) { ctx ->
             val user = AiraApi.updateProfile(
@@ -1189,8 +1190,8 @@ class AiraViewModel(
             }
             // Week and priorities live in the care context rather than the
             // profile, so they are a second call — but one save to the user.
-            if (weeks != null || priorities != null) {
-                AiraApi.updateCareContext(ctx, weeks, priorities)
+            if (weeks != null || priorities != null || dueDate != null) {
+                AiraApi.updateCareContext(ctx, weeks, priorities, dueDate)
             }
             // Journey drives what Today and Journey render, so both have to be
             // refetched or the screens keep describing the old stage.

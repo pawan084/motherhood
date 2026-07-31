@@ -19,7 +19,7 @@ const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "loss", "explor
 
 export default function You({
   user, consent, openTool, onProfileSaved, onConsentChanged, onDeleted,
-  onSignIn, onSignedOut, weeksReported, journeyIsPregnant, onWeeksSaved,
+  onSignIn, onSignedOut, weeksReported, dueDate, journeyIsPregnant, onWeeksSaved,
 }: {
   user: User | null;
   consent: ConsentFeature[];
@@ -28,6 +28,8 @@ export default function You({
    *  with. Prefilling from the counted-forward week would push the date on by
    *  however long it had been, every time anyone pressed save. */
   weeksReported: number | null;
+  /** ISO due date, when one is set. */
+  dueDate: string | null;
   journeyIsPregnant: boolean;
   onWeeksSaved: () => void;
   onProfileSaved: (u: User) => void;
@@ -86,6 +88,20 @@ export default function You({
   useEffect(() => {
     setWeeks(weeksReported != null ? String(weeksReported) : "");
   }, [weeksReported]);
+
+  const [due, setDue] = useState(dueDate ?? "");
+  useEffect(() => { setDue(dueDate ?? ""); }, [dueDate]);
+
+  const saveDue = async (value: string) => {
+    setNote("");
+    try {
+      await AiraAPI.updateCareContext({ due_date: value });
+      onWeeksSaved();
+      setNote(value ? "Due date saved." : "Due date cleared.");
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Couldn't save your due date.");
+    }
+  };
 
   const saveWeeks = async () => {
     const n = Number(weeks);
@@ -192,6 +208,20 @@ export default function You({
         {journeyIsPregnant && (
           <div style={{ marginTop: 16 }}>
             <label className="field">
+              <span>When is your baby due?</span>
+              <input type="date" value={due} onChange={(ev) => setDue(ev.target.value)} />
+            </label>
+            <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              {due
+                ? "Aira works your week out from this date, so it stays right on its own."
+                : "A due date is exact, so Aira never has to guess how much time has passed. If you add one it replaces the week below."}
+            </p>
+            <button className="btn-ghost" style={{ marginTop: 10 }}
+                    onClick={() => saveDue(due)}>
+              {due ? "Save due date" : "Clear due date"}
+            </button>
+
+            <label className="field" style={{ marginTop: 16 }}>
               <span>How many weeks</span>
               <input value={weeks} onChange={(e) => setWeeks(e.target.value)}
                      inputMode="numeric" placeholder="e.g. 24" />

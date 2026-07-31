@@ -356,6 +356,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               // The week the person last typed, not the one counted forward
               // from it — see TodayData.weeks_reported.
               weeksReported={today?.weeks_reported ?? null}
+              dueDate={today?.due_date ?? null}
               journeyIsPregnant={today?.journey === "pregnant"}
               onWeeksSaved={() => { refresh(); reloadJourney(); }}
               onProfileSaved={(u) => { setUser(u); refresh(); reloadJourney(); }}
