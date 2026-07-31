@@ -1432,3 +1432,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
   font-size: 13px;
   color: var(--ink-muted, #6b6470);
 }
+
+/* A topic that is written but not yet filmed.
+   The poster used to carry a play triangle regardless, so every card promised a
+   video that cannot play — the page copy said "in production now" two hundred
+   pixels above it. The label says the same thing where the promise was made. */
+.poster-pending {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+}

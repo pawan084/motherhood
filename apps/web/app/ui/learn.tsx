@@ -10,7 +10,7 @@
 // care team / urgent help instead, matching the server-side safety gate.
 
 import { useEffect, useState } from "react";
-import { Bookmark, BookmarkCheck, Clock, Play, Search, Siren, Sparkles, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Clock, FileText, Play, Search, Siren, Sparkles, X } from "lucide-react";
 import { AiraAPI, videoDurationLabel, type VideosResponse, type VideoTopic } from "../aira-api";
 
 const WEEK_DISMISS_KEY = "aira.learn.week_dismissed";
@@ -89,8 +89,15 @@ export default function Learn({
           <h2 className="draft-title">{weekVideo.title}</h2>
           <p className="draft-detail">{weekVideo.description} · {videoDurationLabel(weekVideo)}</p>
           <div className="draft-actions">
+            {/* Named for what it opens. The backend computes `playable` —
+                published AND clinically approved — and nothing in the catalogue
+                is either yet. A play glyph on a button that opens a description
+                promises a video that does not exist; the honest state was three
+                lines above it in the page copy the whole time. */}
             <button className="draft-confirm" onClick={() => setSelected(weekVideo)}>
-              <Play size={16} /> Preview
+              {weekVideo.playable
+                ? <><Play size={16} /> Watch</>
+                : <><FileText size={16} /> What it covers</>}
             </button>
             <button className="draft-dismiss" onClick={() => toggleSave(weekVideo.id)}>
               {isSaved(weekVideo.id) ? "Saved" : "Save for later"}
@@ -147,7 +154,11 @@ export default function Learn({
               role="button" tabIndex={0}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(v); } }}
             >
-              <div className={`video-poster ${v.category}`}><Play size={22} /></div>
+              <div className={`video-poster ${v.category}`}>
+                {v.playable
+                  ? <Play size={22} />
+                  : <span className="poster-pending">In production</span>}
+              </div>
               <div className="video-card-body">
                 <div className="video-card-tags">
                   <span className="vtag">{v.category_label}</span>
@@ -195,8 +206,14 @@ export default function Learn({
             </div>
             <div className="modal-body">
               <div className="video-stage">
-                <Play size={26} />
-                <span>In production — this video isn&apos;t ready to play yet.</span>
+                {selected.playable ? (
+                  <>
+                    <Play size={26} />
+                    <span>Ready to watch.</span>
+                  </>
+                ) : (
+                  <span>In production — this video isn&apos;t ready to play yet.</span>
+                )}
               </div>
 
               {selected.safety_level === "urgent" ? (

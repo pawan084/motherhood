@@ -50,6 +50,23 @@ def worse(a: str, b: str) -> str:
 # the list previously held "can't breathe" and a user typing "i cant breathe"
 # — which is how most people type on a phone — was screened GREEN and handed a
 # normal AI reply.
+# The languages this floor can actually read.
+#
+# This is a safety boundary, not a feature list. RED_PHRASES and _RED_PATTERNS
+# below are English plus common Hindi/Hinglish transliterations, so a message in
+# any other language reaches the deterministic floor and passes straight
+# through. Offering a language the floor cannot read invites somebody to write
+# in it — and when the LLM classifier is unavailable, which is the fallback
+# state the floor exists for, nothing else is looking.
+#
+# The web client offered Spanish. Verified before this was added: "mi bebe no se
+# mueve" — my baby isn't moving, the single most important signal here —
+# screened GREEN, as did "sangrado abundante y no puedo respirar".
+#
+# Adding a language means adding its red-flag vocabulary here FIRST, checked by
+# someone who speaks it. `test_language_coverage.py` holds this list to that.
+SUPPORTED_LANGUAGES = ("English", "Hindi", "Hinglish")
+
 RED_PHRASES = (
     "heavy bleeding", "bleeding heavily", "wont stop bleeding", "cannot stop bleeding",
     "gushing blood", "lot of blood", "so much blood", "severe bleeding",

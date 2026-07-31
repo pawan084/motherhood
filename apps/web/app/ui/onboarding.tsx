@@ -144,7 +144,7 @@ export default function Onboarding({ onDone }: { onDone: () => void }) {
               <label className="field">
                 <span>Preferred language</span>
                 <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-                  {["English", "Hindi", "Hinglish", "Spanish"].map((l) => <option key={l}>{l}</option>)}
+                  {["English", "Hindi", "Hinglish"].map((l) => <option key={l}>{l}</option>)}
                 </select>
               </label>
             </div>

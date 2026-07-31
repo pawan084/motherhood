@@ -28,6 +28,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
 import db
+import safety
 import passwords
 import security
 
@@ -208,7 +209,15 @@ def update_profile(uid: str, *, name=None, journey=None, language=None,
             raise HTTPException(status_code=400, detail="invalid journey")
         sets.append("journey=?"); params.append(j)
     if language is not None:
-        sets.append("language=?"); params.append(str(language)[:40] or "English")
+        # Refused rather than truncated. `language` is passed to the model as
+        # "reply in X", so accepting anything meant a client could put a user
+        # into a language the deterministic safety floor cannot read — see
+        # safety.SUPPORTED_LANGUAGES. Storing it was the step that made an
+        # unsupported picker in one client into a real gap in screening.
+        lang = str(language).strip()
+        if lang and lang not in safety.SUPPORTED_LANGUAGES:
+            raise HTTPException(status_code=400, detail="unsupported language")
+        sets.append("language=?"); params.append(lang or "English")
     if onboarded is not None:
         sets.append("onboarded=?"); params.append(1 if onboarded else 0)
     if sets:
