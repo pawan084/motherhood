@@ -1,5 +1,6 @@
 package com.aira.companion.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,9 +21,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -38,6 +42,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AuthMode
+import com.aira.companion.security.GoogleAuth
 import com.aira.companion.ui.components.InfoBanner
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
@@ -66,6 +71,7 @@ fun AuthScreen(
     state: AiraUiState,
     onModeChange: (AuthMode) -> Unit,
     onSubmit: (email: String, password: String) -> Unit,
+    onGoogle: () -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -185,6 +191,50 @@ fun AuthScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = canSubmit,
         )
+
+        // Only when this build has an OAuth client id. A Google button without
+        // one can do nothing but fail, so it is absent rather than disabled.
+        if (GoogleAuth.isConfigured) {
+            Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                HorizontalDivider(Modifier.weight(1f), color = InkMuted.copy(alpha = 0.25f))
+                Text(
+                    text = "or",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                HorizontalDivider(Modifier.weight(1f), color = InkMuted.copy(alpha = 0.25f))
+            }
+            Spacer(Modifier.height(14.dp))
+            OutlinedButton(
+                onClick = onGoogle,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                enabled = !state.authBusy,
+                shape = RoundedCornerShape(17.dp),
+                border = BorderStroke(1.dp, InkMuted.copy(alpha = 0.35f)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
+            ) {
+                Text("Continue with Google", style = MaterialTheme.typography.labelLarge)
+            }
+
+            // One button, two outcomes, and it cannot tell which until Google
+            // answers: a Google identity Aira has never seen adopts this
+            // device's data, one it has seen switches to that account's. Said
+            // before the tap, because afterwards it can't be undone.
+            if (state.localCareItems > 0) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "If you've used Google with Aira before, this opens that " +
+                        "account and the ${state.localCareItems} " +
+                        (if (state.localCareItems == 1) "item" else "items") +
+                        " saved on this device stay behind. If it's your first time, " +
+                        "they come with you.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+        }
 
         Spacer(Modifier.height(10.dp))
         TextButton(

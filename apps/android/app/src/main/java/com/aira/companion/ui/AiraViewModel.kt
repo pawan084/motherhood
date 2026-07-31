@@ -15,6 +15,8 @@ import com.aira.companion.data.AppPrefs
 import com.aira.companion.data.optStringOrNull
 import com.aira.companion.model.AiraTool
 import com.aira.companion.reminders.ReminderScheduler
+import com.aira.companion.security.GoogleAuth
+import com.aira.companion.security.GoogleAuthException
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
@@ -253,14 +255,27 @@ class AiraViewModel(
         authenticate(context) { AiraApi.signIn(it, email, password) }
 
     /**
-     * Shared tail for both: on success land on Today if the account has already
-     * been onboarded, otherwise run onboarding. On failure STAY on the auth
-     * screen with the reason — advancing anyway would be the "said saved,
+     * Google. The OS draws the account chooser and returns a signed token; this
+     * app never sees a password. Dismissing that chooser returns null, which
+     * ends the attempt silently — someone who changed their mind has not hit an
+     * error and must not be shown one.
+     */
+    fun signInWithGoogle(context: Context?) = authenticate(context) { ctx ->
+        GoogleAuth.idToken(ctx)?.let { AiraApi.signInWithGoogle(ctx, it) }
+    }
+
+    /**
+     * Shared tail for all three: on success land on Today if the account has
+     * already been onboarded, otherwise run onboarding. On failure STAY on the
+     * auth screen with the reason — advancing anyway would be the "said saved,
      * saved nothing" failure in a new place.
+     *
+     * A null return means the attempt was abandoned rather than failed: stop,
+     * say nothing, leave the screen exactly as it was.
      */
     private fun authenticate(
         context: Context?,
-        call: suspend (Context) -> com.aira.companion.data.UserProfile,
+        call: suspend (Context) -> com.aira.companion.data.UserProfile?,
     ) {
         if (context == null) {
             _uiState.update { it.copy(authError = "Not connected — try again in a moment.") }
@@ -270,6 +285,10 @@ class AiraViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val user = call(context)
+                if (user == null) {
+                    _uiState.update { it.copy(authBusy = false) }
+                    return@launch
+                }
                 _uiState.update {
                     it.copy(
                         authBusy = false,
@@ -297,7 +316,12 @@ class AiraViewModel(
 
     /** Server details are written for developers. These are the same facts in
      *  the words someone staring at the form needs. */
-    private fun readableAuthError(e: Exception): String {
+    internal fun readableAuthError(e: Exception): String {
+        // GoogleAuth already phrases its failures for the person reading them,
+        // and it knows things this does not (no account on the device, a
+        // credential of the wrong kind). Don't flatten that into "check your
+        // connection", which would send someone to fix the wrong thing.
+        if (e is GoogleAuthException) return e.message ?: "Google sign-in didn't complete."
         val api = e as? com.aira.companion.data.AiraApiException
         return when (api?.code) {
             409 -> "An account with that email already exists. Try signing in instead."

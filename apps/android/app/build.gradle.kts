@@ -37,6 +37,16 @@ android {
         val airaAppToken = (project.findProperty("airaAppToken") as String?) ?: ""
         buildConfigField("String", "AIRA_APP_TOKEN", "\"$airaAppToken\"")
 
+        // Google Sign-In. This is the OAuth **web/server** client id, not the
+        // Android one — the token is verified server-side and accounts.py accepts
+        // exactly one audience, so this must be the same value as the backend's
+        // GOOGLE_CLIENT_ID or every sign-in fails audience validation.
+        //
+        // Blank by default, and blank means the button is HIDDEN rather than
+        // shown-and-broken. A build with no client id offers email only.
+        val airaGoogleClientId = (project.findProperty("airaGoogleClientId") as String?) ?: ""
+        buildConfigField("String", "AIRA_GOOGLE_CLIENT_ID", "\"$airaGoogleClientId\"")
+
         // Optional application-id suffix so a dev build can install ALONGSIDE an
         // existing install (e.g. `-PappIdSuffix=.dev` -> com.aira.companion.dev).
         // Default is empty, so normal builds are unchanged.
@@ -99,6 +109,13 @@ dependencies {
     // is written up in AiraCache — the short version is that it protects a copy
     // of /data taken off the device, because the key stays in the Keystore.
     implementation("androidx.security:security-crypto:1.0.0")
+    // Google Sign-In via Credential Manager. The app never sees a Google
+    // password — it receives a signed ID token and hands it straight to the
+    // backend, which verifies it. Present in every build; whether the button
+    // appears is decided at runtime by AIRA_GOOGLE_CLIENT_ID.
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")

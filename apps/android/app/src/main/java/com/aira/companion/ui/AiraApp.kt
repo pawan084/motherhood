@@ -135,6 +135,7 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
                         viewModel.signIn(context, email, password)
                     }
                 },
+                onGoogle = { viewModel.signInWithGoogle(context) },
                 onClose = viewModel::closeAuth,
             )
         AppStage.Onboarding ->

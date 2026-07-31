@@ -465,6 +465,23 @@ object AiraApi {
         return applySession(ctx, request("POST", "/account/login", body, token = null))
     }
 
+    /**
+     * Exchange a Google ID token for an Aira session.
+     *
+     * The device token IS sent, unlike [signIn]. The server only uses it on the
+     * branch that creates a brand-new account, so the effect is: first time with
+     * Google, this device's care data comes along; returning to a Google account
+     * that already exists, it doesn't. One button covers both cases and cannot
+     * know in advance which it is — so the screen warns before the tap rather
+     * than the app guessing.
+     */
+    suspend fun signInWithGoogle(ctx: Context, idToken: String): UserProfile {
+        val body = JSONObject()
+            .put("id_token", idToken)
+            .put("device_token", cachedToken(ctx) ?: JSONObject.NULL)
+        return applySession(ctx, request("POST", "/account/google", body, token = null))
+    }
+
     /** Sign out everywhere: the server bumps token_version, killing every
      *  issued token, and the local copy is dropped so the next call registers a
      *  fresh anonymous user. */
