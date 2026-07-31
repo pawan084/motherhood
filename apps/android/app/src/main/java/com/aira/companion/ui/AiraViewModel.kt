@@ -1614,6 +1614,7 @@ class AiraViewModel(
                                 text = res.reply ?: "I'm here with you.",
                                 trustLabel = res.trustLabel,
                                 at = nowSeconds(),
+                                disclaimer = res.disclaimerNeeded,
                             ),
                         )
                     }
@@ -1706,12 +1707,20 @@ class AiraViewModel(
                 "done" -> {
                     got = true
                     val label = event.optStringOrNull("trust_label")
+                    // The streamed turn carries the same flag as the plain one;
+                    // it arrives with "done" because the model decides it after
+                    // the prose it applies to.
+                    val needsDisclaimer = event.optBoolean("disclaimer_needed", false)
                     val id = replyId
                     _uiState.update { s ->
                         s.copy(
                             sending = false,
                             messages = s.messages.map {
-                                if (it.id == id) it.copy(trustLabel = label) else it
+                                if (it.id == id) {
+                                    it.copy(trustLabel = label, disclaimer = needsDisclaimer)
+                                } else {
+                                    it
+                                }
                             },
                         )
                     }

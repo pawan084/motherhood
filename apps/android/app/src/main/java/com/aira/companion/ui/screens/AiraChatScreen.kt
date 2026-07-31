@@ -148,6 +148,7 @@ fun AiraChatScreen(
                         null
                     },
                     rated = message.rated,
+                    disclaimer = message.disclaimer,
                 )
             }
 
