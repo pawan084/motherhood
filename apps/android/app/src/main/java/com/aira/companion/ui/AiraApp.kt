@@ -248,7 +248,6 @@ private fun MainExperience(
             topBar = {
                 AiraAppHeader(
                     destination = state.destination,
-                    notificationCount = updatesCount(state.careData),
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
                     onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
@@ -607,7 +606,6 @@ private fun MainExperience(
 @Composable
 private fun AiraAppHeader(
     destination: MainDestination,
-    notificationCount: Int,
     weeks: Int?,
     journey: String?,
     onUrgentHelp: () -> Unit,
