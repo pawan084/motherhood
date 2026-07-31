@@ -521,6 +521,7 @@ private fun MainExperience(
                 saveMovement = { c, m -> viewModel.saveMovement(context, c, m) },
                 saveContraction = { sec, gap -> viewModel.saveContraction(context, sec, gap) },
                 loadMovements = { viewModel.loadMovements(context) },
+                loadContractions = { viewModel.loadContractions(context) },
                 sendReport = { k, m -> viewModel.sendReport(context, k, m) },
                 setConsent = { f, g -> viewModel.setConsent(context, f, g) },
                 setMemoryApproved = { id, a -> viewModel.setMemoryApproved(context, id, a) },
@@ -584,6 +585,7 @@ private fun MainExperience(
                 editingReminder = state.editingReminder,
                 emergencyProfile = state.emergencyProfile,
                 movements = state.movements,
+                contractions = state.contractions,
             )
         }
 

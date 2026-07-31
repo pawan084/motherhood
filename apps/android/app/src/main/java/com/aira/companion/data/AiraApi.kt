@@ -1,5 +1,6 @@
 package com.aira.companion.data
 
+import com.aira.companion.model.ContractionPattern
 import com.aira.companion.model.MovementUsual
 import com.aira.companion.model.MovementSession
 import com.aira.companion.model.MovementHistory
@@ -233,6 +234,23 @@ object AiraApi {
         return MovementHistory(
             items = items,
             usual = u?.let { MovementUsual(it.optInt("count"), it.optInt("minutes"), it.optInt("sessions")) },
+        )
+    }
+
+    /**
+     * Read the pattern back.
+     *
+     * There was no GET here at all: the tool posted contractions and never
+     * asked what they added up to, while the sheet told people to "ring them
+     * with these numbers". The server had been computing exactly those numbers
+     * the whole time.
+     */
+    suspend fun contractions(ctx: Context): ContractionPattern? {
+        val r = getCached(ctx, "/v1/care/contractions").optJSONObject("recent") ?: return null
+        return ContractionPattern(
+            count = r.optInt("count"),
+            typicalSeconds = r.optInt("typical_seconds"),
+            typicalGapSeconds = r.optIntOrNull("typical_gap_seconds"),
         )
     }
 

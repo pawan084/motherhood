@@ -396,6 +396,22 @@ data class MovementSession(
  *  count does not drag the baseline they are comparing against. */
 data class MovementUsual(val count: Int, val minutes: Int, val sessions: Int)
 
+/**
+ * The last hour of contractions, as a midwife asks about them: how many, how
+ * long, how far apart. Null until there are two — one contraction is not a
+ * pattern, and the server refuses to describe it as one.
+ *
+ * Deliberately carries no conclusion. The backend has a test asserting no field
+ * here ever says `active_labour` or `go_to_hospital`, and this mirrors it: the
+ * numbers are the contribution, and what they mean is a conversation with a
+ * midwife.
+ */
+data class ContractionPattern(
+    val count: Int,
+    val typicalSeconds: Int,
+    val typicalGapSeconds: Int?,
+)
+
 data class MovementHistory(
     val items: List<MovementSession> = emptyList(),
     /** Null until there are enough sessions to be a pattern. The screen says so
@@ -503,6 +519,8 @@ data class AiraUiState(
      *  distinguish from "loaded, and empty". */
     val emergencyProfile: Map<String, String>? = null,
     val movements: MovementHistory = MovementHistory(),
+    /** Null until the server has two in the hour to describe. */
+    val contractions: ContractionPattern? = null,
     /** The care item a notification was about, so Care can bring it into view
      *  and mark it rather than dropping somebody on a list to go hunting.
      *  Cleared once shown — it describes an arrival, not a state. */

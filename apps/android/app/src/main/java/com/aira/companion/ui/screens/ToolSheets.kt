@@ -3,6 +3,7 @@
 package com.aira.companion.ui.screens
 
 import com.aira.companion.ui.components.rememberAiraHaptics
+import com.aira.companion.model.ContractionPattern
 import com.aira.companion.model.MovementHistory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -303,6 +304,7 @@ data class ToolActions(
     val saveMovement: (count: Int, minutes: Int) -> Unit = { _, _ -> },
     val saveContraction: (seconds: Int, sincePrevious: Int?) -> Unit = { _, _ -> },
     val loadMovements: () -> Unit = {},
+    val loadContractions: () -> Unit = {},
     val sendReport: (kind: String, message: String) -> Unit = { _, _ -> },
     val setConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
     val setMemoryApproved: (id: String, approved: Boolean) -> Unit = { _, _ -> },
@@ -341,6 +343,7 @@ fun DynamicToolSheet(
     editingReminder: CareItem? = null,
     emergencyProfile: Map<String, String>? = null,
     movements: MovementHistory = MovementHistory(),
+    contractions: ContractionPattern? = null,
 ) {
     // The picked document's Uri is KEPT now. It used to be dropped on the floor
     // here ("Document selected securely."), which is why "Save to Care Vault"
@@ -438,7 +441,7 @@ fun DynamicToolSheet(
                 AiraTool.Emergency ->
                     EmergencyProfileTool(actions, emergencyProfile, onDismiss)
                 AiraTool.Movements -> MovementsTool(actions, movements, onDismiss)
-                AiraTool.Contractions -> ContractionsTool(actions, onDismiss)
+                AiraTool.Contractions -> ContractionsTool(actions, contractions, onDismiss)
             }
         }
     }
@@ -1850,14 +1853,27 @@ private fun MovementsTool(
  * midwife asks for on the phone: how long, how far apart, and for how long now.
  * Reading them is the person's job and their midwife's, not Aira's.
  */
+/** Seconds as somebody would say them out loud to a midwife. */
+private fun formatDuration(seconds: Int): String = when {
+    seconds < 90 -> "$seconds seconds"
+    seconds % 60 == 0 -> "${seconds / 60} minutes"
+    else -> "${seconds / 60} min ${seconds % 60} s"
+}
+
 @Composable
-private fun ContractionsTool(actions: ToolActions, onDismiss: () -> Unit) {
+private fun ContractionsTool(
+    actions: ToolActions,
+    pattern: ContractionPattern?,
+    onDismiss: () -> Unit,
+) {
     val haptics = rememberAiraHaptics()
     var running by remember { mutableStateOf(false) }
     var startedAt by remember { mutableStateOf(0L) }
     var elapsed by remember { mutableStateOf(0L) }
     var lastEndedAt by remember { mutableStateOf<Long?>(null) }
     var logged by remember { mutableStateOf(0) }
+
+    LaunchedEffect(Unit) { actions.loadContractions() }
 
     LaunchedEffect(running) {
         while (running) {
@@ -1917,11 +1933,56 @@ private fun ContractionsTool(actions: ToolActions, onDismiss: () -> Unit) {
         )
     }
 
-    if (logged > 0) {
+    // What to read down the phone.
+    //
+    // This used to be `logged`, a count of taps since the sheet opened — it
+    // reset every time you closed it, while the server held the real pattern
+    // and was never asked. The copy above says "ring them with these numbers",
+    // so there had better be numbers.
+    //
+    // Still no conclusion: how long, how far apart, for how long now. What that
+    // means is the midwife's call, which is the whole reason this screen refuses
+    // to say "go in".
+    pattern?.let { p ->
         Spacer(Modifier.height(14.dp))
+        AiraCard {
+            SectionLabel("THE LAST HOUR")
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "${p.count} contractions",
+                style = MaterialTheme.typography.titleMedium,
+                color = Ink,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = buildString {
+                    append("Typically ")
+                    append(formatDuration(p.typicalSeconds))
+                    p.typicalGapSeconds?.let {
+                        append(", about ")
+                        append(formatDuration(it))
+                        append(" apart")
+                    }
+                    append(".")
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = InkMuted,
+            )
+        }
+    }
+
+    if (logged > 0) {
+        Spacer(Modifier.height(10.dp))
         Text(
-            text = "$logged recorded in this session. They are saved as you go, so " +
-                "you can close this and come back.",
+            text = if (pattern == null) {
+                // One is not a pattern, so say what is happening rather than
+                // leaving the card mysteriously absent.
+                "$logged recorded. Aira describes the pattern once there are two " +
+                    "in an hour — they are saved as you go, so you can close this " +
+                    "and come back."
+            } else {
+                "Saved as you go, so you can close this and come back."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = InkMuted,
         )

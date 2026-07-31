@@ -1474,10 +1474,24 @@ class AiraViewModel(
             }
         }
 
+    /** Fetch the last hour's pattern, so the sheet can show what was logged
+     *  rather than only how many taps happened since it opened. */
+    fun loadContractions(context: Context?) {
+        val ctx = context ?: return
+        viewModelScope.launch {
+            runCatching { AiraApi.contractions(ctx) }.getOrNull()?.let { pattern ->
+                _uiState.update { it.copy(contractions = pattern) }
+            }
+        }
+    }
+
     fun saveContraction(context: Context?, seconds: Int, sincePrevious: Int?) =
         write(context, "Contraction recorded.", refreshCare = false) { ctx ->
             AiraApi.addContraction(ctx, seconds, sincePrevious,
                                    java.util.UUID.randomUUID().toString())
+            runCatching { AiraApi.contractions(ctx) }.getOrNull()?.let { pattern ->
+                _uiState.update { it.copy(contractions = pattern) }
+            }
         }
 
     fun loadEmergencyProfile(context: Context?) {

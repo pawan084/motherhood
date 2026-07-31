@@ -146,6 +146,10 @@ def _web_consumes(field: str, src) -> bool:
 # this client has no use for this value. Anything not listed must be consumed.
 EXEMPT = {
     "android": {
+        "since_previous_seconds": "the gap before ONE contraction. Android sends it "
+                                  "and reads back the summary instead — no screen "
+                                  "lists contractions individually, and typical_gap "
+                                  "is the number a midwife asks for",
         "last_taken": "when a dose was last taken; no screen shows a 'last taken at' "
                       "line, and takenToday answers the question the list actually asks",
         "content_format": "catalogue metadata (explainer / demonstration) that no screen distinguishes",
@@ -206,7 +210,11 @@ def _payloads(client, user):
     """Real responses, so the field list cannot drift from what ships."""
     h = user["headers"]
     client.post("/v1/onboarding",
-                json={"journey": "pregnant", "name": "Ava", "weeks": 24, "language": "English"},
+                json={"journey": "pregnant", "name": "Ava", "weeks": 24,
+                      "language": "English",
+                      # Otherwise /v1/today.priorities is [] and whatever it
+                      # carries is never looked at.
+                      "priorities": ["Prepare for a visit", "Feel calmer"]},
                 headers=h)
     turn = client.post("/v1/chat/turn",
                        json={"message": "is this normal?", "history": []}, headers=h)
@@ -215,13 +223,33 @@ def _payloads(client, user):
     # container names and not one field of the things inside them. The app's
     # most-used screen was its largest blind spot for that reason alone — it is
     # how `private_label` reached the wire, and both clients, unread.
-    client.post("/v1/care/reminders",
-                json={"title": "iron tablet", "time": "8:00 PM"}, headers=h)
-    client.post("/v1/care/appointments",
-                json={"title": "midwife", "when": "next Tuesday"}, headers=h)
-    client.post("/v1/care/medicines",
-                json={"name": "folic acid", "dose": "400mcg", "time": "9:00 AM"},
-                headers=h)
+    def seed(path, body):
+        """POST setup data and REFUSE to continue if it did not land.
+
+        The first version of this ignored the response, and posted an
+        appointment as `{"title": ...}` when AppointmentIn requires `doctor`.
+        It 422'd, nothing was created, `appointments` stayed empty, and the
+        blind spot this seeding exists to close stayed open — while the code
+        above it read as though an appointment had been made.
+
+        A fixture that silently fails is worse than no fixture: the suite still
+        passes, so the gap now has a comment claiming it is covered.
+        """
+        r = client.post(path, json=body, headers=h)
+        assert r.status_code == 200, f"contract fixture failed to seed {path}: {r.text}"
+        return r
+
+    seed("/v1/care/reminders", {"title": "iron tablet", "time": "8:00 PM"})
+    seed("/v1/care/appointments",
+         {"doctor": "midwife", "place": "the surgery", "when": "next Tuesday"})
+    seed("/v1/care/medicines",
+         {"name": "folic acid", "dose": "400mcg", "time": "9:00 AM"})
+    # Two of each, so the summary objects (`usual`, `recent`) are populated too:
+    # both are None until there is enough to describe, and a None object has no
+    # fields for the checker to look at.
+    for _ in range(3):
+        seed("/v1/care/movements", {"count": 10, "minutes": 25})
+        seed("/v1/care/contractions", {"seconds": 45, "since_previous_seconds": 300})
     return {
         "/v1/today": client.get("/v1/today", headers=h).json(),
         "/v1/journey": client.get("/v1/journey", headers=h).json(),
