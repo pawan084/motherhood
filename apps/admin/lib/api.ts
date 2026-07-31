@@ -129,6 +129,13 @@ export type ContentEntry = {
 export type PromptRow = {
   key: string; text: string; model: string; updated: number | null;
   updated_by: string; is_default: boolean; has_default: boolean;
+  /** This prompt is a safety control, not copy — see SAFETY_CRITICAL_PROMPTS. */
+  owner_only: boolean;
+  /** Whether THIS admin may change it. Sent by the server rather than worked
+   *  out here: a list of protected keys kept in the console is one that drifts
+   *  the first time somebody adds to the server's, and it drifts silently in
+   *  the permissive direction. */
+  can_edit: boolean;
 };
 export type System = {
   env: string; db: { engine: string };

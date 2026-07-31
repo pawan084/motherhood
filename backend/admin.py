@@ -400,7 +400,26 @@ def review_video(video_id: str, body: VideoReviewIn,
 
 @router.get("/prompts")
 def get_prompts(admin=Depends(require_admin())):
-    return {"items": prompts.all_rows()}
+    """Every prompt, each marked with whether this admin may change it.
+
+    The console showed a Save button on all of them and let the server refuse,
+    so a support admin could write a replacement system prompt and only discover
+    it was forbidden after pressing Save. On the two prompts that decide how
+    every reply is framed and screened, finding out afterwards is the wrong way
+    round.
+
+    The flag is computed here rather than duplicated in the client, because a
+    hardcoded list of protected keys in the console is one that drifts from
+    SAFETY_CRITICAL_PROMPTS the first time somebody adds to it — and it drifts
+    silently, in the permissive direction.
+    """
+    editable = admin.get("role") == "owner"
+    return {"items": [
+        {**row,
+         "owner_only": row["key"] in SAFETY_CRITICAL_PROMPTS,
+         "can_edit": editable or row["key"] not in SAFETY_CRITICAL_PROMPTS}
+        for row in prompts.all_rows()
+    ]}
 
 
 class PromptIn(BaseModel):

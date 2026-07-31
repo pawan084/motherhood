@@ -234,3 +234,39 @@ def test_a_prompt_cannot_be_emptied(client):
     r = client.put("/admin/prompts/aira.system", json={"text": "   "}, headers=owner)
 
     assert r.status_code == 400, r.text
+
+
+# ── the console must not offer what the server will refuse ───────────────────
+
+def test_the_prompt_list_tells_support_what_it_cannot_edit(client):
+    """A Save button on a prompt the server will 403 is a trap.
+
+    Support could write a replacement system prompt and only find out it was
+    forbidden after pressing Save. The flag is computed server-side so the
+    console cannot drift from SAFETY_CRITICAL_PROMPTS in the permissive
+    direction.
+    """
+    owner = admin_login(client)
+    client.post("/admin/admins",
+                json={"email": "support9@test.local", "password": "support-password-1234",
+                      "role": "support"},
+                headers=owner)
+    support = admin_login(client, "support9@test.local", "support-password-1234")
+
+    rows = {r["key"]: r for r in client.get("/admin/prompts", headers=support).json()["items"]}
+    assert rows["aira.system"]["owner_only"] is True
+    assert rows["aira.system"]["can_edit"] is False
+    assert rows["aira.safety_classifier"]["can_edit"] is False
+    # Tone is still theirs.
+    assert rows["aira.journey.pregnant"]["can_edit"] is True
+
+    # And the flag matches what the endpoint actually does.
+    assert client.put("/admin/prompts/aira.system", json={"text": "x"},
+                      headers=support).status_code == 403
+
+
+def test_an_owner_may_edit_everything_the_list_says_it_may(client):
+    owner = admin_login(client)
+    rows = {r["key"]: r for r in client.get("/admin/prompts", headers=owner).json()["items"]}
+    assert all(r["can_edit"] for r in rows.values())
+    assert rows["aira.system"]["owner_only"] is True
