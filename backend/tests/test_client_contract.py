@@ -608,3 +608,31 @@ def test_the_fixture_is_not_thin(client, user):
         "seed them in _payloads, or add them to _KNOWN_THIN with a reason:\n  "
         + "\n  ".join(thin)
     )
+
+
+def test_restored_history_maps_the_safety_level_to_a_label():
+    """A field can arrive intact and still be wrong by the time it is drawn.
+
+    /v1/chat/history carries `safety_level` — "green" / "amber" / "red" — while
+    ChatBubble speaks "wellness" / "watchful". The restore assigned one straight
+    to the other, and the bubble reads anything that is not "watchful" as
+    wellness. So an amber turn came back from history captioned "Wellness
+    guidance", and so did a red one: not a missing chip, an incorrect
+    reassurance on precisely the turns that were flagged.
+
+    Nothing else could catch it. This file's field check asks whether
+    `safety_level` escapes the network layer, and it did. ChatBubbleRenderTest
+    asks whether ChatBubble renders a trustLabel correctly, and it does. The
+    defect lived between them, in a caller translating two vocabularies without
+    either end knowing there were two — so the caller is what is asserted here.
+    """
+    vm = (ANDROID_ROOT / "ui/AiraViewModel.kt").read_text(encoding="utf-8")
+
+    assert "trustLabel = t.safetyLevel" not in vm, (
+        'the raw safety level is being used as a trust label again. ChatBubble '
+        'draws anything that is not "watchful" as "Wellness guidance", so this '
+        "mislabels amber and red turns as reassuring. Use trustLabelFor()."
+    )
+    assert "trustLabelFor(t.safetyLevel)" in vm, (
+        "history restore must map the level through trustLabelFor()"
+    )

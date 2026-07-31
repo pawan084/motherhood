@@ -26,6 +26,7 @@ import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.OpenDocument
 import com.aira.companion.model.journeyLabel
+import com.aira.companion.model.trustLabelFor
 import com.aira.companion.model.OnboardingAnswer
 import com.aira.companion.model.OnboardingField
 import com.aira.companion.model.onboardingPromptsFor
@@ -697,7 +698,11 @@ class AiraViewModel(
                                 id = -(index.toLong() + 1),
                                 fromAira = t.fromAira,
                                 text = t.text,
-                                trustLabel = t.safetyLevel,
+                                // Mapped, not passed through: ChatBubble speaks
+                                // "watchful"/"wellness", history speaks
+                                // "amber"/"green", and handing one vocabulary to
+                                // the other drew "Wellness guidance" on flagged turns.
+                                trustLabel = trustLabelFor(t.safetyLevel),
                                 at = t.at,
                             )
                         },

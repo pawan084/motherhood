@@ -249,6 +249,32 @@ fun quickPromptsFor(journey: String?): List<QuickPrompt> {
  * name returns null and the card is not shown, rather than rendering a control
  * that does nothing.
  */
+/**
+ * The trust chip for a turn restored from history.
+ *
+ * /v1/chat/history stores the safety LEVEL, not the label — the label is
+ * derived server-side per turn and never written down. So the client has to map
+ * it back, and the mapping mirrors backend/chat.py:
+ *
+ *     _TRUST_LABEL = {"green": "wellness", "amber": "watchful"}
+ *
+ * This existed only as an inline assignment of the raw level, which ChatBubble
+ * compares against "watchful" and otherwise draws as "Wellness guidance". An
+ * amber turn therefore came back from history labelled reassuring, and so did a
+ * red one.
+ *
+ * Red maps to null on purpose: a red turn is the urgent path and the server
+ * sends no trust label live, so history agrees with it rather than inventing a
+ * chip. Anything unrecognised is null for the same reason — no chip says "not
+ * known", where a default of "wellness" would manufacture reassurance out of a
+ * parsing gap.
+ */
+fun trustLabelFor(safetyLevel: String?): String? = when (safetyLevel?.trim()?.lowercase()) {
+    "green" -> "wellness"
+    "amber" -> "watchful"
+    else -> null
+}
+
 fun toolForActionCard(tool: String): AiraTool? = when (tool.trim().lowercase()) {
     "checkin" -> AiraTool.CheckIn
     "reminder" -> AiraTool.Reminder
