@@ -94,6 +94,10 @@ class MainActivity : FragmentActivity() {
     private fun routeFromNotification(intent: Intent?) {
         if (intent?.getBooleanExtra(ReminderScheduler.EXTRA_OPEN_CARE, false) == true) {
             viewModel.requestDestination(MainDestination.Care)
+            // The id has been on this intent since reminders shipped and was
+            // read by nobody — the same shape as the fields dropped between the
+            // network layer and the screen elsewhere in this app.
+            viewModel.highlightCareItem(intent.getStringExtra(ReminderScheduler.KEY_ID))
         }
     }
 

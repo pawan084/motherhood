@@ -1,5 +1,14 @@
 package com.aira.companion.ui.screens
 
+import com.aira.companion.ui.theme.LilacMist
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -103,6 +112,9 @@ fun CareScreen(
     onDelete: (String) -> Unit = {},
     /** Opens the full reminder sheet rather than an inline rename. */
     onEditReminder: (CareItem) -> Unit = {},
+    /** The item a notification pointed at, brought into view and marked once. */
+    highlightedItem: String? = null,
+    onHighlightShown: () -> Unit = {},
     onOpenDocument: (CareItem) -> Unit = {},
     /** Per-section "we asked and could not get an answer", so an empty list is
      *  never presented as a fact about the user. */
@@ -179,6 +191,8 @@ fun CareScreen(
             appointments.forEach { appt ->
                 CareRow(
                     item = appt,
+                    highlighted = highlightedItem == appt.id,
+                    onHighlightShown = onHighlightShown,
                     icon = Icons.Outlined.CalendarMonth,
                     tint = Plum,
                     renameField = "doctor",
@@ -200,6 +214,8 @@ fun CareScreen(
                 pastAppointments.forEach { appt ->
                     CareRow(
                         item = appt,
+                        highlighted = highlightedItem == appt.id,
+                        onHighlightShown = onHighlightShown,
                         icon = Icons.Outlined.CalendarMonth,
                         tint = InkMuted,
                         renameField = "doctor",
@@ -229,6 +245,8 @@ fun CareScreen(
             medicines.forEach { med ->
                 CareRow(
                     item = med,
+                    highlighted = highlightedItem == med.id,
+                    onHighlightShown = onHighlightShown,
                     icon = Icons.Outlined.Medication,
                     tint = SageDeep,
                     renameField = "name",
@@ -298,11 +316,33 @@ fun CareScreen(
             },
         ) {
             reminders.forEach { rem ->
+                // Reminders are the ONLY thing a notification is ever about, and
+                // they are the one list here that does not go through CareRow —
+                // so the deep link has to be wired at this row too. Missing it
+                // meant tapping a reminder opened Care and marked nothing, which
+                // is the behaviour the deep link existed to replace.
+                val isTarget = highlightedItem == rem.id
+                val bring = remember(rem.id) { BringIntoViewRequester() }
+                LaunchedEffect(isTarget) {
+                    if (isTarget) {
+                        bring.bringIntoView()
+                        kotlinx.coroutines.delay(2500)
+                        onHighlightShown()
+                    }
+                }
+                val mark by animateColorAsState(
+                    targetValue = if (isTarget) LilacMist else Color.Transparent,
+                    animationSpec = tween(durationMillis = 400),
+                    label = "reminder-highlight",
+                )
                 EditableRow(
                     label = rem.title,
                     onRename = { onRename(rem.id, "title", it) },
                     onDelete = { onDelete(rem.id) },
-                    modifier = Modifier.padding(vertical = 2.dp),
+                    modifier = Modifier
+                        .bringIntoViewRequester(bring)
+                        .background(mark, RoundedCornerShape(12.dp))
+                        .padding(vertical = 2.dp),
                     // The full sheet, because a reminder's time is the field
                     // most worth changing and now the one with consequences —
                     // it decides when the notification arrives.
@@ -375,6 +415,8 @@ fun CareScreen(
             documents.forEach { doc ->
                 CareRow(
                     item = doc,
+                    highlighted = highlightedItem == doc.id,
+                    onHighlightShown = onHighlightShown,
                     icon = Icons.Outlined.Description,
                     tint = Plum,
                     // The row opens the file. Until the bytes were stored there
@@ -429,6 +471,8 @@ fun CareScreen(
                 }
                 CareRow(
                     item = entry,
+                    highlighted = highlightedItem == entry.id,
+                    onHighlightShown = onHighlightShown,
                     icon = if (entry.kind == "symptom") {
                         Icons.Outlined.MonitorHeart
                     } else {
@@ -594,6 +638,7 @@ private fun CareSection(
 
 /** A single care item: icon, title, detail, and the edit/remove pair. */
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 private fun CareRow(
     item: CareItem,
     icon: ImageVector,
@@ -603,14 +648,38 @@ private fun CareRow(
     onDelete: (String) -> Unit,
     renameSeed: String? = null,
     onOpen: (() -> Unit)? = null,
+    /** True when a notification about this item is what opened the app. */
+    highlighted: Boolean = false,
+    onHighlightShown: () -> Unit = {},
     trailing: @Composable (() -> Unit)? = null,
 ) {
+    // Scrolled to rather than merely tinted. BringIntoViewRequester works with
+    // the plain verticalScroll this screen already uses, so a deep link lands
+    // on its own row without restructuring the page into a lazy list.
+    val bring = remember { BringIntoViewRequester() }
+    LaunchedEffect(highlighted) {
+        if (highlighted) {
+            bring.bringIntoView()
+            // Marked briefly, then released: it says "this is the one you
+            // tapped", which stops being true a moment later.
+            kotlinx.coroutines.delay(2500)
+            onHighlightShown()
+        }
+    }
+    val markColour by animateColorAsState(
+        targetValue = if (highlighted) LilacMist else Color.Transparent,
+        animationSpec = tween(durationMillis = 400),
+        label = "care-row-highlight",
+    )
     EditableRow(
         label = item.title,
         editValue = renameSeed ?: item.title,
         onRename = { onRename(item.id, renameField, it) },
         onDelete = { onDelete(item.id) },
-        modifier = Modifier.padding(vertical = 6.dp),
+        modifier = Modifier
+            .bringIntoViewRequester(bring)
+            .background(markColour, RoundedCornerShape(12.dp))
+            .padding(vertical = 6.dp),
         // Same reason as the reminder rows: an item that has not reached the
         // server has no id to rename or delete.
         actionsEnabled = !item.pending,

@@ -503,6 +503,10 @@ data class AiraUiState(
      *  distinguish from "loaded, and empty". */
     val emergencyProfile: Map<String, String>? = null,
     val movements: MovementHistory = MovementHistory(),
+    /** The care item a notification was about, so Care can bring it into view
+     *  and mark it rather than dropping somebody on a list to go hunting.
+     *  Cleared once shown — it describes an arrival, not a state. */
+    val highlightedCareItem: String? = null,
     val urgentMessage: String? = null,
     // True when only the deterministic keyword floor is screening messages. The
     // chat header claimed "Safety checked" unconditionally, which is a promise

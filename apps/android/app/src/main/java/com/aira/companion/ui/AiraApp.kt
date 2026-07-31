@@ -427,6 +427,8 @@ private fun MainExperience(
                         modifier = Modifier,
                         care = state.careData,
                         loading = state.careLoading,
+                        highlightedItem = state.highlightedCareItem,
+                        onHighlightShown = viewModel::clearCareHighlight,
                         onMarkTaken = { haptics.confirm(); viewModel.markMedicineTaken(context, it) },
                         timeline = state.timeline,
                         documents = state.documents,

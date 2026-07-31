@@ -461,6 +461,24 @@ class AiraViewModel(
         }
     }
 
+    /** Remember which item a notification was about.
+     *
+     *  The tap intent has carried the id since reminders existed; nothing read
+     *  it, so every reminder — for any item, at any hour — landed on the Care
+     *  list and left you to find the row it meant. On a screen with a morning
+     *  tablet, an evening tablet and two appointments, that is a search. */
+    fun highlightCareItem(id: String?) {
+        _uiState.update { it.copy(highlightedCareItem = id?.takeIf { s -> s.isNotBlank() }) }
+    }
+
+    /** Cleared once the screen has shown it, so returning to Care later does
+     *  not re-mark a row nobody asked about. */
+    fun clearCareHighlight() {
+        if (_uiState.value.highlightedCareItem != null) {
+            _uiState.update { it.copy(highlightedCareItem = null) }
+        }
+    }
+
     fun selectDestination(destination: MainDestination) {
         _uiState.update { it.copy(destination = destination, toolsOpen = false) }
         saved[KEY_DESTINATION] = destination.name
