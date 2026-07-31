@@ -95,6 +95,10 @@ dependencies {
     // FragmentActivity host, which is why MainActivity extends one.
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.fragment:fragment-ktx:1.8.9")
+    // Encryption at rest for the offline cache. What this does and does not buy
+    // is written up in AiraCache — the short version is that it protects a copy
+    // of /data taken off the device, because the key stays in the Keystore.
+    implementation("androidx.security:security-crypto:1.0.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
