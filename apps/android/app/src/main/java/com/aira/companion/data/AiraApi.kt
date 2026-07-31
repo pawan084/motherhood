@@ -1297,6 +1297,15 @@ data class UserProfile(
 data class CareItem(
     val id: String,
     val kind: String,
+    /**
+     * Keep this item's label off the lock screen. Sent by the server on every
+     * reminder, defaulting to true, and honoured by nothing until now — so a
+     * field named for a privacy guarantee made one the app did not keep.
+     *
+     * Defaults to true here as well: if the value ever fails to arrive, the
+     * safe reading of "private_label" is the private one.
+     */
+    val privateLabel: Boolean = true,
     val done: Boolean,
     val title: String,
     val subtitle: String,
@@ -1475,6 +1484,9 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 id = o.optString("id"),
                 kind = o.optString("kind"),
                 done = o.optBoolean("done", false),
+                // Absent means private: a missing privacy flag must not read as
+                // permission to show the label.
+                privateLabel = o.optBoolean("private_label", true),
                 title = title,
                 subtitle = subtitle,
                 at = o.optDoubleOrNull("at"),

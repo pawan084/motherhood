@@ -146,6 +146,8 @@ def _web_consumes(field: str, src) -> bool:
 # this client has no use for this value. Anything not listed must be consumed.
 EXEMPT = {
     "android": {
+        "last_taken": "when a dose was last taken; no screen shows a 'last taken at' "
+                      "line, and takenToday answers the question the list actually asks",
         "content_format": "catalogue metadata (explainer / demonstration) that no screen distinguishes",
         "specialties": "which clinical specialties must review a topic — admin console material, not a user's",
         "required": "whether a topic needs clinical review; the same admin-only moderation detail",
@@ -169,6 +171,13 @@ EXEMPT = {
         "in_app_actions": "web offers 'Ask Aira about this' from a video; Android does not surface it",
     },
     "web": {
+        "last_taken": "same as Android — nothing renders a 'last taken at' line",
+        "taken_today": "web renders medicines_due, which the SERVER has already "
+                       "filtered to doses not taken today, so the per-item flag "
+                       "would be answering a question this client never asks",
+        "private_label": "keeps a label off a LOCK SCREEN. A browser has no lock "
+                         "screen and posts no notifications, so there is nothing "
+                         "here for the flag to protect — Android honours it",
         "content_format": "catalogue metadata (explainer / demonstration) that no screen distinguishes",
         "specialties": "which clinical specialties must review a topic — admin console material, not a user's",
         "clinical_review": "web reads none of its fields; the review state it holds is admin-only",
@@ -201,6 +210,18 @@ def _payloads(client, user):
                 headers=h)
     turn = client.post("/v1/chat/turn",
                        json={"message": "is this normal?", "history": []}, headers=h)
+    # One of each care kind, because /v1/care on an empty account returns
+    # `{"reminders": [], "appointments": [], ...}` and the checker then sees four
+    # container names and not one field of the things inside them. The app's
+    # most-used screen was its largest blind spot for that reason alone — it is
+    # how `private_label` reached the wire, and both clients, unread.
+    client.post("/v1/care/reminders",
+                json={"title": "iron tablet", "time": "8:00 PM"}, headers=h)
+    client.post("/v1/care/appointments",
+                json={"title": "midwife", "when": "next Tuesday"}, headers=h)
+    client.post("/v1/care/medicines",
+                json={"name": "folic acid", "dose": "400mcg", "time": "9:00 AM"},
+                headers=h)
     return {
         "/v1/today": client.get("/v1/today", headers=h).json(),
         "/v1/journey": client.get("/v1/journey", headers=h).json(),

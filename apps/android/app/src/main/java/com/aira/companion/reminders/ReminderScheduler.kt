@@ -152,6 +152,7 @@ object ReminderScheduler {
                 Data.Builder()
                     .putString(KEY_ID, item.id)
                     .putString(KEY_TITLE, "Tomorrow: ${item.title}")
+                    .putBoolean(KEY_PRIVATE, item.privateLabel)
                     // No time in this line, so the worker's "book the next one"
                     // finds nothing to parse and the notification stays a
                     // one-off — which is what a single visit needs.
@@ -190,6 +191,7 @@ object ReminderScheduler {
                 Data.Builder()
                     .putString(KEY_ID, item.id)
                     .putString(KEY_TITLE, item.title)
+                    .putBoolean(KEY_PRIVATE, item.privateLabel)
                     .putString(KEY_DETAIL, item.subtitle)
                     .build(),
             )
@@ -242,6 +244,8 @@ object ReminderScheduler {
     internal const val SUMMARY_ID = 1_000_001
     internal const val KEY_TITLE = "title"
     internal const val KEY_DETAIL = "detail"
+    /** Whether this item's label must stay off the lock screen. */
+    internal const val KEY_PRIVATE = "private_label"
 }
 
 /** Posts one reminder, then books the next one. */
@@ -253,6 +257,9 @@ class ReminderWorker(
         val id = inputData.getString(ReminderScheduler.KEY_ID) ?: return Result.success()
         val title = inputData.getString(ReminderScheduler.KEY_TITLE).orEmpty()
         val detail = inputData.getString(ReminderScheduler.KEY_DETAIL).orEmpty()
+        // Default true: a flag that failed to arrive must not be read as
+        // permission to put the label on a lock screen.
+        val isPrivate = inputData.getBoolean(ReminderScheduler.KEY_PRIVATE, true)
         if (!ReminderScheduler.canNotify(applicationContext)) return Result.success()
 
         ReminderScheduler.ensureChannel(applicationContext)
@@ -286,8 +293,29 @@ class ReminderWorker(
                 .putExtra(ReminderScheduler.KEY_DETAIL, detail),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // The lock screen sees a generic version; the real title appears only
+        // once the phone is unlocked.
+        //
+        // The detail line and the group summary were already written to give
+        // nothing away, but the title itself went out in full — and "Iron
+        // tablet" is the harmless end of what this app holds. `private_label`
+        // has been on every reminder from the server, defaulting to true, since
+        // the endpoint existed, and nothing had ever read it: a field named for
+        // a privacy guarantee, making one the app did not keep.
+        val public = NotificationCompat.Builder(applicationContext, ReminderScheduler.CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("A reminder from Aira")
+            .setGroup(ReminderScheduler.GROUP_KEY)
+            .build()
+
         val notification = NotificationCompat.Builder(applicationContext, ReminderScheduler.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
+            .apply {
+                if (isPrivate) {
+                    setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                    setPublicVersion(public)
+                }
+            }
             .setContentTitle(title.ifBlank { "A reminder from Aira" })
             // The detail line is the time and repeat, never anything clinical:
             // a notification is readable on a lock screen by anyone holding the
