@@ -117,5 +117,14 @@ jobs:
         run: npm ci
       - working-directory: apps/admin
         run: npm run build
-      - working-directory: apps/admin
-        run: npm run lint
+      # No lint step. `next lint` has no ESLint config in this project, so it
+      # opens an interactive "How would you like to configure ESLint?" prompt
+      # and exits 1 on a runner.
+      #
+      # It is here as a comment rather than removed silently: linting the admin
+      # console is not covered, and choosing a config is a decision with real
+      # churn behind it, not something to settle inside a CI fix.
+      #
+      # Added in the first place because I verified the build locally and not
+      # the lint — against the rule stated one commit earlier, that nothing
+      # goes in on the assumption it will pass.
