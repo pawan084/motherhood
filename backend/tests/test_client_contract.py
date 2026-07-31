@@ -151,6 +151,13 @@ EXEMPT = {
         "required": "whether a topic needs clinical review; the same admin-only moderation detail",
         "degraded_llm": "duplicates safety.degraded, which both clients DO read to show the screening pill",
         "clinical_review": "Android reads its nested `status` as reviewStatus, never the object itself",
+        # Consumed, but under names the camelCase rule cannot derive: the nested
+        # care_plan object is flattened into planTotal / planOnTrack at the parse
+        # site. Listed here so a reader does not conclude it is unused — the plan
+        # sheet reads both and renders "N of M on track".
+        "care_plan": "flattened at parse into planTotal/planOnTrack, both read by the care-plan sheet",
+        "total": "part of care_plan; read as planTotal",
+        "on_track": "part of care_plan; read as planOnTrack",
         "slug": "a human-readable alias for id; every lookup here goes through id",
         "status": "production state, but `playable` is the question a screen asks and it subsumes this",
         "start_week": "the server picks the week's video; showing raw band bounds would be noise",
@@ -200,12 +207,37 @@ def _payloads(client, user):
         "/v1/videos": client.get("/v1/videos", headers=h).json(),
         "/v1/chat/turn": turn.json(),
         "/v1/emergency-profile": client.get("/v1/emergency-profile", headers=h).json(),
+        "/v1/care": client.get("/v1/care", headers=h).json(),
+        "/v1/care/movements": client.get("/v1/care/movements", headers=h).json(),
+        "/v1/care/contractions": client.get("/v1/care/contractions", headers=h).json(),
     }
+
+
+# Endpoints a client does not call at all, and why.
+#
+# Exempting one line here rather than every field it returns. The distinction
+# matters: a client that has never heard of an endpoint is a product decision,
+# where a client that reads an endpoint and drops a field is the bug this file
+# was written for. Recording it makes a deliberate asymmetry stay deliberate.
+UNUSED_ENDPOINTS = {
+    "android": {},
+    "web": {
+        "/v1/care/movements":
+            "counting movements is a lying-still-with-a-phone task; a desktop "
+            "browser is the wrong instrument and offering it there would be worse "
+            "than not having it",
+        "/v1/care/contractions":
+            "same — timing contractions happens with a phone in hand, in labour, "
+            "not at a laptop",
+    },
+}
 
 
 def test_android_consumes_every_field(client, user, sources):
     missing = []
     for path, payload in _payloads(client, user).items():
+        if path in UNUSED_ENDPOINTS["android"]:
+            continue
         for field in sorted(_fields_of(payload)):
             if field in EXEMPT["android"]:
                 continue
@@ -221,6 +253,8 @@ def test_android_consumes_every_field(client, user, sources):
 def test_web_consumes_every_field(client, user, sources):
     missing = []
     for path, payload in _payloads(client, user).items():
+        if path in UNUSED_ENDPOINTS["web"]:
+            continue
         for field in sorted(_fields_of(payload)):
             if field in EXEMPT["web"]:
                 continue
@@ -298,4 +332,32 @@ def test_exemptions_carry_a_reason():
         for field, reason in entries.items():
             assert reason and len(reason) > 15, (
                 f"{client_name}.{field} is exempt without a real reason"
+            )
+
+
+def test_endpoint_exemptions_carry_a_reason_too():
+    """Skipping a whole endpoint is a bigger claim than skipping a field, so it
+    is held to the same standard rather than a looser one."""
+    for client_name, entries in UNUSED_ENDPOINTS.items():
+        for path, reason in entries.items():
+            assert reason and len(reason) > 30, (
+                f"{client_name} skips {path} without a real reason"
+            )
+
+
+def test_a_skipped_endpoint_really_is_skipped():
+    """A guard on the skip itself.
+
+    If UNUSED_ENDPOINTS ever names a path that is not in the checked payloads,
+    it is dead configuration claiming to cover something — and the endpoint it
+    was meant to exempt would be silently unchecked.
+    """
+    checked = {"/v1/today", "/v1/journey", "/v1/videos", "/v1/chat/turn",
+               "/v1/emergency-profile", "/v1/care", "/v1/care/movements",
+               "/v1/care/contractions"}
+
+    for client_name, entries in UNUSED_ENDPOINTS.items():
+        for path in entries:
+            assert path in checked, (
+                f"{client_name} exempts {path}, which nothing checks anyway"
             )
