@@ -299,7 +299,24 @@ data class JourneyData(
     val thisWeek: String,
     val body: String,
     val sections: List<JourneySection>,
+    /** What is worth a call rather than a wait at this week. Null for anyone
+     *  who is not pregnant, and for a pregnancy whose week is unknown — the
+     *  signals differ by stage, so without a week there is nothing honest to
+     *  say. */
+    val callTip: CallTip? = null,
 )
+
+/**
+ * The "when to call" line for a pregnancy week.
+ *
+ * [reviewed] is false while the copy is the backend's in-code seed, which was
+ * drafted from the app's own red-flag list rather than written by a clinician.
+ * It turns true once an admin publishes an edit. The screen shows the
+ * difference: this is the strongest claim the product makes, and claiming
+ * review it has not had would be the worst instance of the overclaiming this
+ * codebase keeps removing.
+ */
+data class CallTip(val title: String, val body: String, val reviewed: Boolean)
 
 /** API journey key -> a human label for headers/rings. */
 fun journeyLabel(journey: String?): String =

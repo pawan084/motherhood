@@ -79,6 +79,51 @@ _PREGNANCY_WEEKS = [
                          "your emergency profile easy to reach."),
 ]
 
+# What is worth a call rather than a wait, banded the same way.
+#
+# ── Where this copy comes from, and what it is not ──
+#
+# Every signal named here is already in `safety.RED_PHRASES` or its fetal-
+# movement patterns — the deterministic floor that ends a chat turn with the
+# urgent handoff. Nothing new is being asserted: this says out loud, in advance,
+# what the app already treats as an emergency when someone types it. Telling
+# people only *after* they describe something frightening is a poor way to run a
+# safety net.
+#
+# What it is not: a symptom checker, a diagnosis, or a threshold anyone should
+# reason from. Each line names a signal and one instruction — contact your care
+# team — because the decision this content supports is "do I call?", not "what
+# is wrong with me?".
+#
+# ── Review ──
+#
+# These seeds have NOT been through clinical review. They are drafted from the
+# app's existing red-flag vocabulary and are editable and publishable from the
+# admin console like every other entry, precisely so a clinician can correct
+# them without a release. `call_tip_reviewed` on the payload says which state a
+# given tip is in, and clients are expected to show that honestly rather than
+# implying a doctor wrote it.
+_PREGNANCY_CALL_TIPS = [
+    (1, "When to call, early on",
+        "Heavy bleeding, severe or one-sided pain, or feeling faint are worth "
+        "contacting your care team about the same day — not waiting to see."),
+    (13, "When to call",
+         "Heavy bleeding, a severe headache, or changes in your vision are "
+         "reasons to contact your care team now rather than wait."),
+    (20, "When to call",
+         "Once you know your baby's usual pattern, any change in how much they "
+         "move is worth calling about straight away — at any hour. Never wait "
+         "for the next appointment to mention it."),
+    (28, "When to call",
+         "A severe headache, blurred vision or seeing spots, sudden swelling in "
+         "your face or hands, or reduced movement all mean contact your care "
+         "team now. These can be checked quickly, and checking is the point."),
+    (37, "When to call",
+         "Your waters breaking, any bleeding, or reduced movement mean call "
+         "your care team now, whatever the time. So does anything that simply "
+         "feels wrong to you."),
+]
+
 
 def init() -> None:
     global _conn
@@ -98,6 +143,18 @@ def init() -> None:
             "VALUES (?,?,?,?,'published',?) ON CONFLICT(key) DO NOTHING",
             (f"journey.{journey}", journey, data.get("title", ""),
              data.get("body", ""), time.time()))
+    # The "when to call" tips seed as DRAFT, not published.
+    #
+    # Draft is not a formality here. Until someone publishes a row, users are
+    # served this file's seed with `reviewed: false`, and the console shows a
+    # row waiting to be read — which is the honest state for copy that tells a
+    # pregnant person when to ring their care team and has not been checked by
+    # anyone qualified. Publishing is the act of taking responsibility for it.
+    for band_start, title, body in _PREGNANCY_CALL_TIPS:
+        _conn.execute(
+            "INSERT INTO content_entries (key, journey, title, body, status, updated) "
+            "VALUES (?,?,?,?,'draft',?) ON CONFLICT(key) DO NOTHING",
+            (call_tip_key(band_start), "pregnant", title, body, time.time()))
     _conn.commit()
 
 
@@ -109,6 +166,41 @@ def _band(weeks: int) -> tuple[str, str]:
         if weeks >= band[0]:
             chosen = band
     return chosen[1], chosen[2]
+
+
+def _call_band(weeks: int) -> tuple[int, str, str]:
+    """The (band_start, title, body) "when to call" tip for a pregnancy week."""
+    chosen = _PREGNANCY_CALL_TIPS[0]
+    for band in _PREGNANCY_CALL_TIPS:
+        if weeks >= band[0]:
+            chosen = band
+    return chosen
+
+
+def call_tip_key(band_start: int) -> str:
+    """The content_entries key an admin edits to override a band's tip."""
+    return f"tip.pregnant.{band_start}"
+
+
+def _published_entry(key: str) -> tuple[str, str, bool]:
+    """(title, body, reviewed) for any content key.
+
+    `reviewed` is True only when an admin has published a row for it — which is
+    the single thing that distinguishes clinician-corrected copy from the seed
+    drafted in this file. Clients show that distinction rather than implying
+    every tip was written by a doctor."""
+    if _conn is None:
+        return "", "", False
+    try:
+        row = _conn.execute(
+            "SELECT title, body, status, reviewed_by FROM content_entries WHERE key=?",
+            (key,)).fetchone()
+    except Exception as e:  # noqa: BLE001 — never let a content lookup break a screen
+        log.warning("content lookup for %s failed: %s", key, e)
+        return "", "", False
+    if not row or (row[2] or "") != "published":
+        return "", "", False
+    return (row[0] or "").strip(), (row[1] or "").strip(), bool((row[3] or "").strip())
 
 
 def _published(journey: str) -> tuple[str, str]:
@@ -130,6 +222,25 @@ def _published(journey: str) -> tuple[str, str]:
     if not row or (row[2] or "") != "published":
         return "", ""          # drafts are never served to users
     return (row[0] or "").strip(), (row[1] or "").strip()
+
+
+def _call_tip_payload(weeks: int) -> dict:
+    """The `call_tip` fields for a pregnancy week, or nothing when the week is
+    unknown."""
+    if weeks <= 0:
+        return {}
+    band_start, seed_title, seed_body = _call_band(weeks)
+    title, body, reviewed = _published_entry(call_tip_key(band_start))
+    return {
+        "call_tip": {
+            "title": title or seed_title,
+            "body": body or seed_body,
+            # False while the copy is this file's seed. A client that shows a
+            # "when to call" line as clinician-reviewed when nobody has reviewed
+            # it is making the strongest claim in the app on no evidence.
+            "reviewed": reviewed and bool(title or body),
+        },
+    }
 
 
 def journey_content(journey: str, weeks: int | None = None) -> dict:
@@ -159,6 +270,12 @@ def journey_content(journey: str, weeks: int | None = None) -> dict:
             "journey": "pregnant", "title": title_override or "Your pregnancy",
             "weeks": w or None,
             "this_week": this_week, "body": body_override or band_body,
+            # What is worth a call rather than a wait, for this band. Only ever
+            # sent to a pregnant user with a known week: a "when to call" line
+            # is meaningless without knowing which signals apply, and guessing
+            # at a week is how the old hardcoded "Week 24" showed a stranger's
+            # pregnancy to everyone.
+            **_call_tip_payload(w),
             "sections": [
                 {"title": "Your body", "text": "Energy, sleep and changes worth knowing"},
                 {"title": "Your baby", "text": "Growth explained without overload"},

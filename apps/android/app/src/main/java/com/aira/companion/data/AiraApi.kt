@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import android.util.Log
 import com.aira.companion.BuildConfig
+import com.aira.companion.model.CallTip
 import com.aira.companion.model.JourneyData
 import com.aira.companion.model.JourneySection
 import com.aira.companion.model.TodayData
@@ -273,6 +274,18 @@ object AiraApi {
             thisWeek = o.optString("this_week"),
             body = o.optString("body"),
             sections = sections,
+            callTip = o.optJSONObject("call_tip")?.let {
+                val body = it.optString("body")
+                if (body.isBlank()) {
+                    null
+                } else {
+                    CallTip(
+                        title = it.optString("title").ifBlank { "When to call" },
+                        body = body,
+                        reviewed = it.optBoolean("reviewed", false),
+                    )
+                }
+            },
         )
     }
 

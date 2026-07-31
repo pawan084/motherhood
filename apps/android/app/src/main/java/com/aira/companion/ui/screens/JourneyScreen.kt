@@ -1,5 +1,7 @@
 package com.aira.companion.ui.screens
 
+import com.aira.companion.ui.theme.Amber
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -105,6 +107,53 @@ fun JourneyScreen(
                 thisWeekTitle = heroTitle,
                 thisWeekBody = heroBody,
             )
+
+            // What is worth a call rather than a wait, for this week.
+            //
+            // Under the path rather than on Today: this is reference material
+            // you should be able to find when you are worried, not another card
+            // competing for attention on a calm morning. The signals it names
+            // are the ones safety.RED_PHRASES already ends a chat turn on — the
+            // difference is that this says them before you need them.
+            journey?.callTip?.let { tip ->
+                Spacer(modifier = Modifier.height(18.dp))
+                AiraCard(containerColor = AmberMist) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.Call,
+                            contentDescription = null,
+                            tint = Amber,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(9.dp))
+                        Text(
+                            text = tip.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = tip.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    // Says which it is. Presenting seed copy as clinician-checked
+                    // would be the largest overclaim in the product, on the one
+                    // screen where being trusted wrongly costs the most.
+                    Text(
+                        text = if (tip.reviewed) {
+                            "Reviewed by your care provider's team."
+                        } else {
+                            "General guidance, not reviewed by a clinician — " +
+                                "your care team's advice comes first."
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = InkMuted,
+                    )
+                }
+            }
         } else {
             AiraCard(containerColor = LilacMist) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
