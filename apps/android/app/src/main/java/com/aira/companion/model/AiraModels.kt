@@ -106,6 +106,7 @@ enum class AiraTool(
     // thing being cautioned about, not as the name of the feature.
     Symptom("Log a symptom", "Symptoms & changes"),
     Movements("Count movements", "Your baby's pattern"),
+    Contractions("Time contractions", "How long, how far apart"),
     CarePlan("Your care plan", "Built from your reminders"),
     Privacy("Privacy centre", "Your data"),
     Memory("What Aira remembers", "Everything it knows"),

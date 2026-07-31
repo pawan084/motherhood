@@ -187,8 +187,18 @@ private fun chatToolItemsFor(journey: String?, weeks: Int?): List<ChatToolItem> 
     val movements = ChatToolItem(
         AiraTool.Movements, "Movements", "Your baby's pattern", Icons.Outlined.FavoriteBorder,
     )
+    val extras = mutableListOf(movements)
+    // Contractions only from 36 weeks. Offering a labour tool at 20 is a
+    // suggestion nobody asked for, on the one subject people are already
+    // anxious about.
+    if ((weeks ?: 0) >= 36) {
+        extras += ChatToolItem(
+            AiraTool.Contractions, "Contractions", "How long, how far apart",
+            Icons.Outlined.AccessTime,
+        )
+    }
     // Third, next to the other things you log while something is happening.
-    return chatToolItems.take(3) + movements + chatToolItems.drop(3)
+    return chatToolItems.take(3) + extras + chatToolItems.drop(3)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -291,6 +301,7 @@ data class ToolActions(
     val saveEmergencyProfile: (Map<String, String>) -> Unit = {},
     val loadEmergencyProfile: () -> Unit = {},
     val saveMovement: (count: Int, minutes: Int) -> Unit = { _, _ -> },
+    val saveContraction: (seconds: Int, sincePrevious: Int?) -> Unit = { _, _ -> },
     val loadMovements: () -> Unit = {},
     val sendReport: (kind: String, message: String) -> Unit = { _, _ -> },
     val setConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
@@ -427,6 +438,7 @@ fun DynamicToolSheet(
                 AiraTool.Emergency ->
                     EmergencyProfileTool(actions, emergencyProfile, onDismiss)
                 AiraTool.Movements -> MovementsTool(actions, movements, onDismiss)
+                AiraTool.Contractions -> ContractionsTool(actions, onDismiss)
             }
         }
     }
@@ -1818,6 +1830,108 @@ private fun MovementsTool(
         },
         modifier = Modifier.fillMaxWidth(),
         enabled = startedAt != null && count > 0,
+        trailingIcon = null,
+    )
+}
+
+/**
+ * Timing contractions.
+ *
+ * ── The alert that is not here ──
+ *
+ * The spec this came from asks for a timer "with automated hospital departure
+ * alerts". Deciding when somebody should leave depends on whether it is their
+ * first baby, how far the unit is, how the pregnancy has gone, and what their
+ * midwife told them. An app that announces "time to go" is repeating a rule it
+ * cannot know applies, or inventing one — and an app that says nothing while
+ * somebody waits for it to speak is worse.
+ *
+ * So this times, and shows what it timed. The three numbers are the ones a
+ * midwife asks for on the phone: how long, how far apart, and for how long now.
+ * Reading them is the person's job and their midwife's, not Aira's.
+ */
+@Composable
+private fun ContractionsTool(actions: ToolActions, onDismiss: () -> Unit) {
+    val haptics = rememberAiraHaptics()
+    var running by remember { mutableStateOf(false) }
+    var startedAt by remember { mutableStateOf(0L) }
+    var elapsed by remember { mutableStateOf(0L) }
+    var lastEndedAt by remember { mutableStateOf<Long?>(null) }
+    var logged by remember { mutableStateOf(0) }
+
+    LaunchedEffect(running) {
+        while (running) {
+            elapsed = (System.currentTimeMillis() - startedAt) / 1000
+            kotlinx.coroutines.delay(500)
+        }
+    }
+
+    InfoBanner(
+        icon = Icons.Outlined.AccessTime,
+        text = "Aira times these and writes them down. When to go in is a " +
+            "decision for you and your midwife — ring them with these numbers " +
+            "rather than waiting for the app to say something.",
+        color = SageMist,
+    )
+    Spacer(Modifier.height(16.dp))
+
+    AiraCard(containerColor = LilacMist) {
+        Text(
+            text = "${elapsed / 60}:${(elapsed % 60).toString().padStart(2, '0')}",
+            style = MaterialTheme.typography.displayMedium,
+            color = Plum,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Text(
+            text = if (running) "this contraction" else "not timing",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Spacer(Modifier.height(14.dp))
+        PrimaryButton(
+            label = if (running) "It stopped" else "It started",
+            onClick = {
+                haptics.select()
+                val now = System.currentTimeMillis()
+                if (running) {
+                    val seconds = ((now - startedAt) / 1000).toInt()
+                    // Gap measured start-to-start, which is what "how far apart"
+                    // means to a midwife — not the rest between them.
+                    val gap = lastEndedAt?.let { ((startedAt - it) / 1000).toInt() }
+                    actions.saveContraction(seconds, gap)
+                    lastEndedAt = startedAt
+                    logged += 1
+                    running = false
+                    elapsed = 0
+                } else {
+                    startedAt = now
+                    elapsed = 0
+                    running = true
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = null,
+        )
+    }
+
+    if (logged > 0) {
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = "$logged recorded in this session. They are saved as you go, so " +
+                "you can close this and come back.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+        )
+    }
+
+    Spacer(Modifier.height(16.dp))
+    PrimaryButton(
+        label = "Done",
+        onClick = onDismiss,
+        modifier = Modifier.fillMaxWidth(),
         trailingIcon = null,
     )
 }

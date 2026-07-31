@@ -513,6 +513,7 @@ private fun MainExperience(
                 saveEmergencyProfile = { viewModel.saveEmergencyProfile(context, it) },
                 loadEmergencyProfile = { viewModel.loadEmergencyProfile(context) },
                 saveMovement = { c, m -> viewModel.saveMovement(context, c, m) },
+                saveContraction = { sec, gap -> viewModel.saveContraction(context, sec, gap) },
                 loadMovements = { viewModel.loadMovements(context) },
                 sendReport = { k, m -> viewModel.sendReport(context, k, m) },
                 setConsent = { f, g -> viewModel.setConsent(context, f, g) },

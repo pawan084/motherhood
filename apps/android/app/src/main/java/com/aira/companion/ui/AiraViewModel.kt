@@ -1423,6 +1423,12 @@ class AiraViewModel(
             }
         }
 
+    fun saveContraction(context: Context?, seconds: Int, sincePrevious: Int?) =
+        write(context, "Contraction recorded.", refreshCare = false) { ctx ->
+            AiraApi.addContraction(ctx, seconds, sincePrevious,
+                                   java.util.UUID.randomUUID().toString())
+        }
+
     fun loadEmergencyProfile(context: Context?) {
         val ctx = context ?: return
         viewModelScope.launch {

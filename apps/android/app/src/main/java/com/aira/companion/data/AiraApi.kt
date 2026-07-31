@@ -236,6 +236,14 @@ object AiraApi {
         )
     }
 
+    suspend fun addContraction(ctx: Context, seconds: Int, sincePrevious: Int?, clientId: String) {
+        val body = JSONObject()
+            .put("seconds", seconds)
+            .put("since_previous_seconds", sincePrevious ?: JSONObject.NULL)
+            .put("client_id", clientId)
+        request("POST", "/v1/care/contractions", body, ensureToken(ctx))
+    }
+
     suspend fun addMovement(ctx: Context, count: Int, minutes: Int, clientId: String) {
         val body = JSONObject()
             .put("count", count).put("minutes", minutes).put("client_id", clientId)
