@@ -2,6 +2,8 @@
 
 package com.aira.companion.ui.screens
 
+import com.aira.companion.ui.components.rememberAiraHaptics
+import com.aira.companion.model.MovementHistory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -156,6 +158,9 @@ private val chatToolItems =
         ChatToolItem(AiraTool.CheckIn, "Check in", "Mood, energy & sleep", Icons.Outlined.FavoriteBorder),
         ChatToolItem(AiraTool.Reminder, "Reminder", "Medicine or care task", Icons.Outlined.AccessTime),
         ChatToolItem(AiraTool.Symptom, "Track", "Log a change", Icons.Outlined.TrackChanges),
+        // Movements is added by `chatToolItemsFor` rather than listed here: it
+        // is the one tool that is meaningless outside a pregnancy far enough
+        // along to have a pattern.
         ChatToolItem(AiraTool.Medicines, "Medicines", "Your routine", Icons.Outlined.Medication),
         ChatToolItem(AiraTool.Appointment, "Appointment", "Prepare for a visit", Icons.Outlined.CalendarMonth),
         ChatToolItem(AiraTool.CareVault, "Documents", "Prescription or report", Icons.Outlined.FolderOpen),
@@ -167,11 +172,32 @@ private val chatToolItems =
         ChatToolItem(AiraTool.Support, "Help", "Questions and feedback", Icons.Outlined.SupportAgent),
     )
 
+/**
+ * The tray, for who is holding it.
+ *
+ * Counting movements is offered only to a pregnant user at 20 weeks or later —
+ * the same point the "when to call" copy starts talking about a movement
+ * pattern, because that is when there is one to notice a change from. Offering
+ * it to somebody postpartum, or trying to conceive, or at eight weeks, would be
+ * the app inventing a baby's behaviour for a person who has none to count.
+ */
+private fun chatToolItemsFor(journey: String?, weeks: Int?): List<ChatToolItem> {
+    val pregnantEnough = journey.equals("pregnant", ignoreCase = true) && (weeks ?: 0) >= 20
+    if (!pregnantEnough) return chatToolItems
+    val movements = ChatToolItem(
+        AiraTool.Movements, "Movements", "Your baby's pattern", Icons.Outlined.FavoriteBorder,
+    )
+    // Third, next to the other things you log while something is happening.
+    return chatToolItems.take(3) + movements + chatToolItems.drop(3)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolTraySheet(
     onDismiss: () -> Unit,
     onOpenTool: (AiraTool) -> Unit,
+    journey: String? = null,
+    weeks: Int? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -206,7 +232,7 @@ fun ToolTraySheet(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                chatToolItems.forEach { item ->
+                chatToolItemsFor(journey, weeks).forEach { item ->
                     Surface(
                         modifier =
                             Modifier
@@ -264,6 +290,8 @@ data class ToolActions(
     val setReminderDone: (id: String, done: Boolean) -> Unit = { _, _ -> },
     val saveEmergencyProfile: (Map<String, String>) -> Unit = {},
     val loadEmergencyProfile: () -> Unit = {},
+    val saveMovement: (count: Int, minutes: Int) -> Unit = { _, _ -> },
+    val loadMovements: () -> Unit = {},
     val sendReport: (kind: String, message: String) -> Unit = { _, _ -> },
     val setConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
     val setMemoryApproved: (id: String, approved: Boolean) -> Unit = { _, _ -> },
@@ -301,6 +329,7 @@ fun DynamicToolSheet(
     uploading: Boolean = false,
     editingReminder: CareItem? = null,
     emergencyProfile: Map<String, String>? = null,
+    movements: MovementHistory = MovementHistory(),
 ) {
     // The picked document's Uri is KEPT now. It used to be dropped on the floor
     // here ("Document selected securely."), which is why "Save to Care Vault"
@@ -397,6 +426,7 @@ fun DynamicToolSheet(
                 AiraTool.Support -> SupportTool(actions, onUrgentHelp, onDismiss)
                 AiraTool.Emergency ->
                     EmergencyProfileTool(actions, emergencyProfile, onDismiss)
+                AiraTool.Movements -> MovementsTool(actions, movements, onDismiss)
             }
         }
     }
@@ -1677,6 +1707,118 @@ private fun EmergencyProfileTool(
         enabled = listOf(
             careTeamName, careTeamPhone, contactName, contactPhone, bloodGroup, allergies,
         ).any { it.isNotBlank() },
+    )
+}
+
+/**
+ * Counting movements.
+ *
+ * Exists because two things already shipped assume it. The safety floor screens
+ * "the baby stopped moving" as RED, and the week-20 "when to call" tip says any
+ * change from your baby's usual pattern is worth ringing about — both asking
+ * somebody to notice a change from a baseline nothing let them establish.
+ *
+ * ── What this deliberately does not do ──
+ *
+ * There is no target. No "10 movements in 2 hours", no progress ring filling
+ * up, no tick when a number is reached. Every guideline says to ring if the
+ * pattern changes; a target says the opposite, because reaching it feels like
+ * permission to stop worrying and wait. The one number shown is the person's
+ * own, and the line under it points at change rather than at a threshold.
+ *
+ * It also does not judge a session. Aira has no idea whether 6 movements in an
+ * hour is fine for this pregnancy, and saying so would be a diagnosis.
+ */
+@Composable
+private fun MovementsTool(
+    actions: ToolActions,
+    history: MovementHistory,
+    onDismiss: () -> Unit,
+) {
+    LaunchedEffect(Unit) { actions.loadMovements() }
+    val haptics = rememberAiraHaptics()
+    var count by remember { mutableStateOf(0) }
+    var startedAt by remember { mutableStateOf<Long?>(null) }
+    var elapsed by remember { mutableStateOf(0L) }
+
+    // Ticks only while a session is open.
+    LaunchedEffect(startedAt) {
+        val start = startedAt ?: return@LaunchedEffect
+        while (true) {
+            elapsed = (System.currentTimeMillis() - start) / 1000
+            kotlinx.coroutines.delay(1000)
+        }
+    }
+
+    InfoBanner(
+        icon = Icons.Outlined.FavoriteBorder,
+        text = "A change from your own usual pattern is what matters — not a " +
+            "number. If it feels different, contact your care team now rather " +
+            "than waiting for the next visit.",
+        color = SageMist,
+    )
+    Spacer(Modifier.height(16.dp))
+
+    AiraCard(containerColor = LilacMist) {
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.displayMedium,
+            color = Plum,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Text(
+            text = if (startedAt == null) {
+                "movements"
+            } else {
+                "movements · ${elapsed / 60}m ${elapsed % 60}s"
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Spacer(Modifier.height(14.dp))
+        PrimaryButton(
+            label = if (startedAt == null) "Start counting" else "I felt a movement",
+            onClick = {
+                haptics.select()
+                if (startedAt == null) startedAt = System.currentTimeMillis() else count += 1
+            },
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = null,
+        )
+    }
+
+    if (history.usual != null) {
+        Spacer(Modifier.height(14.dp))
+        Text(
+            text = "Your usual: about ${history.usual.count} movements in " +
+                "${history.usual.minutes} minutes, across ${history.usual.sessions} sessions.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+        )
+    } else if (history.items.isNotEmpty()) {
+        Spacer(Modifier.height(14.dp))
+        Text(
+            // Said plainly rather than showing an average of two.
+            text = "Count a few more times and Aira can show your usual pattern. " +
+                "It needs a few sessions before that means anything.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+        )
+    }
+
+    Spacer(Modifier.height(16.dp))
+    PrimaryButton(
+        label = "Save this session",
+        onClick = {
+            actions.saveMovement(count, ((elapsed + 30) / 60).toInt())
+            onDismiss()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = startedAt != null && count > 0,
+        trailingIcon = null,
     )
 }
 

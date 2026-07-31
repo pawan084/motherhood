@@ -101,6 +101,7 @@ enum class AiraTool(
     // for the tool should be. The caution belongs in the sheet, next to the
     // thing being cautioned about, not as the name of the feature.
     Symptom("Log a symptom", "Symptoms & changes"),
+    Movements("Count movements", "Your baby's pattern"),
     CarePlan("Your care plan", "Built from your reminders"),
     Privacy("Privacy centre", "Your data"),
     Memory("What Aira remembers", "Everything it knows"),
@@ -374,6 +375,25 @@ data class VideoTopic(
     val saved: Boolean,
 )
 
+/** One movement-counting session. */
+data class MovementSession(
+    val id: String,
+    val count: Int,
+    val minutes: Int,
+    val created: Double,
+)
+
+/** This person's own typical session — median, not mean, so one very long
+ *  count does not drag the baseline they are comparing against. */
+data class MovementUsual(val count: Int, val minutes: Int, val sessions: Int)
+
+data class MovementHistory(
+    val items: List<MovementSession> = emptyList(),
+    /** Null until there are enough sessions to be a pattern. The screen says so
+     *  rather than presenting one afternoon as "your usual". */
+    val usual: MovementUsual? = null,
+)
+
 data class VideoCategory(val key: String, val label: String)
 
 data class VideosResult(
@@ -473,6 +493,7 @@ data class AiraUiState(
      *  it. Null means not loaded (or the load failed) — which the editor has to
      *  distinguish from "loaded, and empty". */
     val emergencyProfile: Map<String, String>? = null,
+    val movements: MovementHistory = MovementHistory(),
     val urgentMessage: String? = null,
     // True when only the deterministic keyword floor is screening messages. The
     // chat header claimed "Safety checked" unconditionally, which is a promise

@@ -1,5 +1,8 @@
 package com.aira.companion.data
 
+import com.aira.companion.model.MovementUsual
+import com.aira.companion.model.MovementSession
+import com.aira.companion.model.MovementHistory
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -204,6 +207,41 @@ object AiraApi {
      * and the allergies, wanted at exactly the moment someone may have neither
      * signal nor patience.
      */
+    /**
+     * Movement-counting sessions, and this person's own typical session.
+     *
+     * `usual` is null until there are enough sessions to be a pattern rather
+     * than a guess — the screen must show that difference rather than inventing
+     * a baseline out of one afternoon.
+     */
+    suspend fun movements(ctx: Context): MovementHistory {
+        val o = getCached(ctx, "/v1/care/movements")
+        val arr = o.optJSONArray("items")
+        val items = ArrayList<MovementSession>()
+        for (i in 0 until (arr?.length() ?: 0)) {
+            val m = arr!!.optJSONObject(i) ?: continue
+            items.add(
+                MovementSession(
+                    id = m.optString("id"),
+                    count = m.optInt("count"),
+                    minutes = m.optInt("minutes"),
+                    created = m.optDouble("created", 0.0),
+                ),
+            )
+        }
+        val u = o.optJSONObject("usual")
+        return MovementHistory(
+            items = items,
+            usual = u?.let { MovementUsual(it.optInt("count"), it.optInt("minutes"), it.optInt("sessions")) },
+        )
+    }
+
+    suspend fun addMovement(ctx: Context, count: Int, minutes: Int, clientId: String) {
+        val body = JSONObject()
+            .put("count", count).put("minutes", minutes).put("client_id", clientId)
+        request("POST", "/v1/care/movements", body, ensureToken(ctx))
+    }
+
     suspend fun emergencyProfile(ctx: Context): JSONObject =
         getCached(ctx, "/v1/emergency-profile")
 

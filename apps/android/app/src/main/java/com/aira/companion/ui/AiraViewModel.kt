@@ -1404,6 +1404,25 @@ class AiraViewModel(
      * all six fields, anything not retyped was erased — an emergency contact
      * disappearing because someone came back to correct a phone number.
      */
+    fun loadMovements(context: Context?) {
+        val ctx = context ?: return
+        viewModelScope.launch {
+            runCatching { AiraApi.movements(ctx) }.getOrNull()?.let { history ->
+                _uiState.update { it.copy(movements = history) }
+            }
+        }
+    }
+
+    /** Record a counting session. Queued like every other create, so one
+     *  counted with no signal is not lost. */
+    fun saveMovement(context: Context?, count: Int, minutes: Int) =
+        write(context, "Movements recorded.", refreshCare = false) { ctx ->
+            AiraApi.addMovement(ctx, count, minutes, java.util.UUID.randomUUID().toString())
+            runCatching { AiraApi.movements(ctx) }.getOrNull()?.let { history ->
+                _uiState.update { it.copy(movements = history) }
+            }
+        }
+
     fun loadEmergencyProfile(context: Context?) {
         val ctx = context ?: return
         viewModelScope.launch {

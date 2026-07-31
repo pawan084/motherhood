@@ -723,6 +723,60 @@ def delete_item(item_id: str, uid: str = Depends(current_user)):
     return {"ok": True}
 
 
+# ── fetal movements ──────────────────────────────────────────────────────────
+
+class MovementIn(_CreateIn):
+    """One counting session."""
+    count: int
+    minutes: int
+    started: str | None = None
+
+
+@router.post("/care/movements")
+def add_movement(body: MovementIn, uid: str = Depends(current_user)):
+    """Record a movement-counting session.
+
+    Why this exists at all: the safety floor already screens "the baby stopped
+    moving" as RED, and the week-20 "when to call" tip says any change from your
+    baby's usual pattern is worth calling about straight away. Both of those ask
+    somebody to notice a change from a baseline the app gave them no way to
+    establish. This is that baseline, and nothing more.
+
+    Deliberately not a threshold. There is no "10 kicks in 2 hours" rule here,
+    because the number that matters is the person's own and the instruction in
+    every guideline is to ring if it changes — not to reach a target and relax.
+    A target would invite exactly the wait this feature exists to prevent.
+    """
+    if body.count < 0 or body.minutes < 0:
+        raise HTTPException(status_code=400, detail="count and minutes cannot be negative")
+    return _add_item(uid, "movement", body.model_dump(), body.client_id)
+
+
+@router.get("/care/movements")
+def movements(limit: int = 30, uid: str = Depends(current_user)):
+    """Recent sessions, newest first, with this person's own typical session.
+
+    `usual` is the median of previous sessions rather than the mean, so one
+    unusually long count does not drag the baseline somebody is comparing
+    against. Null until there are three, because two sessions is not a pattern
+    and presenting it as one would be the fabrication this app keeps removing.
+    """
+    items = _list_items(uid, "movement")
+    items.sort(key=lambda i: i.get("created") or 0, reverse=True)
+    return {"items": items[:max(1, min(limit, 200))], "usual": _usual_session(items)}
+
+
+def _usual_session(items: list[dict]) -> dict | None:
+    """The median count and duration across sessions, or None while it would be
+    a guess."""
+    counts = sorted(int(i.get("count") or 0) for i in items)
+    minutes = sorted(int(i.get("minutes") or 0) for i in items)
+    if len(counts) < 3:
+        return None
+    mid = len(counts) // 2
+    return {"count": counts[mid], "minutes": minutes[mid], "sessions": len(counts)}
+
+
 # ── the timeline ─────────────────────────────────────────────────────────────
 
 @router.get("/care/timeline")

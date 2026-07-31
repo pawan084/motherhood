@@ -493,6 +493,8 @@ private fun MainExperience(
             ToolTraySheet(
                 onDismiss = viewModel::closeTools,
                 onOpenTool = viewModel::openTool,
+                journey = state.todayData?.journey,
+                weeks = state.todayData?.weeks,
             )
         }
 
@@ -510,6 +512,8 @@ private fun MainExperience(
                 setReminderDone = { id, done -> viewModel.setReminderDone(context, id, done) },
                 saveEmergencyProfile = { viewModel.saveEmergencyProfile(context, it) },
                 loadEmergencyProfile = { viewModel.loadEmergencyProfile(context) },
+                saveMovement = { c, m -> viewModel.saveMovement(context, c, m) },
+                loadMovements = { viewModel.loadMovements(context) },
                 sendReport = { k, m -> viewModel.sendReport(context, k, m) },
                 setConsent = { f, g -> viewModel.setConsent(context, f, g) },
                 setMemoryApproved = { id, a -> viewModel.setMemoryApproved(context, id, a) },
@@ -572,6 +576,7 @@ private fun MainExperience(
                 uploading = state.uploadingDocument,
                 editingReminder = state.editingReminder,
                 emergencyProfile = state.emergencyProfile,
+                movements = state.movements,
             )
         }
 
