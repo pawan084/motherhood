@@ -135,7 +135,15 @@ export type TodayData = {
   name: string;
   journey: Journey;
   context_line: string;
+  /** The week Aira has counted forward to — what every screen shows. */
   weeks: number | null;
+  /** The week the person last TYPED, and what an editor must prefill with.
+   *
+   *  Prefilling from `weeks` instead would nudge the date forward by however
+   *  long it had been since they told us: open the editor at week 25 after a
+   *  week has passed, press save without touching it, and the pregnancy has
+   *  silently gained seven days. */
+  weeks_reported: number | null;
   next_action: NextAction;
   priorities: string[];
 };
@@ -395,6 +403,15 @@ export const AiraAPI = {
   me: () => req<{ user: User }>("/account/me"),
   updateProfile: (p: { name?: string; journey?: Journey; language?: string }) =>
     req<{ user: User }>("/account/profile", { method: "PATCH", body: JSON.stringify(p) }),
+
+  /** Correct the pregnancy week, or change what Aira focuses on.
+   *
+   *  The endpoint has existed since care context did; web simply never called
+   *  it, so a week mistyped during onboarding could not be corrected here at
+   *  all. Setting it restarts the clock server-side, counting forward from what
+   *  was just entered. */
+  updateCareContext: (p: { weeks?: number | null; priorities?: string[] }) =>
+    req<TodayData>("/v1/care/context", { method: "PATCH", body: JSON.stringify(p) }),
 
   // the safety-gated turn
   chatTurn: (message: string, history: { role: string; content: string }[] = []) =>

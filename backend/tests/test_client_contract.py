@@ -166,12 +166,6 @@ EXEMPT = {
         "specialties": "which clinical specialties must review a topic — admin console material, not a user's",
         "clinical_review": "web reads none of its fields; the review state it holds is admin-only",
         "degraded_llm": "duplicates safety.degraded, which both clients DO read to show the screening pill",
-        # Not a decision so much as a gap this test found and named. Android's
-        # profile editor prefills its weeks field from this, so a save does not
-        # nudge the date forward by however long it has been. Web has no weeks
-        # editor at all, so somebody who mistyped their week on the web client
-        # cannot correct it there.
-        "weeks_reported": "web has no weeks editor — a real gap, and this line is where it is recorded",
         "timing": "web reads none of its fields; which topic suits this week is decided server-side",
         "start_week": "the server picks the week's video; showing raw band bounds would be noise",
         "end_week": "the server picks the week's video; showing raw band bounds would be noise",

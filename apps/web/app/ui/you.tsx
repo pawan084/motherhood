@@ -19,11 +19,17 @@ const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "exploring"];
 
 export default function You({
   user, consent, openTool, onProfileSaved, onConsentChanged, onDeleted,
-  onSignIn, onSignedOut,
+  onSignIn, onSignedOut, weeksReported, journeyIsPregnant, onWeeksSaved,
 }: {
   user: User | null;
   consent: ConsentFeature[];
   openTool: (t: ToolName) => void;
+  /** The week last TYPED by the person, which is what this editor prefills
+   *  with. Prefilling from the counted-forward week would push the date on by
+   *  however long it had been, every time anyone pressed save. */
+  weeksReported: number | null;
+  journeyIsPregnant: boolean;
+  onWeeksSaved: () => void;
   onProfileSaved: (u: User) => void;
   onConsentChanged: (f: ConsentFeature[]) => void;
   onDeleted: () => void;
@@ -65,6 +71,38 @@ export default function You({
     } catch {
       setPrefs(previous);
       setNote("Couldn't save your voice preference.");
+    }
+  };
+
+  // The week, correctable.
+  //
+  // Android has had this since care context existed; web never called the
+  // endpoint, so a week mistyped during onboarding was permanent on this
+  // client. Found by the client-contract test, which noticed `weeks_reported`
+  // arriving here and being read by nobody.
+  const [weeks, setWeeks] = useState<string>(
+    weeksReported != null ? String(weeksReported) : "");
+  const [savingWeeks, setSavingWeeks] = useState(false);
+  useEffect(() => {
+    setWeeks(weeksReported != null ? String(weeksReported) : "");
+  }, [weeksReported]);
+
+  const saveWeeks = async () => {
+    const n = Number(weeks);
+    if (!Number.isInteger(n) || n < 1 || n > 45) {
+      setNote("Enter a week between 1 and 45.");
+      return;
+    }
+    setSavingWeeks(true);
+    setNote("");
+    try {
+      await AiraAPI.updateCareContext({ weeks: n });
+      onWeeksSaved();
+      setNote("Week updated.");
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Couldn't update your week.");
+    } finally {
+      setSavingWeeks(false);
     }
   };
 
@@ -147,6 +185,27 @@ export default function You({
         <p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 12 }}>
           Changing this changes the guidance you receive — a postpartum profile never shows pregnancy-week content.
         </p>
+
+        {/* Only for a pregnancy. A week is not a thing the other journeys have,
+            and offering the field to them would be the same fabrication as the
+            hardcoded "Week 24" this codebase already removed. */}
+        {journeyIsPregnant && (
+          <div style={{ marginTop: 16 }}>
+            <label className="field">
+              <span>How many weeks</span>
+              <input value={weeks} onChange={(e) => setWeeks(e.target.value)}
+                     inputMode="numeric" placeholder="e.g. 24" />
+            </label>
+            <p style={{ margin: "8px 0 0", color: "var(--muted)", fontSize: 12 }}>
+              Aira counts forward from the week you enter, so you only ever need
+              to correct it.
+            </p>
+            <button className="btn-ghost" style={{ marginTop: 10 }}
+                    onClick={saveWeeks} disabled={savingWeeks}>
+              {savingWeeks ? "Saving…" : "Update week"}
+            </button>
+          </div>
+        )}
         <button className="btn-primary" style={{ marginTop: 16 }} onClick={saveProfile} disabled={savingProfile}>
           {savingProfile ? "Saving…" : "Save profile"}
         </button>

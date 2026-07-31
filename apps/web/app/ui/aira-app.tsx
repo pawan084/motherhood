@@ -353,6 +353,11 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           {screen === "You" && (
             <You
               user={user} consent={consent} openTool={setTool}
+              // The week the person last typed, not the one counted forward
+              // from it — see TodayData.weeks_reported.
+              weeksReported={today?.weeks_reported ?? null}
+              journeyIsPregnant={today?.journey === "pregnant"}
+              onWeeksSaved={() => { refresh(); reloadJourney(); }}
               onProfileSaved={(u) => { setUser(u); refresh(); reloadJourney(); }}
               onConsentChanged={setConsent}
               onDeleted={onExit}
