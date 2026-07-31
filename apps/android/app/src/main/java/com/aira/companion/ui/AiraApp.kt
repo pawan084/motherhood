@@ -688,10 +688,18 @@ private fun destinationSubtitle(
         // changing under the logo as you moved between tabs, which reads as
         // three products rather than one. The subtitle now says which screen
         // you are on, which is the only thing that actually differs.
+        //
+        // Each of these describes the screen without renaming it: the tab says
+        // Care and the header says "Your care". You was the exception — the tab
+        // said You and the header said "Settings", so one screen answered to two
+        // names depending on where you looked, and neither was what the screen
+        // called itself. It leads with the person's name and holds an Account
+        // section, a "Privacy and settings" section and their data; settings are
+        // a part of it rather than the whole.
         MainDestination.Aira -> "Chat"
         MainDestination.Learn -> "Short videos"
         MainDestination.Care -> "Your care"
-        MainDestination.You -> "Settings"
+        MainDestination.You -> "Profile and privacy"
     }
 
 
