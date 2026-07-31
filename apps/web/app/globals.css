@@ -1411,3 +1411,24 @@ textarea:focus-visible, [tabindex]:focus-visible {
   border: 0; background: transparent; color: #fff;
   font-size: 12px; font-weight: 700; text-decoration: underline; padding: 2px 4px;
 }
+
+/* The "when to call" panel on Journey.
+   Amber rather than the page's lilac: it is the one block on a calm screen that
+   should catch the eye when someone is scanning for it in a hurry — but it is
+   not red, because nothing here is an emergency yet. Red is reserved for the
+   urgent handoff, and spending it on reference material would blunt it. */
+.call-tip {
+  background: var(--amber-mist, #fdf3e3);
+  border-color: var(--amber, #b26a00);
+}
+.call-tip .eyebrow {
+  color: var(--amber, #b26a00);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.call-tip-provenance {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--ink-muted, #6b6470);
+}

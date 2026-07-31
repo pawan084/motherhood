@@ -29,6 +29,41 @@ function setToken(t: string) {
   if (typeof localStorage !== "undefined") localStorage.setItem(TOKEN_KEY, t);
 }
 
+// The emergency profile, kept on the device so "Available offline" is true.
+//
+// Keyed by session token: a shared computer that signs out and back in as
+// somebody else must not show the first person's care-team number. Clearing the
+// session leaves the entry orphaned rather than readable, since the key can no
+// longer be derived.
+const EMERGENCY_KEY = "aira_emergency_profile";
+
+function emergencyCacheKey(): string | null {
+  const token = getToken();
+  return token ? `${EMERGENCY_KEY}:${token.slice(-24)}` : null;
+}
+
+function writeEmergencyCache(p: unknown) {
+  const key = emergencyCacheKey();
+  if (!key || typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(key, JSON.stringify(p));
+  } catch {
+    // A full or blocked store is not a reason to fail the request that
+    // succeeded; the caller already has the live copy.
+  }
+}
+
+function readEmergencyCache(): Record<string, string> | null {
+  const key = emergencyCacheKey();
+  if (!key || typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as Record<string, string>) : null;
+  } catch {
+    return null;
+  }
+}
+
 // One in-flight registration at a time: several screens mount together on first
 // load, and without this each would race to mint its own anonymous user.
 let registering: Promise<string> | null = null;
@@ -105,6 +140,14 @@ export type TodayData = {
   priorities: string[];
 };
 export type JourneySection = { title: string; text: string };
+/** What is worth a call rather than a wait, for a pregnancy week.
+ *
+ *  `reviewed` is false while the copy is the backend's in-code seed, which was
+ *  drafted from the app's own red-flag list rather than written by a clinician.
+ *  It turns true once an admin publishes an edit. The screen shows the
+ *  difference — claiming review it has not had would be the largest overclaim
+ *  in the product. */
+export type CallTip = { title: string; body: string; reviewed: boolean };
 export type JourneyData = {
   journey: Journey;
   title: string;
@@ -112,6 +155,10 @@ export type JourneyData = {
   this_week: string;
   body: string;
   sections: JourneySection[];
+  /** Absent for anyone not pregnant, and for a pregnancy with no known week —
+   *  the signals differ by stage, so without a week there is nothing honest to
+   *  say. */
+  call_tip?: CallTip;
 };
 
 export type User = {
@@ -455,9 +502,30 @@ export const AiraAPI = {
       "/v1/consent/history"),
 
   // emergency profile — the source of truth for the urgent dialer
-  emergencyProfile: () => req<EmergencyProfile>("/v1/emergency-profile"),
-  putEmergencyProfile: (p: EmergencyProfile) =>
-    req<EmergencyProfile>("/v1/emergency-profile", { method: "PUT", body: JSON.stringify(p) }),
+  //
+  // Kept in localStorage as well as fetched. The panel is badged "Available
+  // offline" and was not: with no connection the editor rendered every field
+  // blank, on the one screen holding the care-team number, the emergency
+  // contact and the allergies — wanted at exactly the moment someone may have
+  // neither signal nor patience.
+  //
+  // Blank was also dangerous rather than merely unhelpful. The endpoint replaces
+  // the stored profile with what it is sent, so saving from a form that failed
+  // to load would have written six empty fields over a real one.
+  emergencyProfile: async (): Promise<EmergencyProfile> => {
+    const p = await req<EmergencyProfile>("/v1/emergency-profile");
+    writeEmergencyCache(p);
+    return p;
+  },
+  /** The last profile seen on this device, or null if there has never been one. */
+  cachedEmergencyProfile: readEmergencyCache,
+  putEmergencyProfile: async (p: EmergencyProfile) => {
+    const saved = await req<EmergencyProfile>("/v1/emergency-profile", {
+      method: "PUT", body: JSON.stringify(p),
+    });
+    writeEmergencyCache(saved);
+    return saved;
+  },
 
   reportAnswer: (message: string, ref?: string) =>
     req("/v1/feedback/report", {

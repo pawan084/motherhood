@@ -4,7 +4,7 @@
 // week-banded server-side, and a postpartum user never receives fetal-week
 // cards, so nothing here needs to guess at the reader's stage.
 
-import { Activity, CalendarDays, Heart, Play } from "lucide-react";
+import { Activity, CalendarDays, Heart, Phone, Play } from "lucide-react";
 import { videoDurationLabel, type JourneyData, type VideoTopic } from "../aira-api";
 import { JOURNEY_LABEL, type Screen } from "./types";
 
@@ -70,6 +70,24 @@ export default function Journey({
           </span>
           <span className="journey-video-cta">Watch in Learn</span>
         </button>
+      )}
+
+      {/* What is worth a call rather than a wait, for this week.
+
+          Placed here rather than on Today: reference material you want to find
+          when you are worried, not another card competing for attention on a
+          calm morning. Every signal it names is already one the safety gate
+          ends a chat turn on — this says them before you need them. */}
+      {journey?.call_tip && (
+        <section className="panel call-tip" style={{ padding: 24, marginTop: 20 }}>
+          <p className="eyebrow"><Phone size={14} /> {journey.call_tip.title}</p>
+          <p style={{ margin: "10px 0 0" }}>{journey.call_tip.body}</p>
+          <p className="call-tip-provenance">
+            {journey.call_tip.reviewed
+              ? "Reviewed by your care provider's team."
+              : "General guidance, not reviewed by a clinician — your care team's advice comes first."}
+          </p>
+        </section>
       )}
 
       {journey?.this_week && (

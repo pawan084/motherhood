@@ -408,7 +408,35 @@ function PrivacyTool() {
 
 function EmergencyTool({ busy, run }: { busy: boolean; run: RunFn }) {
   const [p, setP] = useState<EmergencyProfile | null>(null);
-  useEffect(() => { AiraAPI.emergencyProfile().then(setP).catch(() => setP({})); }, []);
+  // Null while loading; `stale` once we are showing the device's copy because
+  // the server could not be reached.
+  const [stale, setStale] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
+  useEffect(() => {
+    AiraAPI.emergencyProfile().then(setP).catch(() => {
+      // This used to be `setP({})` — a blank form on the panel badged
+      // "Available offline". It made a failed load indistinguishable from an
+      // empty profile, and because the endpoint replaces rather than merges,
+      // pressing Save would have written six empty fields over a real
+      // care-team number.
+      const cached = AiraAPI.cachedEmergencyProfile();
+      if (cached) {
+        setP(cached as EmergencyProfile);
+        setStale(true);
+      } else {
+        setUnavailable(true);
+      }
+    });
+  }, []);
+  if (unavailable) {
+    return (
+      <p className="empty">
+        These details could not be loaded, and this device has no copy of them
+        yet. Nothing is shown rather than an empty form, because saving a blank
+        one would overwrite whatever is stored. Reconnect and reopen this panel.
+      </p>
+    );
+  }
   if (!p) return <div className="skeleton" style={{ height: 140 }} />;
   // The cast is needed because a computed key of type `keyof T` widens the
   // spread result to an index signature, which no longer matches T.
@@ -418,6 +446,13 @@ function EmergencyTool({ busy, run }: { busy: boolean; run: RunFn }) {
   return (
     <>
       <p>These details are what Urgent help dials. Without a number, Aira can only point you to local emergency services.</p>
+      {stale && (
+        <p className="not-sent">
+          Showing the copy saved on this device — the server could not be
+          reached. You can still read and dial these; changes will not save
+          until you are back online.
+        </p>
+      )}
       <div className="two-col">
         <label className="field"><span>Care team</span>
           <input value={p.care_team_name ?? ""} onChange={set("care_team_name")} placeholder="Clinic or doctor" /></label>
