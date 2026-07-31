@@ -49,6 +49,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aira.companion.BuildConfig
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
@@ -808,6 +809,26 @@ private fun OfflineNotice(onRetry: () -> Unit, modifier: Modifier = Modifier) {
                         "it's on the server waiting for you.",
                     style = MaterialTheme.typography.bodySmall,
                 )
+                // Debug builds only. "You're probably offline" is the right thing
+                // to tell someone using Aira, but during development it is
+                // frequently a lie: the commonest cause by far is an APK built
+                // without -PairaApiBase, which points at the emulator's 10.0.2.2
+                // and cannot resolve from a phone. That looked exactly like a
+                // dead tunnel and cost an hour of debugging the wrong layer.
+                //
+                // Naming the host turns "probably offline" into a fact you can
+                // check. Never shipped — a release user cannot act on a URL, and
+                // it would only expose infrastructure.
+                if (BuildConfig.DEBUG) {
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text(
+                        text = "Debug build — tried ${BuildConfig.AIRA_API_BASE}. " +
+                            "If that host isn't reachable from this device, rebuild " +
+                            "with -PairaApiBase=… rather than looking for a network " +
+                            "fault.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 Spacer(modifier = Modifier.size(12.dp))
                 TextButton(onClick = onRetry) { Text("Try again") }
             }
