@@ -1,0 +1,13 @@
+# Test-only dependencies. Pinned like requirements.txt — bump deliberately.
+#
+# This file did not exist. 315 tests ran only because pytest happened to be
+# installed on whoever's machine, which meant the suite had no declared way to
+# be installed and no way to run anywhere else. That is why CI could claim to
+# run it while no CI existed.
+#
+# Everything else the tests import (fastapi, httpx, pyjwt[crypto]) is a real
+# runtime dependency and lives in requirements.txt. Only pytest itself is
+# development-only.
+-r requirements.txt
+
+pytest==9.1.1

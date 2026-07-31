@@ -40,10 +40,15 @@ and `action_card` makes this fail, and reintroducing `trust_label` does not.
 the network layer and died one storey later, where this check cannot see.
 
 So this closes the hole the bugs actually came through and leaves a smaller one
-behind it. Catching the rest means asserting against a rendered tree, which is an
-instrumentation test, not a grep. Worth writing; not written yet. Saying so here
-is cheaper than someone later assuming a green suite means every field is on a
-screen.
+behind it. Catching the rest means asserting against a rendered tree, which is
+an instrumentation test, not a grep.
+
+That test now exists: apps/android/app/src/androidTest/.../ChatBubbleRenderTest.kt
+covers the three fields that were real bugs, and was confirmed to fail when
+they are reintroduced. The two files answer different questions and neither
+replaces the other — this one asks whether a field escapes the network layer,
+that one asks whether it reaches a person's eyes. `trust_label` passed the
+first and failed the second, which is the whole reason both exist.
 
 ── The field list is only as good as the fixture ──
 
