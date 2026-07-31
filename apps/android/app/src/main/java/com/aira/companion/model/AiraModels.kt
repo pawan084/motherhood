@@ -41,22 +41,32 @@ enum class MainDestination(
 }
 
 /**
- * The four in the bottom bar.
+ * Two either side of the raised chat button.
  *
  * Six was two too many — Material tops out at five, and at a raised font scale
- * six single-line labels on a 360dp screen truncate. But the real problem was
- * not the count: Journey and Learn were doing one job between them ("understand
- * where you are", reading and watching), and Today and Journey both drew a
- * section headed "Where you are".
+ * six single-line labels on a 360dp screen truncate. Cutting to three fixed
+ * that and created a different problem: a raised centre button needs flankers.
+ * With three slots the centre one is an empty spacer, so Today sat at one sixth
+ * of the width and Care at five sixths, each pinned to an edge with a gulf
+ * around the button. On a device it reads as a bar with things missing from it.
  *
- * Learn and You are still destinations, reached from Journey and from the
- * header. A screen does not have to be a tab to be one tap away, and back
- * returns to Today from both.
+ * That is a layout fact rather than a matter of taste: apps that raise a centre
+ * action put two items on each side, and apps with three tabs keep them flat and
+ * equal. Three slots plus a raised centre is the one combination almost nobody
+ * ships.
+ *
+ * So the two screens that were only reachable by tapping through something else
+ * come back as the flankers. Journey was behind a card on Today, and You behind
+ * the header avatar — both recurring destinations that were costing two taps to
+ * reach. Learn stays inside Journey: it is the one screen here whose traffic has
+ * not yet earned a permanent quarter of the bar.
  */
 val bottomBarDestinations: List<MainDestination> = listOf(
     MainDestination.Today,
+    MainDestination.Journey,
     MainDestination.Aira,
     MainDestination.Care,
+    MainDestination.You,
 )
 
 enum class JourneyType(
@@ -121,6 +131,15 @@ data class ChatMessage(
      *  bleeding since this morning", believing it was received is the worst
      *  outcome available. */
     val failed: Boolean = false,
+    /** The backend screened this turn as raised concern and asked for the
+     *  medical disclaimer to be shown with the reply.
+     *
+     *  The flag was parsed off the wire and then read by nothing, so an amber
+     *  turn — swelling late in pregnancy, say — was presented exactly like an
+     *  ordinary one. The web client had always rendered it; only Android
+     *  dropped it, which is the worst shape for this kind of bug: the safety
+     *  work happens, and is discarded silently at the last step. */
+    val disclaimer: Boolean = false,
 )
 
 data class OnboardingAnswer(

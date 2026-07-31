@@ -314,6 +314,10 @@ fun ChatBubble(
     /** Aira replies only, and only until it has been answered. */
     onRate: ((helpful: Boolean) -> Unit)? = null,
     rated: Boolean = false,
+    /** The backend screened this turn as raised concern and asked for the
+     *  medical disclaimer. Rendered inside the bubble, attached to the answer
+     *  it qualifies, rather than as a banner somewhere else on the screen. */
+    disclaimer: Boolean = false,
 ) {
     val clipboard = LocalClipboardManager.current
     val haptics = rememberAiraHaptics()
@@ -374,6 +378,14 @@ fun ChatBubble(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
                 )
+                if (disclaimer) {
+                    Spacer(modifier = Modifier.height(7.dp))
+                    Text(
+                        text = "This isn’t medical advice — please check with your care team.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (fromAira) InkMuted else Paper.copy(alpha = 0.85f),
+                    )
+                }
                 if (at != null && at > 0) {
                     Spacer(modifier = Modifier.height(5.dp))
                     Text(
@@ -517,13 +529,17 @@ private val destinationIcons =
     )
 
 /**
- * Three destinations, with the conversation raised out of the row.
+ * Five slots, with the conversation raised out of the middle one.
  *
- * Aira is not a peer of the other two. Today and Care are where the results of
- * a conversation are kept; the conversation is the product. As a same-sized tab
- * between them it read as one of three filing cabinets, so it is now a filled
- * circle lifted above the bar — the one thing on the screen that looks pressable
- * from across a room.
+ * Aira is not a peer of the other four. Today, Journey, Care and You are where
+ * the results of a conversation are kept; the conversation is the product. As a
+ * same-sized tab between them it read as one of several filing cabinets, so it
+ * is now a filled circle lifted above the bar — the one thing on the screen that
+ * looks pressable from across a room.
+ *
+ * Two flankers a side is what makes that raise legible. See
+ * [bottomBarDestinations] for why three slots and a raised centre was the wrong
+ * shape.
  *
  * Raised with an offset inside a Box that reserves the extra height, rather than
  * by letting it overflow. An overflowing child is clipped by the Scaffold slot on
@@ -546,8 +562,8 @@ fun AiraBottomNavigation(
         ) {
             bottomBarDestinations.forEach { destination ->
                 if (destination == MainDestination.Aira) {
-                    // Its slot stays in the row so the other two keep their
-                    // thirds; the button itself is drawn above, in the Box.
+                    // Its slot stays in the row so the other four keep their
+                    // fifths; the button itself is drawn above, in the Box.
                     Spacer(modifier = Modifier.weight(1f))
                     return@forEach
                 }

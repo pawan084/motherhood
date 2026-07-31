@@ -251,7 +251,6 @@ private fun MainExperience(
                     notificationCount = updatesCount(state.careData),
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
-                    onOpenYou = { viewModel.selectDestination(MainDestination.You) },
                     onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                 )
             },
@@ -589,7 +588,6 @@ private fun AiraAppHeader(
     notificationCount: Int,
     weeks: Int?,
     journey: String?,
-    onOpenYou: () -> Unit,
     onUrgentHelp: () -> Unit,
 ) {
     Surface(
@@ -618,20 +616,18 @@ private fun AiraAppHeader(
                     color = InkMuted,
                 )
             }
-            // You, where the bell used to be.
+            // Nothing sits here now.
             //
-            // The bell opened a notifications sheet built from updatesCount —
+            // A bell lived here first, opening a sheet built from updatesCount —
             // the same count, from the same care data, that Today already lists
             // under what needs attention. Two doors onto one thing, one of them
-            // a glyph with a number on it. Today keeps the job; this slot now
-            // reaches profile, privacy and your data, which came off the tab bar.
-            IconButton(onClick = onOpenYou) {
-                Icon(
-                    imageVector = Icons.Outlined.AccountCircle,
-                    contentDescription = "Your profile, privacy and data",
-                    tint = Ink,
-                )
-            }
+            // a glyph with a number on it. It became the way into You while You
+            // was off the tab bar; You is a tab again, so keeping the avatar
+            // would repeat the bell's mistake with a different glyph.
+            //
+            // The header is left with the one control that has to be reachable
+            // from every screen and cannot wait for a tab press.
+
             // The urgent control carries its own name.
             //
             // It was a red circle with a shield glyph and no text — on the one
