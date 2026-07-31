@@ -35,6 +35,7 @@ export const JOURNEY_LABEL: Record<string, string> = {
   trying: "Trying to conceive",
   pregnant: "Pregnant",
   postpartum: "Postpartum",
+  loss: "After a loss",
   exploring: "Exploring",
 };
 

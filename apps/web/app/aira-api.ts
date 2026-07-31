@@ -110,7 +110,7 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
 }
 
 // ── types ─────────────────────────────────────────────────────────────────
-export type Journey = "trying" | "pregnant" | "postpartum" | "exploring";
+export type Journey = "trying" | "pregnant" | "postpartum" | "loss" | "exploring";
 export type SafetyLevel = "green" | "amber" | "red";
 export type ActionCard = { tool: string; title: string; detail: string } | null;
 export type UrgentHelp = {

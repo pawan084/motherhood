@@ -39,7 +39,7 @@ GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 _GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 _GOOGLE_CERTS = "https://www.googleapis.com/oauth2/v3/certs"
 
-VALID_JOURNEYS = {"trying", "pregnant", "postpartum", "exploring"}
+VALID_JOURNEYS = {"trying", "pregnant", "postpartum", "loss", "exploring"}
 
 router = APIRouter(tags=["accounts"])
 _conn = None

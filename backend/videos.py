@@ -199,6 +199,20 @@ def video_for_week(journey: str | None, week: int | None) -> dict | None:
 
 
 def _for_journey(journey: str | None) -> list[dict]:
+    # After a loss: nothing.
+    #
+    # Not a filtered subset — nothing. The on-demand library is 63 topics of
+    # pregnancy symptoms, labour and delivery, and newborn care, and falling
+    # through to it would hand somebody who has just had a miscarriage a list
+    # beginning "Nausea and Vomiting in Pregnancy". No amount of category
+    # filtering makes that catalogue safe here, because it was written for
+    # people who are still pregnant.
+    #
+    # An empty library that says so is the honest state until loss-appropriate
+    # content exists and a clinician has read it. This is the same rule the rest
+    # of the app follows: show nothing rather than something wrong.
+    if journey == "loss":
+        return []
     if journey in ("trying", "pregnant", "postpartum"):
         return [t for t in _TOPICS if journey in t["journeys"]]
     # `exploring` / unknown: the on-demand library, never stage-specific cards.

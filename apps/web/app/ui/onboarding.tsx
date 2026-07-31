@@ -20,6 +20,9 @@ const JOURNEYS: { value: Journey; label: string; detail: string; icon: typeof He
   { value: "trying", label: "Trying to conceive", detail: "Planning and preconception support", icon: Heart },
   { value: "pregnant", label: "Pregnant", detail: "Week-by-week maternal guidance", icon: Sparkles },
   { value: "postpartum", label: "Postpartum", detail: "Recovery and newborn rhythm", icon: Users },
+  // Offered in first-run, not hidden in settings: somebody may be arriving here
+  // because of it. The detail line promises only what the app will do.
+  { value: "loss", label: "After a loss", detail: "Support at your own pace, asking nothing of you", icon: Heart },
   { value: "exploring", label: "Exploring", detail: "Look around before deciding", icon: BookOpen },
 ];
 

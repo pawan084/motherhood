@@ -15,7 +15,7 @@ import {
 } from "../aira-api";
 import { JOURNEY_LABEL, type ToolName } from "./types";
 
-const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "exploring"];
+const JOURNEYS: Journey[] = ["trying", "pregnant", "postpartum", "loss", "exploring"];
 
 export default function You({
   user, consent, openTool, onProfileSaved, onConsentChanged, onDeleted,

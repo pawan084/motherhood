@@ -1861,6 +1861,7 @@ class AiraViewModel(
             JourneyType.Trying -> "trying"
             JourneyType.Pregnant -> "pregnant"
             JourneyType.Postpartum -> "postpartum"
+            JourneyType.Loss -> "loss"
             else -> "exploring"
         }
     }

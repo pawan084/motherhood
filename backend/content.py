@@ -52,6 +52,29 @@ _SEED = {
             {"title": "When to ask", "text": "Signs worth contacting your care team about"},
         ],
     },
+    # After a loss.
+    #
+    # A separate stage rather than a flag on another one, because every other
+    # stage in this app is a direction of travel and this one is not. Someone
+    # who has had a miscarriage previously had to pick "Trying to conceive" —
+    # which offers conception content — or "Just exploring", which says nothing
+    # happened. Both are wrong and one is cruel.
+    #
+    # The copy asks for nothing. It does not mention trying again, does not
+    # count anything, does not say "when you are ready" — because that is still
+    # a nudge toward a next step, from an app whose job here is to not be one.
+    "loss": {
+        "title": "After a loss",
+        "this_week": "There is nothing you need to do here",
+        "body": "Aira will keep hold of appointments, medicines and questions "
+                "for as long as that is useful, and will not ask you for "
+                "anything else.",
+        "sections": [
+            {"title": "Your body", "text": "Physical recovery, and what is worth asking about"},
+            {"title": "Support", "text": "People to talk to, when and if you want them"},
+            {"title": "When to ask", "text": "Signs worth contacting your care team about"},
+        ],
+    },
     "exploring": {
         "title": "Exploring with Aira",
         "this_week": "Look around at your own pace",
@@ -307,6 +330,14 @@ def next_action(journey: str, priorities: list[str] | None = None) -> dict:
     if journey == "trying":
         return {"tool": "checkin", "title": "Log today's check-in",
                 "detail": "Small, steady notes help you see your pattern.", "minutes": 2}
+    if journey == "loss":
+        # Today proposes one thing to everybody else. Here it proposes the one
+        # thing that asks nothing of you and can be ignored without cost. A
+        # check-in would be a question, and a care-plan prompt would be an
+        # errand; neither is something to put in front of somebody this week.
+        return {"tool": "wellness", "title": "A two-minute reset",
+                "detail": "Only if it would help. Nothing here needs doing.",
+                "minutes": 2}
     return {"tool": "careplan", "title": "Set up your care context",
             "detail": "Tell Aira where you are, at your pace.", "minutes": 3}
 

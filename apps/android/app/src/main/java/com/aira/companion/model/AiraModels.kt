@@ -77,6 +77,10 @@ enum class JourneyType(
     Trying("Trying to conceive", "Cycle-aware wellness and preparation"),
     Pregnant("Pregnant", "Week-by-week guidance and care planning"),
     Postpartum("Postpartum", "Recovery, feeding and emotional support"),
+    // Sits after Postpartum and before Exploring: in the order somebody scans,
+    // it belongs with the stages rather than filed at the end as an
+    // afterthought. The supporting line promises only what the app will do.
+    Loss("After a loss", "Support at your own pace, asking nothing of you"),
     Exploring("Just exploring", "See how Aira can support your journey"),
 }
 
@@ -323,6 +327,7 @@ fun journeyLabel(journey: String?): String =
         "trying" -> "Trying to conceive"
         "pregnant" -> "Pregnant"
         "postpartum" -> "Postpartum"
+        "loss" -> "After a loss"
         else -> "Exploring"
     }
 

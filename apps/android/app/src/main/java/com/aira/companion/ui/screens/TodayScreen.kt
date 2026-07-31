@@ -94,7 +94,19 @@ fun TodayScreen(
     // No invented name. The fallback used to greet every user as "Maya" — a
     // stranger's name on a private health app.
     val name = today?.name?.ifBlank { null }
-    val priorities = today?.priorities.orEmpty()
+    // After a loss, two things on this card stop making sense.
+    //
+    // The ring is a countdown with nothing to count, and rendering it with the
+    // journey's first letter produces a large "A" above the word "stage" —
+    // furniture where a pregnancy used to be, on the screen where that is
+    // hardest to look at.
+    //
+    // The priorities were chosen during a different stage. "Understand changes"
+    // meant pregnancy changes; repeating it back as something this person asked
+    // for is the app quoting them out of context. They are hidden rather than
+    // deleted — if the journey changes again they are still theirs.
+    val afterLoss = today?.journey.equals("loss", ignoreCase = true)
+    val priorities = if (afterLoss) emptyList() else today?.priorities.orEmpty()
     // The chip used to read "Week 24" — the same string the app bar shows two
     // rows above it, and the same one the ring below repeats. Today had no date
     // anywhere, so the word "today" was never anchored to one; that is what
@@ -249,16 +261,19 @@ fun TodayScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = weeks?.toString() ?: journeyLabel(today?.journey).take(1),
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = Plum,
-                            )
-                            Text(
-                                text = if (weeks != null) "weeks" else "stage",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = InkMuted,
-                            )
+                            if (!afterLoss) {
+                                Text(
+                                    text = weeks?.toString()
+                                        ?: journeyLabel(today?.journey).take(1),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    color = Plum,
+                                )
+                                Text(
+                                    text = if (weeks != null) "weeks" else "stage",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = InkMuted,
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.width(16.dp))
