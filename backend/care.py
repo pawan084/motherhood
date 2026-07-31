@@ -39,6 +39,9 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS care_context ("
               " user_id TEXT PRIMARY KEY, weeks INTEGER, priorities TEXT DEFAULT '[]',"
               " updated REAL)")
+    # Added after the table shipped, so a migration rather than a column above:
+    # `CREATE TABLE IF NOT EXISTS` would skip it on every existing install.
+    accounts._add_column_if_missing(c, "care_context", "due_date", "TEXT")
     c.execute("CREATE TABLE IF NOT EXISTS care_items ("
               " id TEXT PRIMARY KEY, user_id TEXT, kind TEXT, data TEXT,"
               " done INTEGER DEFAULT 0, created REAL)")
@@ -92,15 +95,52 @@ def current_weeks(reported: int | None, reported_at: float | None,
 def _context(uid: str) -> dict:
     init()
     row = _conn.execute(
-        "SELECT weeks, priorities, updated FROM care_context WHERE user_id=?", (uid,)).fetchone()
+        "SELECT weeks, priorities, updated, due_date FROM care_context WHERE user_id=?",
+        (uid,)).fetchone()
     if not row:
-        return {"weeks": None, "priorities": [], "weeks_reported": None}
+        return {"weeks": None, "priorities": [], "weeks_reported": None, "due_date": None}
+    due = row[3]
     return {
-        "weeks": current_weeks(row[0], row[2]),
+        # A due date is exact and a reported week drifts, so the date wins when
+        # there is one. See weeks_from_due_date.
+        "weeks": weeks_from_due_date(due) if due else current_weeks(row[0], row[2]),
         "priorities": json.loads(row[1] or "[]"),
         # What they actually typed, for an editor to prefill with.
         "weeks_reported": row[0],
+        "due_date": due,
     }
+
+
+def weeks_from_due_date(due: str | None, now: float | None = None) -> int | None:
+    """The current pregnancy week, derived from the due date.
+
+    Why this is better than the week somebody typed: it cannot drift. A reported
+    week is a measurement of a moment, and `current_weeks` has to advance it by
+    guessing that no time was lost between the appointment and the typing. A due
+    date is a fixed point — the week falls out of it exactly, for ever, and
+    nobody has to come back and correct anything.
+
+    It is also the number a clinician gave them, which means it is the number
+    they can check against their notes.
+
+    Counted as 40 weeks minus the time remaining, and refused outside a sane
+    range for the same reason `current_weeks` stops at MAX_TRACKED_WEEK: a
+    pregnancy that ended without us being told should produce silence, not
+    "week 61".
+    """
+    if not due:
+        return None
+    try:
+        d = datetime.date.fromisoformat(due.strip())
+    except (ValueError, AttributeError):
+        return None
+    today = (datetime.datetime.fromtimestamp(now).date() if now
+             else datetime.date.today())
+    days_to_go = (d - today).days
+    weeks = 40 - (days_to_go // 7)
+    if weeks < 1 or weeks > MAX_TRACKED_WEEK:
+        return None
+    return weeks
 
 
 def _add_item(uid: str, kind: str, data: dict, client_id: str | None = None) -> dict:
@@ -217,6 +257,9 @@ def onboarding(body: OnboardingIn, uid: str = Depends(current_user)):
 class CareContextIn(BaseModel):
     weeks: int | None = None
     priorities: list[str] | None = None
+    # ISO date. Setting one makes it the source of truth for the week, because
+    # it cannot drift; clearing it ("") falls back to the reported week.
+    due_date: str | None = None
 
 
 @router.patch("/care/context")
@@ -249,11 +292,32 @@ def update_care_context(body: CareContextIn, uid: str = Depends(current_user)):
     if body.priorities is not None:
         priorities = [str(p)[:60] for p in body.priorities][:5]
 
+    row = _conn.execute("SELECT due_date FROM care_context WHERE user_id=?", (uid,)).fetchone()
+    due = row[0] if row else None
+    if body.due_date is not None:
+        given = body.due_date.strip()
+        if given == "":
+            # An explicit clear. Falls back to the reported week rather than
+            # leaving somebody with no week at all.
+            due = None
+        else:
+            # Validated here rather than trusted, and bounded: a date that is
+            # years away is a typo, and deriving "week -160" from it would be
+            # worse than refusing.
+            if weeks_from_due_date(given) is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="a due date should be within the next 40 weeks")
+            due = given
+        updated = time.time()
+
     _conn.execute(
-        "INSERT INTO care_context (user_id, weeks, priorities, updated) VALUES (?,?,?,?) "
+        "INSERT INTO care_context (user_id, weeks, priorities, updated, due_date) "
+        "VALUES (?,?,?,?,?) "
         "ON CONFLICT(user_id) DO UPDATE SET weeks=excluded.weeks, "
-        "priorities=excluded.priorities, updated=excluded.updated",
-        (uid, weeks, json.dumps(priorities), updated))
+        "priorities=excluded.priorities, updated=excluded.updated, "
+        "due_date=excluded.due_date",
+        (uid, weeks, json.dumps(priorities), updated, due))
     _conn.commit()
     return _context(uid)
 
@@ -721,6 +785,67 @@ def delete_item(item_id: str, uid: str = Depends(current_user)):
     # layer down.
     _delete_document_file(uid, item_id)
     return {"ok": True}
+
+
+# ── contractions ─────────────────────────────────────────────────────────────
+
+class ContractionIn(_CreateIn):
+    """One contraction: how long it lasted, and how long since the last one."""
+    seconds: int
+    since_previous_seconds: int | None = None
+
+
+@router.post("/care/contractions")
+def add_contraction(body: ContractionIn, uid: str = Depends(current_user)):
+    """Record one contraction.
+
+    ── What this does not do ──
+
+    The spec this came from asks for a contraction timer "with automated
+    hospital departure alerts". That second half is not built and should not be:
+    deciding when somebody should leave for hospital is a clinical judgement
+    that depends on parity, distance, how the pregnancy has gone and what their
+    midwife told them. An app that says "time to go" is either repeating a rule
+    it cannot know applies, or inventing one — and an app that stays silent
+    while somebody waits for it to speak is worse still.
+
+    So this counts and times, and nothing else. No 5-1-1 rule, no "active
+    labour" banner, no alert. The pattern it records is the thing a midwife asks
+    for on the phone — how long, how far apart, for how long now — and having it
+    written down is the whole contribution.
+    """
+    if body.seconds < 0 or (body.since_previous_seconds or 0) < 0:
+        raise HTTPException(status_code=400, detail="durations cannot be negative")
+    return _add_item(uid, "contraction", body.model_dump(), body.client_id)
+
+
+@router.get("/care/contractions")
+def contractions(limit: int = 60, uid: str = Depends(current_user)):
+    """Recent contractions, newest first, with the pattern of the last hour.
+
+    `recent` describes what has happened, in the words somebody would use on the
+    phone to their midwife. It draws no conclusion from it.
+    """
+    items = _list_items(uid, "contraction")
+    items.sort(key=lambda i: i.get("created") or 0, reverse=True)
+    return {"items": items[:max(1, min(limit, 200))], "recent": _contraction_pattern(items)}
+
+
+def _contraction_pattern(items: list[dict]) -> dict | None:
+    """Count, typical length and typical gap over the last hour, or None."""
+    cutoff = time.time() - 3600
+    hour = [i for i in items if (i.get("created") or 0) >= cutoff]
+    if len(hour) < 2:
+        return None
+    lengths = sorted(int(i.get("seconds") or 0) for i in hour)
+    gaps = sorted(int(i.get("since_previous_seconds") or 0)
+                  for i in hour if i.get("since_previous_seconds"))
+    mid = len(lengths) // 2
+    return {
+        "count": len(hour),
+        "typical_seconds": lengths[mid],
+        "typical_gap_seconds": gaps[len(gaps) // 2] if gaps else None,
+    }
 
 
 # ── fetal movements ──────────────────────────────────────────────────────────
