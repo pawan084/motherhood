@@ -87,7 +87,6 @@ enum class AiraTool(
     // Eyebrows name the subject, not the machinery. "Aira tool", "Notification
     // centre" and "Conversation settings" described the app's own furniture to
     // someone who only wants to know what the sheet is for.
-    Notifications("Updates", "What needs you"),
     CheckIn("How are you?", "Daily check-in"),
     Reminder("Create a reminder", "Reminders"),
     Medicines("Medicines", "Your routine"),
@@ -102,7 +101,6 @@ enum class AiraTool(
     // for the tool should be. The caution belongs in the sheet, next to the
     // thing being cautioned about, not as the name of the feature.
     Symptom("Log a symptom", "Symptoms & changes"),
-    Companion("Companion mode", "Avatar & connection"),
     CarePlan("Your care plan", "Built from your reminders"),
     Privacy("Privacy centre", "Your data"),
     Memory("What Aira remembers", "Everything it knows"),
@@ -532,7 +530,7 @@ data class AiraUiState(
 /**
  * How many things are actually waiting in the updates list.
  *
- * Counts exactly what NotificationsTool renders — appointments, medicines due,
+ * Counts what needs attention — appointments, medicines due,
  * and reminders still open — so the badge and the list can never disagree.
  */
 fun updatesCount(care: CareData?): Int =

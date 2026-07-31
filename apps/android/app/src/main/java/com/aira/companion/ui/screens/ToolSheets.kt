@@ -54,11 +54,9 @@ import androidx.compose.material.icons.outlined.MedicalInformation
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.Memory
 import androidx.compose.material.icons.outlined.Mic
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.SentimentSatisfied
@@ -332,7 +330,7 @@ fun DynamicToolSheet(
         ) { saved -> if (saved) pickedDocument = cameraTarget else cameraTarget = null }
 
     // The self/partner photo pickers that used to live here are gone with the
-    // future-baby story's picker UI — see CompanionTool.
+    // future-baby story, which was removed along with companion mode.
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -364,7 +362,6 @@ fun DynamicToolSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             when (tool) {
-                AiraTool.Notifications -> NotificationsTool(care)
                 AiraTool.CheckIn -> CheckInTool(actions, onDismiss)
                 AiraTool.Reminder -> ReminderTool(actions, onDismiss, editingReminder)
                 AiraTool.Medicines -> MedicinesTool(actions, care, onDismiss)
@@ -391,7 +388,6 @@ fun DynamicToolSheet(
                     )
                 AiraTool.Reset -> ResetTool()
                 AiraTool.Symptom -> SymptomTool(actions, onUrgentHelp, onDismiss)
-                AiraTool.Companion -> CompanionTool()
                 AiraTool.CarePlan -> CarePlanTool(care, actions)
                 AiraTool.Privacy -> PrivacyTool(actions, consent)
                 AiraTool.Memory -> MemoryTool(actions, memory)
@@ -427,54 +423,6 @@ private fun ToolHeader(
     }
 }
 
-@Composable
-private fun NotificationsTool(care: CareData?) {
-    // Derived from real state, not a fixed list. This used to announce an
-    // appointment with Dr. Meera Shah, a prenatal vitamin and a "Week 24 guide"
-    // to every user regardless of what they had entered.
-    val items = buildList {
-        care?.appointments?.forEach {
-            add(Triple(it.subtitle.ifBlank { "Appointment" }, it.title, Icons.Outlined.CalendarMonth))
-        }
-        care?.medicinesDue?.forEach {
-            add(Triple(it.subtitle.ifBlank { "Due" }, "${it.title} is due", Icons.Outlined.Medication))
-        }
-        care?.reminders?.filterNot { it.done }?.forEach {
-            add(Triple(it.subtitle.ifBlank { "Reminder" }, it.title, Icons.Outlined.AccessTime))
-        }
-    }
-
-    if (items.isEmpty()) {
-        InfoBanner(
-            Icons.Outlined.CheckCircle,
-            "You're caught up. Aira surfaces something here only when it genuinely matters.",
-            SageMist,
-        )
-        return
-    }
-
-    items.forEachIndexed { index, (time, title, icon) ->
-        AiraCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(42.dp)
-                            .background(if (index == 0) LilacMist else SageMist, RoundedCornerShape(13.dp)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(icon, null, tint = if (index == 0) Plum else SageDeep)
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(time, style = MaterialTheme.typography.labelSmall, color = PlumSoft)
-                    Text(title, style = MaterialTheme.typography.titleSmall, color = Ink)
-                }
-            }
-        }
-        Spacer(Modifier.height(9.dp))
-    }
-}
 
 @Composable
 private fun CheckInTool(actions: ToolActions, onDismiss: () -> Unit) {
@@ -1062,89 +1010,6 @@ private fun SymptomTool(
     )
 }
 
-/**
- * Companion mode — the one tool in this sheet that is still unbuilt.
- *
- * Both halves need a service this project doesn't have: the talking avatar needs
- * speech synthesis and lip-sync, the future-baby story needs image generation.
- * They previously showed "Talking avatar mode selected." and "Private
- * illustrative story preview created." and produced nothing at all.
- *
- * They are labelled and disabled rather than silently faked — and the photo
- * pickers and consent checkbox that fed the story preview are gone, because
- * asking someone to hand over their and their partner's photos for a feature
- * that cannot run is a worse version of the same lie.
- */
-@Composable
-private fun CompanionTool() {
-    var mode by remember { mutableStateOf("Aira avatar") }
-    ChoiceChips(
-        options = listOf("Aira avatar", "Future-baby story"),
-        selected = mode,
-        onSelect = { mode = it },
-    )
-    Spacer(Modifier.height(16.dp))
-
-    if (mode == "Aira avatar") {
-        AiraCard(containerColor = LilacMist) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BrandOrb()
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text("Aira · warm avatar", style = MaterialTheme.typography.titleMedium, color = Ink)
-                    Text("Lip-synced voice conversation", style = MaterialTheme.typography.bodySmall, color = InkMuted)
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-            InfoBanner(
-                icon = Icons.Outlined.Mic,
-                text = "The talking avatar isn't wired up in this build — it needs spoken " +
-                    "replies, which Aira doesn't have yet.",
-                color = AmberMist,
-                contentColor = Amber,
-            )
-            Spacer(Modifier.height(12.dp))
-            PrimaryButton(
-                label = "Use talking avatar",
-                onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-                enabled = false,
-                trailingIcon = Icons.Outlined.RecordVoiceOver,
-            )
-        }
-    } else {
-        AiraCard {
-            Text("A gentle imagined character", style = MaterialTheme.typography.titleMedium, color = Ink)
-            Text(
-                "A private connection experience — not a prediction.",
-                style = MaterialTheme.typography.bodySmall,
-                color = InkMuted,
-            )
-            Spacer(Modifier.height(14.dp))
-            InfoBanner(
-                icon = Icons.Outlined.Security,
-                text = "Illustrative only — not a prediction of appearance, health, personality or genetics.",
-                color = AmberMist,
-                contentColor = Amber,
-            )
-            Spacer(Modifier.height(12.dp))
-            InfoBanner(
-                icon = Icons.Outlined.AutoAwesome,
-                text = "Story previews aren't wired up in this build, so Aira doesn't ask for " +
-                    "your photos yet. Nothing is generated and nothing is uploaded.",
-                color = AmberMist,
-                contentColor = Amber,
-            )
-            Spacer(Modifier.height(12.dp))
-            PrimaryButton(
-                label = "Create private preview",
-                enabled = false,
-                onClick = {},
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-    }
-}
 
 @Composable
 private fun CarePlanTool(care: CareData?, actions: ToolActions) {
