@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.ChatMessage
+import com.aira.companion.model.chatTipFor
 import com.aira.companion.model.quickPromptsFor
 import com.aira.companion.model.toolForActionCard
 import com.aira.companion.model.AiraUiState
@@ -179,6 +180,34 @@ fun AiraChatScreen(
             // below stay, because they are inputs to a conversation rather than
             // a second dashboard — a blank composer is the worst discoverability
             // in the app.
+
+            // Shown only while the conversation is still just the greeting.
+            // Once someone is actually talking it is in the way, and a tip that
+            // outstays its usefulness is the thing people learn to scroll past.
+            if (state.messages.size <= 1) {
+                item {
+                    val tip = chatTipFor(state.todayData?.journey)
+                    Surface(
+                        color = LilacMist,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(modifier = Modifier.padding(15.dp)) {
+                            Text(
+                                text = tip.eyebrow.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Plum,
+                            )
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = tip.text,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Ink,
+                            )
+                        }
+                    }
+                }
+            }
 
             item {
                 Row(

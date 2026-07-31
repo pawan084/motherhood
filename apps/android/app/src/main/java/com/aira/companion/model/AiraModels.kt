@@ -150,6 +150,48 @@ data class ChatMessage(
     val card: ActionCard? = null,
 )
 
+/** A short orienting line above the composer, shown only while the
+ *  conversation is still empty. */
+data class ChatTip(val eyebrow: String, val text: String)
+
+/**
+ * What Aira can do for you, said once, where the conversation starts.
+ *
+ * Two things this deliberately is not.
+ *
+ * It is not clinical. Nothing here tells anyone what is normal, what to worry
+ * about, or when to call — that copy is clinician-authored, lives in the
+ * backend's content table where an admin can correct it, and is already shown
+ * on Today and Journey. A tip hardcoded in the client is a medical claim nobody
+ * reviewed and nobody can edit without a release.
+ *
+ * It is not a proposal. Today proposes the one thing that matters; this says
+ * what the conversation is for. Repeating Today's suggestion here is the exact
+ * duplication that got the chat's old "Suggested for you" card removed.
+ */
+fun chatTipFor(journey: String?): ChatTip = when (journey?.trim()?.lowercase()) {
+    "pregnant" -> ChatTip(
+        "While you're expecting",
+        "Aira can gather the questions worth asking before a visit, and keep " +
+            "what you've noticed in one place.",
+    )
+    "postpartum" -> ChatTip(
+        "After birth",
+        "Aira can keep track of feeding, sleep and how you're doing, so you " +
+            "are not holding all of it in your head.",
+    )
+    "trying" -> ChatTip(
+        "While you're trying",
+        "Aira can keep track of what you notice and help you prepare what to " +
+            "ask, at whatever pace suits you.",
+    )
+    else -> ChatTip(
+        "What Aira is for",
+        "Reminders, notes and questions in one place — and a clear signal when " +
+            "something is worth taking to your care team.",
+    )
+}
+
 /** One of the chips above the composer. [tool] is set when tapping it should
  *  open a sheet rather than send the text as a message. */
 data class QuickPrompt(val label: String, val tool: AiraTool? = null)

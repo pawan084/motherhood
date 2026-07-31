@@ -1,5 +1,11 @@
 package com.aira.companion.ui.components
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
 import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.ui.draw.alpha
 import androidx.compose.animation.core.tween
@@ -714,6 +720,9 @@ fun AiraBottomNavigation(
 ) {
     val haptics = rememberAiraHaptics()
     val lift = 26.dp
+    // Read once for the whole bar: someone who has turned animation off at the
+    // system level has said so, and should not have to say it per control.
+    val motion = animationsEnabled()
     Box(modifier = modifier.fillMaxWidth()) {
         NavigationBar(
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -739,10 +748,28 @@ fun AiraBottomNavigation(
                         onSelect(destination)
                     },
                     icon = {
+                        // A small spring on the tab you just moved to.
+                        //
+                        // The bar was a filled icon swapping for an outlined one
+                        // with nothing in between, which reads as a screenshot
+                        // changing rather than as a thing responding to a touch.
+                        // Deliberately slight: this is a place people press
+                        // dozens of times a day, and anything with a bounce in it
+                        // stops being pleasant by the third press.
+                        val scale by animateFloatAsState(
+                            targetValue = if (selectedItem && motion) 1.12f else 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                            label = "tab-icon-${destination.name}",
+                        )
                         Icon(
                             imageVector = if (selectedItem) icon.active else icon.inactive,
                             contentDescription = null,
-                            modifier = Modifier.size(22.dp),
+                            modifier = Modifier
+                                .size(22.dp)
+                                .graphicsLayer { scaleX = scale; scaleY = scale },
                         )
                     },
                     label = {
@@ -765,6 +792,26 @@ fun AiraBottomNavigation(
         }
 
         val airaSelected = selected == MainDestination.Aira
+        // The centre button is the one control the whole bar is arranged around,
+        // and it did not move when pressed — no ripple reads through a filled
+        // circle at this size, so a press looked like nothing had happened on the
+        // most-pressed control in the app. It now dips under the finger and
+        // settles back, and sits marginally larger while it is the current tab.
+        val pressSource = remember { MutableInteractionSource() }
+        val pressed by pressSource.collectIsPressedAsState()
+        val airaScale by animateFloatAsState(
+            targetValue = when {
+                !motion -> 1f
+                pressed -> 0.93f
+                airaSelected -> 1.04f
+                else -> 1f
+            },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioLowBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+            label = "aira-button",
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
@@ -782,8 +829,10 @@ fun AiraBottomNavigation(
                 // Lifted and shadowed so it reads as sitting on top of the bar
                 // rather than punched into it.
                 shadowElevation = 8.dp,
+                interactionSource = pressSource,
                 modifier = Modifier
                     .size(62.dp)
+                    .graphicsLayer { scaleX = airaScale; scaleY = airaScale }
                     .semantics {
                         contentDescription = "Aira, the conversation"
                         role = Role.Tab
