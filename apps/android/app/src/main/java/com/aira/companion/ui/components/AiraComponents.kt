@@ -1,5 +1,12 @@
 package com.aira.companion.ui.components
 
+import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -77,7 +84,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import com.aira.companion.model.MainDestination
+import com.aira.companion.data.ActionCard
 import com.aira.companion.model.bottomBarDestinations
+import com.aira.companion.ui.theme.Amber
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -318,6 +327,15 @@ fun ChatBubble(
      *  medical disclaimer. Rendered inside the bubble, attached to the answer
      *  it qualifies, rather than as a banner somewhere else on the screen. */
     disclaimer: Boolean = false,
+    /** How the gate saw this turn: "wellness" or "watchful". Shown as a small
+     *  chip above the answer, because "consider your care team" changes how the
+     *  sentence under it should be read. */
+    trustLabel: String? = null,
+    /** The one next step this reply offers, and what to do when it is pressed.
+     *  Both must be non-null for the card to appear — a card that goes nowhere
+     *  is worse than no card. */
+    card: ActionCard? = null,
+    onCardClick: (() -> Unit)? = null,
 ) {
     val clipboard = LocalClipboardManager.current
     val haptics = rememberAiraHaptics()
@@ -374,6 +392,29 @@ fun ChatBubble(
                     )
                     .padding(horizontal = 16.dp, vertical = 13.dp),
             ) {
+                // How the gate read this turn, above the words it applies to.
+                if (fromAira && !trustLabel.isNullOrBlank()) {
+                    val watchful = trustLabel.equals("watchful", ignoreCase = true)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.HealthAndSafety,
+                            contentDescription = null,
+                            tint = if (watchful) Amber else Sage,
+                            modifier = Modifier.size(13.dp),
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (watchful) {
+                                "Watchful · consider your care team"
+                            } else {
+                                "Wellness guidance"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (watchful) Amber else Sage,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(7.dp))
+                }
                 Text(
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -393,6 +434,54 @@ fun ChatBubble(
                         style = MaterialTheme.typography.labelSmall,
                         color = if (fromAira) InkMuted else Paper.copy(alpha = 0.75f),
                     )
+                }
+                // The one next step, when the reply suggests one.
+                //
+                // Drawn only when it has somewhere to go: `onCardClick` is null
+                // for a tool name we do not recognise, and an inert card that
+                // looks pressable is the defect this codebase keeps removing.
+                if (card != null && onCardClick != null) {
+                    Spacer(modifier = Modifier.height(11.dp))
+                    Surface(
+                        onClick = onCardClick,
+                        color = LilacMist,
+                        contentColor = Ink,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 13.dp, vertical = 11.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.AutoAwesome,
+                                contentDescription = null,
+                                tint = Plum,
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = card.title.ifBlank { "Open" },
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = Ink,
+                                )
+                                if (card.detail.isNotBlank()) {
+                                    Text(
+                                        text = card.detail,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = InkMuted,
+                                    )
+                                }
+                            }
+                            Icon(
+                                imageVector = Icons.Filled.ChevronRight,
+                                contentDescription = null,
+                                tint = Plum,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                 }
                 // Was this any use?
                 //
@@ -527,6 +616,77 @@ private val destinationIcons =
         MainDestination.Care to DestinationIcon(Icons.Filled.MedicalServices, Icons.Outlined.MedicalServices),
         MainDestination.You to DestinationIcon(Icons.Filled.Person, Icons.Outlined.Person),
     )
+
+/**
+ * Aira is composing a reply.
+ *
+ * This was a ChatBubble containing the literal text "Aira is typing…", styled
+ * exactly like a message — so the transcript appeared to contain a message in
+ * which Aira announced its own typing, and for a moment you could not tell the
+ * placeholder from an answer.
+ *
+ * Three dots in the bubble's shape instead: recognisable everywhere, and it
+ * cannot be mistaken for something said. The description carries the meaning
+ * for screen readers, which is the one place words are still the right answer.
+ *
+ * Holds still when the system's animator scale is zero, like every other motion
+ * in the app.
+ */
+@Composable
+fun TypingIndicator(modifier: Modifier = Modifier) {
+    val animate = animationsEnabled()
+    val transition = rememberInfiniteTransition(label = "typing")
+    Row(
+        modifier = modifier.semantics { contentDescription = "Aira is typing" },
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Surface(
+            modifier = Modifier.size(30.dp),
+            color = Plum,
+            contentColor = Paper,
+            shape = CircleShape,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("A", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Spacer(modifier = Modifier.width(9.dp))
+        Surface(
+            color = Paper,
+            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp,
+                                       bottomStart = 6.dp, bottomEnd = 20.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+            shadowElevation = 1.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 17.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                repeat(3) { index ->
+                    val alpha by if (animate) {
+                        transition.animateFloat(
+                            initialValue = 0.3f,
+                            targetValue = 1f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(durationMillis = 600, delayMillis = index * 160),
+                                repeatMode = RepeatMode.Reverse,
+                            ),
+                            label = "dot$index",
+                        )
+                    } else {
+                        remember { mutableStateOf(0.55f) }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .alpha(alpha)
+                            .background(color = Plum, shape = CircleShape),
+                    )
+                }
+            }
+        }
+    }
+}
 
 /**
  * Five slots, with the conversation raised out of the middle one.

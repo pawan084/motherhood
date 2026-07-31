@@ -41,12 +41,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.ChatMessage
+import com.aira.companion.model.quickPromptsFor
+import com.aira.companion.model.toolForActionCard
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.dayLabel
 import com.aira.companion.ui.components.dayOf
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
+import com.aira.companion.ui.components.TypingIndicator
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -149,6 +152,13 @@ fun AiraChatScreen(
                     },
                     rated = message.rated,
                     disclaimer = message.disclaimer,
+                    trustLabel = message.trustLabel,
+                    card = message.card,
+                    // Null when the tool name is not one we can open, which
+                    // keeps the card from being drawn at all.
+                    onCardClick = message.card
+                        ?.let { toolForActionCard(it.tool) }
+                        ?.let { tool -> { onOpenTool(tool) } },
                 )
             }
 
@@ -156,9 +166,7 @@ fun AiraChatScreen(
             // placeholder — so a slow network was indistinguishable from a
             // message that never sent.
             if (state.sending) {
-                item {
-                    ChatBubble(text = "Aira is typing…", fromAira = true)
-                }
+                item { TypingIndicator() }
             }
 
             // The chat used to carry its own "Suggested for you" card, naming
@@ -180,21 +188,18 @@ fun AiraChatScreen(
                             .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("I feel tired", "Set a reminder", "Ask anything").forEach { prompt ->
+                    quickPromptsFor(state.todayData?.journey).forEach { prompt ->
                         Surface(
                             color = Paper,
                             shape = CircleShape,
                             border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                             onClick = {
-                                if (prompt == "Set a reminder") {
-                                    onOpenTool(AiraTool.Reminder)
-                                } else {
-                                    onQuickMessage(prompt)
-                                }
+                                val tool = prompt.tool
+                                if (tool != null) onOpenTool(tool) else onQuickMessage(prompt.label)
                             },
                         ) {
                             Text(
-                                text = prompt,
+                                text = prompt.label,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Ink,

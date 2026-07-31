@@ -1660,6 +1660,7 @@ class AiraViewModel(
                                 trustLabel = res.trustLabel,
                                 at = nowSeconds(),
                                 disclaimer = res.disclaimerNeeded,
+                                card = res.actionCard,
                             ),
                         )
                     }
@@ -1756,13 +1757,29 @@ class AiraViewModel(
                     // it arrives with "done" because the model decides it after
                     // the prose it applies to.
                     val needsDisclaimer = event.optBoolean("disclaimer_needed", false)
+                    val card = event.optJSONObject("action_card")?.let {
+                        val tool = it.optString("tool")
+                        if (tool.isBlank()) {
+                            null
+                        } else {
+                            com.aira.companion.data.ActionCard(
+                                tool = tool,
+                                title = it.optString("title"),
+                                detail = it.optString("detail"),
+                            )
+                        }
+                    }
                     val id = replyId
                     _uiState.update { s ->
                         s.copy(
                             sending = false,
                             messages = s.messages.map {
                                 if (it.id == id) {
-                                    it.copy(trustLabel = label, disclaimer = needsDisclaimer)
+                                    it.copy(
+                                        trustLabel = label,
+                                        disclaimer = needsDisclaimer,
+                                        card = card,
+                                    )
                                 } else {
                                     it
                                 }

@@ -1,5 +1,6 @@
 package com.aira.companion.model
 
+import com.aira.companion.data.ActionCard
 import com.aira.companion.data.CareData
 import com.aira.companion.data.CareItem
 import com.aira.companion.data.ConsentFeature
@@ -140,7 +141,84 @@ data class ChatMessage(
      *  dropped it, which is the worst shape for this kind of bug: the safety
      *  work happens, and is discarded silently at the last step. */
     val disclaimer: Boolean = false,
+    /** The one next step this reply suggests, when it suggests one.
+     *
+     *  Parsed off the wire since the endpoint existed and read by nothing, so
+     *  Aira decided "this answer should offer to log a symptom", said so, and
+     *  the phone drew a paragraph. The web client had rendered it as a tappable
+     *  card the whole time — the same split that hid the amber disclaimer. */
+    val card: ActionCard? = null,
 )
+
+/** One of the chips above the composer. [tool] is set when tapping it should
+ *  open a sheet rather than send the text as a message. */
+data class QuickPrompt(val label: String, val tool: AiraTool? = null)
+
+/**
+ * The chips above the composer, for where this person actually is.
+ *
+ * They were three hardcoded strings — "I feel tired", "Set a reminder", "Ask
+ * anything" — shown to everyone, in every journey, at every hour. "I feel
+ * tired" is a reasonable opener at 34 weeks and a strange one to offer someone
+ * who is trying to conceive.
+ *
+ * They stay deliberately few and deliberately plain. A blank composer is the
+ * worst discoverability in the app, and these exist to break it — not to become
+ * a menu, and not to propose actions. Today does the proposing; this screen is
+ * where a conversation starts.
+ *
+ * Nothing here names a week, a symptom or a test. These are openers the person
+ * completes, so they cannot be wrong about someone's body the way a specific
+ * claim could.
+ */
+fun quickPromptsFor(journey: String?): List<QuickPrompt> {
+    val opener = when (journey?.trim()?.lowercase()) {
+        "pregnant" -> listOf(
+            QuickPrompt("Is this normal?"),
+            QuickPrompt("What should I ask at my next visit?"),
+        )
+        "postpartum" -> listOf(
+            QuickPrompt("How am I healing?"),
+            QuickPrompt("Feeding is hard today"),
+        )
+        "trying" -> listOf(
+            QuickPrompt("Where do I start?"),
+            QuickPrompt("What's worth tracking?"),
+        )
+        // Includes "exploring" and the case where Today has not loaded yet.
+        // Saying nothing journey-specific beats guessing at one.
+        else -> listOf(
+            QuickPrompt("What can you help with?"),
+            QuickPrompt("Is this normal?"),
+        )
+    }
+    return opener + QuickPrompt("Set a reminder", AiraTool.Reminder)
+}
+
+/**
+ * Which sheet an [ActionCard] opens.
+ *
+ * The model is asked for one of a fixed vocabulary, but it is a language model
+ * and the card is only worth drawing if pressing it goes somewhere. An unknown
+ * name returns null and the card is not shown, rather than rendering a control
+ * that does nothing.
+ */
+fun toolForActionCard(tool: String): AiraTool? = when (tool.trim().lowercase()) {
+    "checkin" -> AiraTool.CheckIn
+    "reminder" -> AiraTool.Reminder
+    "medicine", "medicines" -> AiraTool.Medicines
+    "appointment" -> AiraTool.Appointment
+    "upload", "document", "documents" -> AiraTool.CareVault
+    "wellness", "reset" -> AiraTool.Reset
+    "symptom" -> AiraTool.Symptom
+    "careplan" -> AiraTool.CarePlan
+    "support" -> AiraTool.Support
+    "emergency" -> AiraTool.Emergency
+    "partner" -> AiraTool.Partner
+    "memory" -> AiraTool.Memory
+    "privacy" -> AiraTool.Privacy
+    else -> null
+}
 
 data class OnboardingAnswer(
     val question: String,
