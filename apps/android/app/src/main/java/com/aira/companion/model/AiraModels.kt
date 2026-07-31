@@ -325,6 +325,10 @@ data class AiraUiState(
     // Populated from the backend's urgent handoff / emergency profile so the
     // urgent dialer calls a REAL number instead of a hardcoded one.
     val careTeamPhone: String? = null,
+    /** What is actually stored in the emergency profile, so its editor can show
+     *  it. Null means not loaded (or the load failed) — which the editor has to
+     *  distinguish from "loaded, and empty". */
+    val emergencyProfile: Map<String, String>? = null,
     val urgentMessage: String? = null,
     // True when only the deterministic keyword floor is screening messages. The
     // chat header claimed "Safety checked" unconditionally, which is a promise

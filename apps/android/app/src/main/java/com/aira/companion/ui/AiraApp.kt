@@ -490,6 +490,7 @@ private fun MainExperience(
                 markMedicineTaken = { viewModel.markMedicineTaken(context, it) },
                 setReminderDone = { id, done -> viewModel.setReminderDone(context, id, done) },
                 saveEmergencyProfile = { viewModel.saveEmergencyProfile(context, it) },
+                loadEmergencyProfile = { viewModel.loadEmergencyProfile(context) },
                 sendReport = { k, m -> viewModel.sendReport(context, k, m) },
                 setConsent = { f, g -> viewModel.setConsent(context, f, g) },
                 setMemoryApproved = { id, a -> viewModel.setMemoryApproved(context, id, a) },
@@ -551,6 +552,7 @@ private fun MainExperience(
                 partnerShared = state.partnerShared,
                 uploading = state.uploadingDocument,
                 editingReminder = state.editingReminder,
+                emergencyProfile = state.emergencyProfile,
             )
         }
 

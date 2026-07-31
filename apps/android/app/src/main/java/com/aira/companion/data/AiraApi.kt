@@ -184,8 +184,22 @@ object AiraApi {
         return out
     }
 
+    /**
+     * The emergency profile, kept on the device.
+     *
+     * This one is cached because the screen says "Available offline", and it
+     * was not: the fetch was a plain network GET, so with no signal the editor
+     * showed nothing at all. Of everything in the app this is the worst screen
+     * to need a connection — it is the care-team number, the emergency contact
+     * and the allergies, wanted at exactly the moment someone may have neither
+     * signal nor patience.
+     */
     suspend fun emergencyProfile(ctx: Context): JSONObject =
-        request("GET", "/v1/emergency-profile", null, ensureToken(ctx))
+        getCached(ctx, "/v1/emergency-profile")
+
+    /** The last emergency profile stored on this device, if any. */
+    fun cachedEmergencyProfile(ctx: Context): Stale<JSONObject>? =
+        readCached(ctx, "/v1/emergency-profile") { it }
 
     /**
      * Unauthenticated liveness probe. Used to seed the chat header's trust state

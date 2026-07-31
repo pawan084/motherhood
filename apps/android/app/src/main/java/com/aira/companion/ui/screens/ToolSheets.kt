@@ -265,6 +265,7 @@ data class ToolActions(
     val markMedicineTaken: (id: String) -> Unit = {},
     val setReminderDone: (id: String, done: Boolean) -> Unit = { _, _ -> },
     val saveEmergencyProfile: (Map<String, String>) -> Unit = {},
+    val loadEmergencyProfile: () -> Unit = {},
     val sendReport: (kind: String, message: String) -> Unit = { _, _ -> },
     val setConsent: (feature: String, granted: Boolean) -> Unit = { _, _ -> },
     val setMemoryApproved: (id: String, approved: Boolean) -> Unit = { _, _ -> },
@@ -301,6 +302,7 @@ fun DynamicToolSheet(
     partnerShared: List<PartnerShare> = emptyList(),
     uploading: Boolean = false,
     editingReminder: CareItem? = null,
+    emergencyProfile: Map<String, String>? = null,
 ) {
     // The picked document's Uri is KEPT now. It used to be dropped on the floor
     // here ("Document selected securely."), which is why "Save to Care Vault"
@@ -397,7 +399,8 @@ fun DynamicToolSheet(
                 AiraTool.Partner ->
                     PartnerTool(partnerInvite, partnerInvites, partnerShared, consent, actions)
                 AiraTool.Support -> SupportTool(actions, onUrgentHelp, onDismiss)
-                AiraTool.Emergency -> EmergencyProfileTool(actions, onDismiss)
+                AiraTool.Emergency ->
+                    EmergencyProfileTool(actions, emergencyProfile, onDismiss)
             }
         }
     }
@@ -1687,17 +1690,46 @@ private fun SupportTool(
 }
 
 @Composable
-private fun EmergencyProfileTool(actions: ToolActions, onDismiss: () -> Unit) {
+private fun EmergencyProfileTool(
+    actions: ToolActions,
+    saved: Map<String, String>?,
+    onDismiss: () -> Unit,
+) {
     // A real editor. This screen used to display a fictional patient — "Maya
     // Sharma · Week 24 · Blood group B+ · Emergency contact Arjun" — which is
     // the single most dangerous kind of placeholder in an app whose urgent
     // handoff depends on these details being the user's own.
+    //
+    // It then went to the opposite failure: the fields were hardcoded empty and
+    // nothing ever read the profile back, so the form opened blank however much
+    // was stored. Saving sends all six fields, so anything not retyped was
+    // erased — verified on a device, where correcting a care-team number
+    // deleted the emergency contact next to it. On the one screen the app dials
+    // in a crisis.
+    LaunchedEffect(Unit) { actions.loadEmergencyProfile() }
+
     var careTeamName by remember { mutableStateOf("") }
     var careTeamPhone by remember { mutableStateOf("") }
     var contactName by remember { mutableStateOf("") }
     var contactPhone by remember { mutableStateOf("") }
     var bloodGroup by remember { mutableStateOf("") }
     var allergies by remember { mutableStateOf("") }
+
+    // Fill in once, when the saved profile arrives. Keyed on `saved` rather
+    // than run on every recomposition so it cannot overwrite something being
+    // typed; `prefilled` stops a later refresh doing the same.
+    var prefilled by remember { mutableStateOf(false) }
+    LaunchedEffect(saved) {
+        if (saved != null && !prefilled) {
+            prefilled = true
+            careTeamName = saved["care_team_name"].orEmpty()
+            careTeamPhone = saved["care_team_phone"].orEmpty()
+            contactName = saved["emergency_contact_name"].orEmpty()
+            contactPhone = saved["emergency_contact_phone"].orEmpty()
+            bloodGroup = saved["blood_group"].orEmpty()
+            allergies = saved["allergies"].orEmpty()
+        }
+    }
 
     InfoBanner(
         icon = Icons.Outlined.Lock,
@@ -1773,7 +1805,13 @@ private fun EmergencyProfileTool(actions: ToolActions, onDismiss: () -> Unit) {
             onDismiss()
         },
         modifier = Modifier.fillMaxWidth(),
-        enabled = careTeamPhone.isNotBlank() || contactPhone.isNotBlank(),
+        // Any detail is worth keeping, not just a phone number. The gate used
+        // to require one, so typing an allergy and pressing Save did nothing at
+        // all — and with the form opening blank there was no way to tell that
+        // from a save that worked. The banner already says what a number buys.
+        enabled = listOf(
+            careTeamName, careTeamPhone, contactName, contactPhone, bloodGroup, allergies,
+        ).any { it.isNotBlank() },
     )
 }
 

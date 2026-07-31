@@ -1384,11 +1384,56 @@ class AiraViewModel(
             "Saved on this phone. Aira will send it once you're back online.",
         ) { AiraApi.addSymptom(it, what, severity, started) }
 
+    /**
+     * The keys the emergency-profile editor reads and writes.
+     *
+     * Listed once so the read and the write cannot drift: a field the editor
+     * saves but does not load back is one that disappears the next time
+     * somebody edits anything else on the screen.
+     */
+    private val EMERGENCY_FIELDS = listOf(
+        "care_team_name", "care_team_phone",
+        "emergency_contact_name", "emergency_contact_phone",
+        "blood_group", "allergies",
+    )
+
+    /**
+     * Read the emergency profile back so its editor can show what is saved.
+     *
+     * Without this the form opened blank every time, and because saving sends
+     * all six fields, anything not retyped was erased — an emergency contact
+     * disappearing because someone came back to correct a phone number.
+     */
+    fun loadEmergencyProfile(context: Context?) {
+        val ctx = context ?: return
+        viewModelScope.launch {
+            fun fieldsOf(o: org.json.JSONObject) = buildMap {
+                for (key in EMERGENCY_FIELDS) {
+                    o.optStringOrNull(key)?.let { put(key, it) }
+                }
+            }
+            // Fall back to the copy on the device. Without this the editor is
+            // blank with no signal, on the screen badged "Available offline".
+            val fields = runCatching { fieldsOf(AiraApi.emergencyProfile(ctx)) }
+                .recoverCatching {
+                    AiraApi.cachedEmergencyProfile(ctx)?.let { fieldsOf(it.value) }
+                        ?: throw it
+                }
+                .getOrNull()
+            // On failure leave it null rather than empty: the editor can then
+            // say it could not load, instead of showing blanks that look like
+            // "nothing saved" over the top of details that exist.
+            _uiState.update { s -> s.copy(emergencyProfile = fields) }
+        }
+    }
+
     fun saveEmergencyProfile(context: Context?, fields: Map<String, String>) =
         write(context, "Emergency profile saved.", refreshCare = false) {
             AiraApi.putEmergencyProfile(it, fields)
             val phone = fields["care_team_phone"]?.ifBlank { null }
-            _uiState.update { s -> s.copy(careTeamPhone = phone) }
+            _uiState.update { s ->
+                s.copy(careTeamPhone = phone, emergencyProfile = fields)
+            }
         }
 
     fun sendReport(context: Context?, kind: String, message: String) =
