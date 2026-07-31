@@ -176,6 +176,19 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
     [care, emergency, degraded, markTaken, setScreen],
   );
 
+  // What the badge and "N things need you" actually count.
+  //
+  // `updates` also carries notices there is nothing to do about — "screening is
+  // running keyword-only" being the one that shows up every time this runs
+  // without a classifier key. Counting those produced a Today reading "Nothing
+  // scheduled yet" beside "1 thing needs you", which is the app disagreeing
+  // with itself on one screen.
+  //
+  // An update earns a place in the count by having something the person can
+  // press. The notices stay in the Updates list, where they are information
+  // rather than a demand.
+  const actionable = useMemo(() => updates.filter((u) => u.action), [updates]);
+
   // One decision, made in one place and unit-tested — see first-run.ts.
   const step = firstRunStep({
     loading, bootError: !!bootError, onboarded,
@@ -301,7 +314,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
       </button>
       <Sidebar
         active={screen} onNavigate={setScreen} locked={false} user={user} today={today}
-        badge={updates.length} onUrgent={() => openUrgent(null)}
+        badge={actionable.length} onUrgent={() => openUrgent(null)}
       />
 
       <div className="workspace">
@@ -311,7 +324,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
           trust={{ degraded }}
           onUrgent={() => openUrgent(null)}
           onNavigate={setScreen}
-          badge={updates.length}
+          badge={actionable.length}
         />
 
         {/* There was no main landmark at all, so "jump to the content" — the
@@ -325,7 +338,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onNavigate={(s) => setScreen(s)}
               onMarkTaken={markTaken}
               onReminderDone={setReminderDone}
-              waiting={updates.length}
+              waiting={actionable.length}
             />
           )}
           {screen === "Aira" && (
@@ -373,7 +386,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
         </main>
       </div>
 
-      <MobileNav active={screen} onNavigate={setScreen} locked={false} badge={updates.length} />
+      <MobileNav active={screen} onNavigate={setScreen} locked={false} badge={actionable.length} />
 
       {tool && (
         <ToolSheet
