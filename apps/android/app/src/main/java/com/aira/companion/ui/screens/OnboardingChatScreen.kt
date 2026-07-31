@@ -62,6 +62,18 @@ import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageMist
 
+/**
+ * The opening line of onboarding.
+ *
+ * Deliberately states no number of questions. See the note at its use site: the
+ * question set is not fully known until the journey answer arrives, so any count
+ * spoken here would have to change afterwards — rewriting a sentence already
+ * said. `OnboardingIntroTest` holds this to it.
+ */
+const val ONBOARDING_INTRO =
+    "Hi, I’m Aira. I’ll keep this simple—a few short questions, " +
+        "all inside our conversation."
+
 @Composable
 fun OnboardingChatScreen(
     state: AiraUiState,
@@ -127,10 +139,20 @@ fun OnboardingChatScreen(
         ) {
             item {
                 ChatBubble(
-                    // Counted, not hardcoded — the set grows by one when someone
-                    // says they're pregnant and we ask how many weeks.
-                    text = "Hi, I’m Aira. I’ll keep this simple—${prompts.size} short " +
-                        "questions, all inside our conversation.",
+                    // No number here on purpose.
+                    //
+                    // This used to interpolate prompts.size to stay accurate. It
+                    // did the opposite: the set grows by one when someone says
+                    // they're pregnant and we ask how many weeks, so the opening
+                    // line silently rewrote itself from "4 short questions" to
+                    // "5" — a sentence already said, changing after the fact,
+                    // several bubbles up the transcript.
+                    //
+                    // The count is genuinely unknown at the moment this is
+                    // spoken, because it depends on an answer not yet given. A
+                    // promise that cannot be kept exactly should not be
+                    // quantified; the progress bar above already shows position.
+                    text = ONBOARDING_INTRO,
                     fromAira = true,
                 )
             }

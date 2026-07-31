@@ -1,10 +1,16 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
+  // Set when something sent us back here rather than the admin arriving on
+  // their own. Without it, an ended session is an unexplained login form.
+  const [ended, setEnded] = useState(false);
+  useEffect(() => {
+    setEnded(new URLSearchParams(window.location.search).has("ended"));
+  }, []);
   const [email, setEmail] = useState(process.env.NEXT_PUBLIC_DEV_ADMIN_EMAIL || "");
   const [password, setPassword] = useState(process.env.NEXT_PUBLIC_DEV_ADMIN_PASSWORD || "");
   const [error, setError] = useState("");
@@ -40,6 +46,9 @@ export default function LoginPage() {
         <label className="mb-1 block text-xs font-semibold text-ink-muted">Password</label>
         <input className="input mb-4" value={password} onChange={(e) => setPassword(e.target.value)}
                type="password" autoComplete="current-password" required />
+        {ended && !error && (
+          <p className="mb-3 text-sm text-ink-muted">Your session ended. Please sign in again.</p>
+        )}
         {error && <p className="mb-3 text-sm text-urgent">{error}</p>}
         <button className="btn w-full" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button>
       </form>
