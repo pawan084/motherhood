@@ -121,9 +121,17 @@ def test_admin_lists_all_videos_with_summary(client):
     assert body["summary"]["published"] == 0
 
 
-def test_admin_review_publishes_and_flips_playable(client, user):
+def test_admin_review_records_the_decision(client, user):
+    """Publishing and approving records exactly that — and no more.
+
+    This test used to assert `playable is True` after a review, which encoded
+    the rule that paperwork alone makes a video watchable. It does not: nothing
+    in the catalogue schema carried a media URL, so that combination would have
+    turned a play button on for a file that does not exist. `playable` now also
+    requires media (see test_video_playable.py), and this asserts the part the
+    review endpoint is actually responsible for.
+    """
     h = user["headers"]
-    # Seed state: a topic is not playable until reviewed AND published.
     assert client.get("/v1/videos/preg-week-24", headers=h).json()["playable"] is False
 
     csrf = admin_login(client)
@@ -131,13 +139,15 @@ def test_admin_review_publishes_and_flips_playable(client, user):
                     json={"review_status": "approved", "status": "published"}, headers=csrf)
     assert r.status_code == 200, r.text
     entry = r.json()["entry"]
-    assert entry["playable"] is True
+    assert entry["status"] == "published"
     assert entry["clinical_review"]["status"] == "approved"
     assert entry["clinical_review"]["reviewed_by"]  # the acting admin's email
 
-    # The public endpoint reflects the review immediately.
+    # The public endpoint reflects the review immediately — and still refuses to
+    # claim the video can be watched, because it cannot.
     after = client.get("/v1/videos/preg-week-24", headers=h).json()
-    assert after["playable"] is True and after["status"] == "published"
+    assert after["status"] == "published"
+    assert after["playable"] is False
 
 
 def test_admin_review_rejects_bad_status(client):

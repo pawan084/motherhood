@@ -66,6 +66,8 @@ fun LearnScreen(
     onLoad: () -> Unit = {},
     onToggleSave: (String) -> Unit = {},
     onUrgentHelp: () -> Unit = {},
+    /** Opens a produced video. Never called while the catalogue has no media. */
+    onWatch: (VideoTopic) -> Unit = {},
 ) {
     // Load on first entry, matching how the other tabs fetch when opened.
     LaunchedEffect(Unit) { onLoad() }
@@ -163,6 +165,7 @@ fun LearnScreen(
                 saved = savedIds.contains(video.id),
                 onToggleSave = onToggleSave,
                 onUrgentHelp = onUrgentHelp,
+                onWatch = onWatch,
             )
         }
         if (!loading && shown.isEmpty()) {
@@ -208,6 +211,7 @@ private fun VideoCard(
     video: VideoTopic,
     saved: Boolean,
     onToggleSave: (String) -> Unit,
+    onWatch: (VideoTopic) -> Unit,
     onUrgentHelp: () -> Unit,
 ) {
     AiraCard {
@@ -246,6 +250,29 @@ private fun VideoCard(
                 }
             }
         } else {
+            // Watch appears only when there is something to watch.
+            //
+            // `playable` is published AND clinically approved AND a media URL,
+            // and no topic in the catalogue has the third, so this is Save for
+            // everyone today. The screen said "in production" once, at the top,
+            // and then gave every card the same button regardless — so a topic
+            // that became ready looked identical to one that had not.
+            if (video.playable && !video.mediaUrl.isNullOrBlank()) {
+                PrimaryButton(
+                    label = "Watch",
+                    onClick = { onWatch(video) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = null,
+                )
+                Spacer(Modifier.height(8.dp))
+            } else {
+                Text(
+                    text = "In production — we'll tell you when it's ready.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = InkMuted,
+                )
+                Spacer(Modifier.height(10.dp))
+            }
             PrimaryButton(
                 label = if (saved) "Saved" else "Save for later",
                 onClick = { onToggleSave(video.id) },

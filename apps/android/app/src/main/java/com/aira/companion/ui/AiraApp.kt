@@ -398,6 +398,21 @@ private fun MainExperience(
                         savedIds = state.savedVideoIds,
                         loading = state.videosLoading,
                         onLoad = { viewModel.loadVideos(context) },
+                        // Opens the produced video in whatever the phone uses
+                        // for it. Nothing in the catalogue is playable yet, so
+                        // this is unreachable today — but it is wired, so the
+                        // Watch button can never be the inert control that
+                        // appears the moment a topic is marked ready.
+                        onWatch = { video ->
+                            video.mediaUrl?.takeIf { it.isNotBlank() }?.let { url ->
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            }
+                        },
                         onToggleSave = { haptics.confirm(); viewModel.toggleSaveVideo(context, it) },
                         onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
                     )

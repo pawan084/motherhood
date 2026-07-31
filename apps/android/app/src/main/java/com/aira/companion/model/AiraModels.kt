@@ -363,7 +363,12 @@ data class VideoTopic(
     val languages: List<String>,
     val status: String,
     val reviewStatus: String,
+    /** True only when the topic is published, clinically approved AND has a
+     *  [mediaUrl]. All three, because the first two are paperwork and the third
+     *  is whether a file exists. */
     val playable: Boolean,
+    /** Where the video is, when there is one. Null for every topic today. */
+    val mediaUrl: String?,
     val saved: Boolean,
 )
 

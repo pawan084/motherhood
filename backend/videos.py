@@ -85,9 +85,26 @@ def _normalise(t: dict) -> dict:
             "specialties": review.get("specialties", []),
             "status": review.get("status", "pending"),
         },
-        # Playable only when produced/published AND clinically approved — none are
-        # today, so the clients honestly show an "in production" state.
-        "playable": t.get("status") == "published" and review.get("status") == "approved",
+        # Where the video actually is. No catalogue entry has one today — the
+        # topics are written, not filmed — so this is None for every topic and
+        # the clients show an honest "in production" state.
+        "media_url": (t.get("media_url") or "").strip() or None,
+        # Playable requires something to play.
+        #
+        # This used to be `status == "published" and review approved`, which is
+        # a statement about paperwork rather than about a file existing. Nothing
+        # in the catalogue schema carried a URL, so the first topic an admin
+        # marked published-and-approved would have turned `playable` true with
+        # no video behind it — and any client honouring the flag would have
+        # drawn a play button that could only fail.
+        #
+        # Three conditions, all necessary: produced, cleared by a clinician, and
+        # actually somewhere.
+        "playable": (
+            t.get("status") == "published"
+            and review.get("status") == "approved"
+            and bool((t.get("media_url") or "").strip())
+        ),
     }
 
 
@@ -175,8 +192,15 @@ def _review_map() -> dict[str, dict]:
 
 
 def _resolved(t: dict, reviews: dict) -> dict:
-    """Overlay a topic's stored review/publish state on the catalog seed, so a
-    published+approved topic reports playable=true to the clients."""
+    """Overlay a topic's stored review/publish state on the catalog seed.
+
+    This is the path that actually decides `playable` for a topic an admin has
+    touched, so it has to apply the same three conditions as `_normalise` —
+    published, approved, AND a media URL. It previously applied only the first
+    two, which meant the console could turn a play button on for a video that
+    does not exist. The console is exactly where that would happen: publishing
+    is a moderation act, and nothing about it produces a file.
+    """
     rv = reviews.get(t["id"])
     if not rv:
         return t
@@ -187,7 +211,8 @@ def _resolved(t: dict, reviews: dict) -> dict:
         "status": status,
         "clinical_review": {**t["clinical_review"], "status": review_status,
                             "reviewed_by": rv["reviewed_by"], "reviewed_at": rv["reviewed_at"]},
-        "playable": status == "published" and review_status == "approved",
+        "playable": (status == "published" and review_status == "approved"
+                     and bool(t.get("media_url"))),
     }
 
 

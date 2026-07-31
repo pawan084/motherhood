@@ -326,6 +326,7 @@ object AiraApi {
             status = o.optString("status", "planned"),
             reviewStatus = review?.optString("status") ?: "pending",
             playable = o.optBoolean("playable", false),
+            mediaUrl = o.optStringOrNull("media_url"),
             saved = o.optBoolean("saved", false),
         )
     }
