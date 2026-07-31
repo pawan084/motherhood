@@ -325,6 +325,7 @@ export default function AiraApp({ onExit }: { onExit: () => void }) {
               onNavigate={(s) => setScreen(s)}
               onMarkTaken={markTaken}
               onReminderDone={setReminderDone}
+              waiting={updates.length}
             />
           )}
           {screen === "Aira" && (

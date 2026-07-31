@@ -9,16 +9,25 @@ import type { Screen } from "./types";
 import { JOURNEY_LABEL } from "./types";
 import type { TodayData, User } from "../aira-api";
 
+/**
+ * The three the sidebar shows, matching Android.
+ *
+ * Seven entries answered fewer than seven questions. Journey and Learn were one
+ * job split in two — understand where you are, once in words and once in video,
+ * both anchored to the same week — and Updates is a list of what Care already
+ * holds. Today (what now), Aira (talk) and Care (records) are three genuinely
+ * different intents; the rest are reached from the screen that raises them.
+ *
+ * Journey opens from Today's "Where you are", Learn from Journey, Updates from
+ * Today when something is waiting, and You from the header. A screen does not
+ * have to be a nav item to be one click away.
+ */
 export const NAV: { name: Screen; icon: LucideIcon; blurb: string }[] = [
   { name: "Today", icon: House, blurb: "Your one next step" },
   // Not "by text or voice": spoken conversation isn't wired up in this build,
   // and the composer's mic is disabled to match.
   { name: "Aira", icon: Sparkles, blurb: "Chat with Aira" },
-  { name: "Journey", icon: BookOpen, blurb: "Where you are now" },
-  { name: "Learn", icon: PlayCircle, blurb: "Short guided videos" },
   { name: "Care", icon: BriefcaseMedical, blurb: "Appointments and reminders" },
-  { name: "Updates", icon: Bell, blurb: "What needs attention" },
-  { name: "You", icon: UserRound, blurb: "Privacy and preferences" },
 ];
 
 function BrandOrb({ className = "brand-orb compact" }: { className?: string }) {
@@ -162,9 +171,10 @@ export function Header({
           <ShieldCheck size={14} />
           {trust.degraded ? "Keyword-only screening" : "Safety checked"}
         </span>
-        <button className="icon-button" onClick={() => onNavigate("Updates")} aria-label="Open updates">
-          <Bell size={16} />
-          {badge > 0 && <i />}
+        {/* You, where the bell used to be. Updates is reached from Today, next
+            to the day it is about, rather than from a glyph carrying a number. */}
+        <button className="icon-button" onClick={() => onNavigate("You")} aria-label="Your profile, privacy and data">
+          <UserRound size={16} />
         </button>
         <button className="icon-button urgent" onClick={onUrgent} aria-label="Open urgent help">
           <Siren size={16} />

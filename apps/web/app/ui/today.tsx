@@ -52,13 +52,18 @@ function readDismissed(): string[] {
 
 export default function Today({
   today, care, loading, weekVideo, openTool, onNavigate, onMarkTaken, onReminderDone,
+  waiting = 0,
 }: {
   today: TodayData | null;
   care: CareData | null;
   loading: boolean;
   weekVideo: VideoTopic | null;
   openTool: (t: ToolName) => void;
-  onNavigate: (s: "Aira" | "Journey" | "Learn" | "Care") => void;
+  onNavigate: (s: "Aira" | "Journey" | "Learn" | "Care" | "Updates") => void;
+  /** How many care items are waiting. Today is where "what needs me" is
+   *  asked, so it is where the answer belongs — the header bell that used to
+   *  carry this was a glyph with a number and no context. */
+  waiting?: number;
   onMarkTaken: (id: string) => void;
   onReminderDone: (id: string, done: boolean) => void;
 }) {
@@ -238,6 +243,11 @@ export default function Today({
             <button className="text-link quick-more" onClick={() => onNavigate("Journey")}>
               Open Journey <ArrowRight size={16} />
             </button>
+            {waiting > 0 && (
+              <button className="text-link quick-more" onClick={() => onNavigate("Updates")}>
+                {waiting} {waiting === 1 ? "thing needs" : "things need"} you <ArrowRight size={16} />
+              </button>
+            )}
           </section>
 
           {weekVideo && (
