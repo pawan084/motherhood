@@ -1400,3 +1400,14 @@ textarea:focus-visible, [tabindex]:focus-visible {
   .settings-grid { grid-template-columns: 1fr; }
 }
 
+
+/* A message that never reached the server. Sits inside the bubble so it cannot
+   be mistaken for a note about the conversation rather than about this line. */
+.message.me .not-sent {
+  display: flex; align-items: center; gap: 4px;
+  margin-top: 6px; font-size: 12px; color: #fff; opacity: .85;
+}
+.message.me .not-sent button {
+  border: 0; background: transparent; color: #fff;
+  font-size: 12px; font-weight: 700; text-decoration: underline; padding: 2px 4px;
+}

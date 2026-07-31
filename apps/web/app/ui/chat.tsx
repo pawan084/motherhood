@@ -37,6 +37,13 @@ export const CHAT_TOOLS: { name: ToolName; label: string; detail: string; icon: 
 type Entry = {
   from: "user" | "aira";
   text: string;
+  /** This message never reached the server.
+   *
+   *  It was appended to the log before the request and left there on failure,
+   *  so a message that never arrived looked exactly like one that did — in an
+   *  app where the thing typed may be "I've been bleeding since this morning",
+   *  believing it was received is the worst outcome available. */
+  failed?: boolean;
   trust?: "wellness" | "watchful" | null;
   card?: { tool: string; title: string; detail: string } | null;
   disclaimer?: boolean;
@@ -72,6 +79,17 @@ export default function Chat({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [log, sending]);
 
+  /** Send a message that never left, without adding a second copy of it. */
+  const resend = (index: number) => {
+    const entry = log[index];
+    if (!entry || sending) return;
+    setLog((c) => c.filter((_, i) => i !== index));
+    setMessage(entry.text);
+    // Put it back in the box rather than firing silently: the person can see
+    // what is about to be sent, and change it if the first attempt was a
+    // half-finished thought they never meant to send.
+  };
+
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     const value = message.trim();
@@ -79,9 +97,18 @@ export default function Chat({
     setMessage("");
     setError("");
 
-    const priorHistory = log.map((m) => ({
-      role: m.from === "user" ? "user" : "assistant", content: m.text,
-    }));
+    // Failed messages are not history. History is what Aira is told was already
+    // said, and a message that never arrived was not said to anyone — replaying
+    // it later would put words into a conversation that never had them.
+    const priorHistory = log
+      .filter((m) => !m.failed)
+      .map((m) => ({
+        role: m.from === "user" ? "user" : "assistant", content: m.text,
+      }));
+    // Kept so the exact entry can be marked failed, or cleared on a resend.
+    // Matching on text would pick the wrong one when somebody sends the same
+    // short message twice, which people do.
+    const mine = log.length;
     setLog((c) => [...c, { from: "user", text: value }]);
     setSending(true);
     try {
@@ -104,6 +131,7 @@ export default function Chat({
         return;
       }
       setError(err instanceof Error ? err.message : "Couldn't reach Aira.");
+      setLog((c) => c.map((m, i) => (i === mine ? { ...m, failed: true } : m)));
       setLog((c) => [...c, {
         from: "aira", trust: null,
         text: "I can't reach my safety checks right now, so I won't answer this one. If anything feels urgent, contact your care team.",
@@ -139,7 +167,17 @@ export default function Chat({
           )}
           {log.map((m, i) => (
             m.from === "user"
-              ? <div className="message me" key={i}>{m.text}</div>
+              ? (
+                <div className="message me" key={i}>
+                  {m.text}
+                  {m.failed && (
+                    <span className="not-sent">
+                      Not sent
+                      <button type="button" onClick={() => resend(i)}>Try again</button>
+                    </span>
+                  )}
+                </div>
+              )
               : (
                 <div className="message aira" key={i}>
                   {m.trust && (
