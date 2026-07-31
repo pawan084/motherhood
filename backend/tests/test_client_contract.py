@@ -636,3 +636,60 @@ def test_restored_history_maps_the_safety_level_to_a_label():
     assert "trustLabelFor(t.safetyLevel)" in vm, (
         "history restore must map the level through trustLabelFor()"
     )
+
+
+# ── shared vocabularies ──────────────────────────────────────────────────────
+#
+# The trust_label defect was not a dropped field. `safety_level` arrived intact
+# and was handed to a component that speaks a different set of words, and both
+# ends were individually correct. That failure mode is invisible to every check
+# above it, so the vocabularies themselves are pinned here.
+
+def test_every_journey_the_server_accepts_is_known_to_both_clients():
+    """A journey the client cannot name falls back to whatever was already
+    selected, silently — so somebody who chose "After a loss" would keep being
+    shown the previous journey's content, which for this particular value is
+    the cruellest possible failure."""
+    import accounts
+
+    kotlin = (ANDROID_ROOT / "model/AiraModels.kt").read_text(encoding="utf-8")
+    enum_body = re.search(r"enum class JourneyType\b.*?\n\}", kotlin, re.S)
+    assert enum_body, "JourneyType not found — renamed or moved?"
+    android = {m.lower() for m in re.findall(r"^\s{4}(\w+)\(", enum_body.group(0), re.M)}
+
+    ts = WEB_API.read_text(encoding="utf-8")
+    web_union = re.search(r"export type Journey\s*=\s*([^;]+);", ts)
+    assert web_union, "web Journey union not found — renamed or moved?"
+    web = set(re.findall(r'"(\w+)"', web_union.group(1)))
+
+    assert accounts.VALID_JOURNEYS <= android, (
+        f"Android cannot name: {sorted(accounts.VALID_JOURNEYS - android)}")
+    assert accounts.VALID_JOURNEYS <= web, (
+        f"web cannot name: {sorted(accounts.VALID_JOURNEYS - web)}")
+
+
+def test_both_clients_map_a_stored_safety_level_the_same_way():
+    """History stores the LEVEL; the chip is a LABEL. Each client converts, and
+    a client that converts differently shows a different chip for the same turn.
+
+    Android got this wrong by not converting at all — an amber turn came back
+    from history captioned "Wellness guidance". Web had it right. Pinning both
+    against chat._TRUST_LABEL keeps the three in step.
+    """
+    import chat
+
+    assert chat._TRUST_LABEL == {"green": "wellness", "amber": "watchful"}, (
+        "the server's mapping changed; both clients below need to change with it")
+
+    kotlin = (ANDROID_ROOT / "model/AiraModels.kt").read_text(encoding="utf-8")
+    mapper = re.search(r"fun trustLabelFor\(.*?\n\}", kotlin, re.S)
+    assert mapper, "trustLabelFor not found — the mapping must live in one place"
+    for level, label in chat._TRUST_LABEL.items():
+        assert re.search(rf'"{level}"\s*->\s*"{label}"', mapper.group(0)), (
+            f"Android does not map {level!r} to {label!r}")
+
+    # Web maps inline in the history loader rather than in a named function.
+    web_chat = (WEB_ROOT / "ui/chat.tsx").read_text(encoding="utf-8")
+    for level, label in chat._TRUST_LABEL.items():
+        assert re.search(rf'"{level}"\s*\?\s*"{label}"', web_chat), (
+            f"web does not map {level!r} to {label!r}")
