@@ -44,9 +44,37 @@ behind it. Catching the rest means asserting against a rendered tree, which is a
 instrumentation test, not a grep. Worth writing; not written yet. Saying so here
 is cheaper than someone later assuming a green suite means every field is on a
 screen.
+
+── The field list is only as good as the fixture ──
+
+An empty list has no fields, and a null object has no fields, so anything the
+seeding below fails to produce is silently not checked at all. This was not a
+theoretical concern: `/v1/care` was walked on an account with no care in it, so
+every field of every reminder, appointment and medicine went unchecked — which
+is how `private_label` reached both clients unread, and how Android came to
+have no GET for the contraction pattern it told people to read out loud.
+
+The count is measurable, and was 13 before the seeding was filled in. Two
+remain, both deliberate:
+
+    action_card       null unless the LLM proposes one, and this app ships with
+                      no classifier configured. The KEY is still checked — a
+                      client dropping `action_card` fails this file, which is a
+                      bug it has already caught once. What is unchecked is the
+                      shape INSIDE the card. Fabricating one would make the
+                      fixture disagree with the server, which is the property
+                      that makes this file worth having.
+    media_url         null unless AIRA_DEMO_MEDIA is set. Same reasoning: the
+                      key is checked, and it is a string, so there is no nested
+                      shape being missed.
+
+If you add an endpoint, check what the fixture actually produced for it before
+concluding it is covered.
 """
+import datetime
 import pathlib
 import re
+import time
 
 import pytest
 
@@ -216,8 +244,13 @@ def _payloads(client, user):
                       # carries is never looked at.
                       "priorities": ["Prepare for a visit", "Feel calmer"]},
                 headers=h)
+    # An AMBER message, not a neutral one. `safety.categories` is [] on a green
+    # turn, so the list the clients render in the trust chip was never checked.
+    # "cramping" is a keyword-floor match, which means this holds without a
+    # classifier configured — the state this app currently ships in.
     turn = client.post("/v1/chat/turn",
-                       json={"message": "is this normal?", "history": []}, headers=h)
+                       json={"message": "I have cramping, is this normal?",
+                             "history": []}, headers=h)
     # One of each care kind, because /v1/care on an empty account returns
     # `{"reminders": [], "appointments": [], ...}` and the checker then sees four
     # container names and not one field of the things inside them. The app's
@@ -240,16 +273,36 @@ def _payloads(client, user):
         return r
 
     seed("/v1/care/reminders", {"title": "iron tablet", "time": "8:00 PM"})
+    # `at` and `notes` given explicitly: both were None with only the free-text
+    # `when`, so neither was ever checked.
     seed("/v1/care/appointments",
-         {"doctor": "midwife", "place": "the surgery", "when": "next Tuesday"})
-    seed("/v1/care/medicines",
-         {"name": "folic acid", "dose": "400mcg", "time": "9:00 AM"})
+         {"doctor": "midwife", "place": "the surgery", "when": "next Tuesday",
+          "at": time.time() + 86400 * 3, "notes": "bring the folder"})
+    med = seed("/v1/care/medicines",
+               {"name": "folic acid", "dose": "400mcg", "time": "9:00 AM"})
+    # A dose marked taken, so `last_taken` and `taken_today` carry values
+    # instead of being None on an untouched medicine.
+    seed(f"/v1/care/medicines/{med.json()['id']}/taken", {"taken": True})
+    # A SECOND medicine, left untaken. Marking the only one taken emptied
+    # `medicines_due` — filling one blind spot opened another, which is the
+    # argument for measuring this rather than reasoning about it.
+    seed("/v1/care/medicines", {"name": "iron", "dose": "65mg", "time": "7:00 PM"})
     # Two of each, so the summary objects (`usual`, `recent`) are populated too:
     # both are None until there is enough to describe, and a None object has no
     # fields for the checker to look at.
     for _ in range(3):
-        seed("/v1/care/movements", {"count": 10, "minutes": 25})
+        seed("/v1/care/movements",
+             {"count": 10, "minutes": 25, "started": "after lunch"})
         seed("/v1/care/contractions", {"seconds": 45, "since_previous_seconds": 300})
+    # A due date, so /v1/today.due_date is not None. Chosen to agree with the
+    # week above rather than fight it — a due date wins over a reported week,
+    # and silently moving the fixture to a different gestation would change
+    # what the journey and video endpoints return.
+    client.patch("/v1/care/context",
+                 json={"due_date": (datetime.date.today()
+                                    + datetime.timedelta(days=(40 - 24) * 7)).isoformat()},
+                 headers=h)
+    seed("/v1/videos/preg-week-24/save", {"saved": True})
     return {
         "/v1/today": client.get("/v1/today", headers=h).json(),
         "/v1/journey": client.get("/v1/journey", headers=h).json(),
@@ -489,4 +542,64 @@ def test_signed_in_state_is_derived_from_kind_not_from_having_just_signed_in():
     assert vm.count('signedIn = user.kind == "account"') >= 2, (
         "both the authenticate() and restoreSession() paths must set signedIn "
         "from the payload, or the two disagree after a restart"
+    )
+
+
+# ── the fixture's own coverage ───────────────────────────────────────────────
+
+_KNOWN_THIN = {
+    ".action_card",           # needs an LLM; see the module docstring
+    ".items[].media_url",     # needs AIRA_DEMO_MEDIA
+    ".week_video.media_url",
+}
+
+
+def _thin_spots(node, path=""):
+    """Places where the payload carries nothing, so nothing inside is checked.
+
+    A list is examined across ALL of its items, not just the first. Looking only
+    at [0] reported `medicines[0].last_taken` as uncovered purely because the
+    untaken medicine happened to sort first — the taken one two places along
+    carried it. A checker that depends on list order is reporting on the fixture's
+    sort, not on coverage.
+    """
+    if isinstance(node, dict):
+        out = []
+        for k, v in node.items():
+            out += _thin_spots(v, f"{path}.{k}")
+        return out
+    if isinstance(node, list):
+        if not node:
+            return [path]
+        # Thin only where EVERY item is thin: one item carrying the field is
+        # enough for its shape to be checked.
+        per_item = [set(_thin_spots(i, f"{path}[]")) for i in node]
+        return sorted(set.intersection(*per_item))
+    return [path] if node is None else []
+
+
+def test_the_fixture_is_not_thin(client, user):
+    """Guards the guard, in the dimension that actually failed.
+
+    Every field check above is derived from a real response, which means an
+    empty list or a null object removes fields from the check silently — the
+    suite stays green and the coverage quietly shrinks. Three real defects were
+    found this way, all invisible because the test data was thinner than
+    anything a person would have.
+
+    So the seeding is asserted rather than trusted. Emptying a collection now
+    fails here, with the name of what stopped being covered, instead of showing
+    up as a bug on a phone months later.
+    """
+    thin = sorted(
+        f"{endpoint}{spot}"
+        for endpoint, payload in _payloads(client, user).items()
+        for spot in _thin_spots(payload)
+        if spot not in _KNOWN_THIN
+    )
+
+    assert not thin, (
+        "these carry nothing, so no field inside them is checked by this file — "
+        "seed them in _payloads, or add them to _KNOWN_THIN with a reason:\n  "
+        + "\n  ".join(thin)
     )
