@@ -92,7 +92,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Read from apps/web/package.json's `engines.node` (>=22.13.0) rather
+          # than hardcoded here. It was pinned to "20" and the build died on
+          # `import { glob } from "node:fs/promises"`, which vinext needs and
+          # Node 20 does not have — while the package had declared the
+          # requirement all along and nothing was reading it.
+          #
+          # Naming the version in two places is how they drift. This way the
+          # declaration is the only copy.
+          node-version-file: apps/web/package.json
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
       - working-directory: apps/web
