@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.aira.companion.model.callTipCaveat
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.JourneyData
 import com.aira.companion.model.JourneySection
@@ -143,12 +144,7 @@ fun JourneyScreen(
                     // would be the largest overclaim in the product, on the one
                     // screen where being trusted wrongly costs the most.
                     Text(
-                        text = if (tip.reviewed) {
-                            "Reviewed by your care provider's team."
-                        } else {
-                            "General guidance, not reviewed by a clinician — " +
-                                "your care team's advice comes first."
-                        },
+                        text = callTipCaveat(tip.reviewed),
                         style = MaterialTheme.typography.labelSmall,
                         color = InkMuted,
                     )

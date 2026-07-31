@@ -351,6 +351,25 @@ data class JourneyData(
  */
 data class CallTip(val title: String, val body: String, val reviewed: Boolean)
 
+/**
+ * The line under a "when to call" tip saying who stands behind it.
+ *
+ * This is the strongest claim the product makes. The tip text itself is
+ * clinical-sounding either way — it tells somebody which symptoms warrant a
+ * phone call — so the only thing separating "a clinician checked this" from
+ * "this is seed copy written in content.py" is this sentence.
+ *
+ * Extracted from an inline `if` in JourneyScreen so it can be asserted. The
+ * backend already refuses to serve a draft edit and refuses to mark the seed
+ * reviewed; what nothing checked was whether the client, holding an honest
+ * `reviewed = false`, actually said so.
+ */
+fun callTipCaveat(reviewed: Boolean): String = if (reviewed) {
+    "Reviewed by your care provider's team."
+} else {
+    "General guidance, not reviewed by a clinician — your care team's advice comes first."
+}
+
 /** API journey key -> a human label for headers/rings. */
 fun journeyLabel(journey: String?): String =
     when (journey?.lowercase()) {
