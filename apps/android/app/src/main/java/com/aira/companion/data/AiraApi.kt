@@ -495,29 +495,32 @@ object AiraApi {
         }
     }
 
+    /**
+     * The one place a `user` object is read. It was two copies, and both had
+     * silently dropped `kind` and `email` — which is how the app came to tell
+     * account holders they had no account after a restart.
+     */
+    private fun userFrom(o: JSONObject) = UserProfile(
+        id = o.optString("id"),
+        // "device" (anonymous) or "account". The ONLY durable answer to whether
+        // someone is signed in: everything else is process state that a restart
+        // throws away.
+        kind = o.optStringOrNull("kind") ?: "device",
+        email = o.optStringOrNull("email"),
+        name = o.optStringOrNull("name").orEmpty(),
+        journey = o.optStringOrNull("journey").orEmpty(),
+        language = o.optStringOrNull("language") ?: "English",
+        onboarded = o.optBoolean("onboarded", false),
+    )
+
     private fun applySession(ctx: Context, res: JSONObject): UserProfile {
         res.optStringOrNull("token")?.let { storeToken(ctx, it) }
-        val o = res.optJSONObject("user") ?: JSONObject()
-        return UserProfile(
-            id = o.optString("id"),
-            name = o.optStringOrNull("name").orEmpty(),
-            journey = o.optStringOrNull("journey").orEmpty(),
-            language = o.optStringOrNull("language") ?: "English",
-            onboarded = o.optBoolean("onboarded", false),
-        )
+        return userFrom(res.optJSONObject("user") ?: JSONObject())
     }
 
-    suspend fun me(ctx: Context): UserProfile {
-        val o = request("GET", "/account/me", null, ensureToken(ctx))
-            .optJSONObject("user") ?: JSONObject()
-        return UserProfile(
-            id = o.optString("id"),
-            name = o.optStringOrNull("name").orEmpty(),
-            journey = o.optStringOrNull("journey").orEmpty(),
-            language = o.optStringOrNull("language") ?: "English",
-            onboarded = o.optBoolean("onboarded", false),
-        )
-    }
+    suspend fun me(ctx: Context): UserProfile =
+        userFrom(request("GET", "/account/me", null, ensureToken(ctx))
+            .optJSONObject("user") ?: JSONObject())
 
     // ── care ─────────────────────────────────────────────────────────────────
 
@@ -716,15 +719,8 @@ object AiraApi {
             .put("name", name ?: JSONObject.NULL)
             .put("journey", journey ?: JSONObject.NULL)
             .put("language", language ?: JSONObject.NULL)
-        val o = request("PATCH", "/account/profile", body, ensureToken(ctx))
-            .optJSONObject("user") ?: JSONObject()
-        return UserProfile(
-            id = o.optString("id"),
-            name = o.optStringOrNull("name").orEmpty(),
-            journey = o.optStringOrNull("journey").orEmpty(),
-            language = o.optStringOrNull("language") ?: "English",
-            onboarded = o.optBoolean("onboarded", false),
-        )
+        return userFrom(request("PATCH", "/account/profile", body, ensureToken(ctx))
+            .optJSONObject("user") ?: JSONObject())
     }
 
     /**
@@ -1283,6 +1279,10 @@ data class UrgentHelp(
 /** The signed-in user, enough to decide whether onboarding still needs to run. */
 data class UserProfile(
     val id: String,
+    /** "device" for anonymous, "account" once signed up or signed in. */
+    val kind: String,
+    /** The account's email, or null for an anonymous device user. */
+    val email: String?,
     val name: String,
     val journey: String,
     val language: String,

@@ -543,6 +543,9 @@ data class AiraUiState(
      *  account's data and leaves these behind, so the screen says so first. */
     val localCareItems: Int = 0,
     val signedIn: Boolean = false,
+    /** The signed-in account's email, so You can name it rather than just
+     *  asserting that a session exists. Null when anonymous. */
+    val accountEmail: String? = null,
     /** Where closing the auth screen returns to. Reached from Welcome on first
      *  run, but also from You later — someone who has been using Aira a while is
      *  exactly who wants their care preserved, so the offer can't only exist

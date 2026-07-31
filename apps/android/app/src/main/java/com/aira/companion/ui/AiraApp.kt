@@ -475,6 +475,7 @@ private fun MainExperience(
                         onExport = { exportLauncher.launch("aira-export.zip") },
                         onDelete = { viewModel.deleteAccount(context) },
                         signedIn = state.signedIn,
+                        accountEmail = state.accountEmail,
                         onSignOut = { viewModel.signOut(context) },
                         onCreateAccount = { viewModel.openAuth(context, AuthMode.SignUp) },
                         onSignIn = { viewModel.openAuth(context, AuthMode.SignIn) },

@@ -99,6 +99,7 @@ fun YouScreen(
     onExport: () -> Unit = {},
     onDelete: () -> Unit = {},
     signedIn: Boolean = false,
+    accountEmail: String? = null,
     onSignOut: () -> Unit = {},
     onCreateAccount: () -> Unit = {},
     onSignIn: () -> Unit = {},
@@ -207,6 +208,16 @@ fun YouScreen(
         Spacer(modifier = Modifier.height(8.dp))
         if (signedIn) {
             AiraCard {
+                accountEmail?.let { address ->
+                    // Which account, not just that there is one. On a shared
+                    // phone "you are signed in" is not enough to act on.
+                    Text(
+                        text = "Signed in as $address",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
                 Text(
                     text = "Signing out ends this session on every device. Your care " +
                         "data stays in your account — sign back in any time to reach it.",

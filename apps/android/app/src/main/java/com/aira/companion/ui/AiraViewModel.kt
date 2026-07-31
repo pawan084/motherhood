@@ -140,6 +140,10 @@ class AiraViewModel(
                     it.copy(
                         stage = AppStage.Main,
                         destination = requested ?: MainDestination.Today,
+                        // Missing entirely before this, so every relaunch told an
+                        // account holder they had no account and hid Sign out.
+                        signedIn = user.kind == "account",
+                        accountEmail = user.email,
                         language = user.language.ifBlank { it.language },
                         journey = JourneyType.entries.firstOrNull { j ->
                             j.name.equals(user.journey, ignoreCase = true) ||
@@ -293,7 +297,11 @@ class AiraViewModel(
                     it.copy(
                         authBusy = false,
                         authError = null,
-                        signedIn = true,
+                        // From the server's answer, not from "we just called
+                        // an auth endpoint". Same source as restoreSession, so
+                        // the two cannot disagree after a restart.
+                        signedIn = user.kind == "account",
+                        accountEmail = user.email,
                         language = user.language.ifBlank { it.language },
                         journey = JourneyType.entries.firstOrNull { j ->
                             j.name.equals(user.journey, ignoreCase = true) ||

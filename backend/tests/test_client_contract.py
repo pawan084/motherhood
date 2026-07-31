@@ -211,6 +211,14 @@ def _payloads(client, user):
         "/v1/care/movements": client.get("/v1/care/movements", headers=h).json(),
         "/v1/care/contractions": client.get("/v1/care/contractions", headers=h).json(),
     }
+    # NOT /account/me. Adding it here was tried and reverted: the user object's
+    # field names are `id`, `kind`, `email`, `name` — words that appear all over
+    # both clients for unrelated reasons (`CareItem.kind`, the sign-in form's
+    # `email`). The name search finds them and reports success no matter what the
+    # user model actually holds. Measured, not assumed: with the endpoint listed
+    # here and `kind`/`email` genuinely missing from Android's UserProfile, this
+    # file passed. See test_the_user_object_is_modelled_by_both_clients, which
+    # checks the models themselves instead.
 
 
 # Endpoints a client does not call at all, and why.
@@ -361,3 +369,75 @@ def test_a_skipped_endpoint_really_is_skipped():
             assert path in checked, (
                 f"{client_name} exempts {path}, which nothing checks anyway"
             )
+
+
+# ── the user object ──────────────────────────────────────────────────────────
+#
+# Checked structurally rather than by name search, for the reason recorded in
+# _payloads: every key on this object is a common English word that occurs
+# elsewhere in both clients, so a name search cannot distinguish "the model has
+# this field" from "the word appears somewhere".
+
+def _kotlin_user_fields() -> set[str]:
+    """Property names declared on Android's UserProfile data class."""
+    src = ANDROID_API.read_text(encoding="utf-8")
+    body = re.search(r"data class UserProfile\((.*?)\n\)", src, re.S)
+    assert body, "UserProfile data class not found — did it move or get renamed?"
+    return set(re.findall(r"^\s*val\s+(\w+)\s*:", body.group(1), re.M))
+
+
+def _typescript_user_fields() -> set[str]:
+    """Keys declared on web's User type."""
+    src = WEB_API.read_text(encoding="utf-8")
+    body = re.search(r"export type User = \{(.*?)\};", src, re.S)
+    assert body, "web User type not found — did it move or get renamed?"
+    return set(re.findall(r"(\w+)\s*[?]?\s*:", body.group(1)))
+
+
+def test_the_user_object_is_modelled_by_both_clients():
+    """Every key public_user() sends must exist on both client models.
+
+    The bug: /account/me returns `kind`, Android's UserProfile did not have it,
+    and `signedIn` was therefore set only by the act of signing in — never
+    restored. One restart later the You screen told an account holder "You're
+    using Aira without an account" and removed the Sign out button. The account
+    was fine; the app had simply thrown away the only durable answer.
+
+    `email` went the same way, which is why the screen could not name the
+    account even when it knew there was one.
+    """
+    import accounts
+
+    sent = set(accounts.public_user({
+        "id": "usr_x", "kind": "account", "email": "a@b.com", "name": "Ava",
+        "journey": "pregnant", "language": "English", "onboarded": 1,
+    }))
+
+    assert not sent - _kotlin_user_fields(), (
+        "Android's UserProfile is missing fields the server sends: "
+        f"{sorted(sent - _kotlin_user_fields())}"
+    )
+    assert not sent - _typescript_user_fields(), (
+        "web's User type is missing fields the server sends: "
+        f"{sorted(sent - _typescript_user_fields())}"
+    )
+
+
+def test_signed_in_state_is_derived_from_kind_not_from_having_just_signed_in():
+    """The other half of the same bug, and the half a field check cannot see.
+
+    Holding `kind` is necessary but not sufficient: what made the screen lie was
+    computing signed-in state from the auth call rather than from the payload.
+    A literal `signedIn = true` is that mistake written down, so it is refused
+    here — the value has to come from what the server said.
+    """
+    vm = (ANDROID_ROOT / "ui/AiraViewModel.kt").read_text(encoding="utf-8")
+
+    assert "signedIn = true" not in vm, (
+        "signedIn is being asserted rather than derived. It must come from "
+        'user.kind == "account", or a relaunch will disagree with the sign-in.'
+    )
+    assert vm.count('signedIn = user.kind == "account"') >= 2, (
+        "both the authenticate() and restoreSession() paths must set signedIn "
+        "from the payload, or the two disagree after a restart"
+    )
