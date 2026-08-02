@@ -19,6 +19,10 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 # Imported after load_dotenv so module-level config reads the .env values.
 import config  # noqa: E402
+import accounts  # noqa: E402
+import care_context  # noqa: E402
+import device_auth  # noqa: E402
+import security  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
@@ -30,12 +34,18 @@ async def lifespan(_app: FastAPI):
     # Raises in ENV=production on placeholder secrets, a missing Gemini key, or
     # a missing DATABASE_URL. Failing to boot is the intended outcome.
     config.verify_production_config()
+    accounts.init()
+    care_context.init()
     log.info("Aira API starting (env=%s, postgres=%s)", config.ENV, bool(config.DATABASE_URL))
     yield
 
 
 app = FastAPI(title="Aira API", version="0.1.0", lifespan=lifespan)
 
+# Middleware order: `add_middleware` wraps, so LAST added runs OUTERMOST.
+# Rate limiting first, CORS second → CORS is outermost, so even a 429 carries
+# the CORS headers a browser needs to surface the error to the web client.
+app.add_middleware(security.RateLimitMiddleware)
 # The web client is served from a different origin in dev (Vite) and may be in
 # production too. Tightened to an allowlist before launch — see TODO.md.
 app.add_middleware(
@@ -45,6 +55,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(device_auth.router)
+app.include_router(accounts.router)
+app.include_router(care_context.router)
 
 
 @app.get("/health")

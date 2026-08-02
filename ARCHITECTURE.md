@@ -103,9 +103,44 @@ lived in three codebases and drifted the day a new language was added.
 
 ---
 
+## 8. Identity (P1)
+
+Two credential kinds, deliberately disjoint:
+
+- **Device token** (guest): minted once by `POST /device/register`, an HMAC
+  envelope over a server-issued random id. Health data is never addressable by
+  a client-named device string — that was a real IDOR in sayli's history, and
+  the fix is ported wholesale.
+- **Session token** (signed in): HMAC envelope with `sub`/`exp` claims. The two
+  claim shapes never cross-validate even under a shared key.
+
+Resolution order for learner routes (`device_auth.resolve_learner`): session →
+device token → 401. Bans are enforced on every path, not just `/account/*`.
+
+On sign-in, `link_and_merge` folds the *presented* (proven) device token's data
+into the account — never a client-named id — and care-context merge is
+freshest-`updated`-wins. Account deletion cascades through every learner-keyed
+table for the account id *and* all linked device ids: delete means delete.
+
+One DB rule learned by test: `db.connect()` returns a **shared handle** per
+database. Two modules holding separate SQLite connections deadlock the moment a
+cross-module transaction spans them (the deletion cascade did exactly that).
+
+## 9. Care context (P1)
+
+`care_context` stores stage + anchor dates (`due_date` when pregnant,
+`birth_date` when postpartum) and computes the week index **at read time** — a
+stored week goes stale silently, and a wrong gestational week would poison the
+Journey content, the chat grounding, and the P2 red-flag context (bleeding at
+week 6 ≠ bleeding at week 36). Week 40 falls on the due date, clamped 1..42;
+postpartum week 1 is the first seven days. Anchor dates are sanity-bounded at
+write time (a due date 5 years out is a typo, not a pregnancy). Changing stage
+clears the other stage's anchor so no stale date survives a transition.
+
+---
+
 ## Filled in as phases land
 
-- **P1** — auth model, schema, care context tables
 - **P2** — the red-flag taxonomy and the gate's decision contract
 - **P3** — chat turn pipeline, streaming, action-card tool schema
 - **P9** — voice loop

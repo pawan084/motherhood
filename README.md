@@ -72,18 +72,29 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
-**P0 complete** (2026-08-02). The repo, docs, and backend skeleton exist:
+**P1 complete** (2026-08-02). The backend core is up:
 
 - `config.py` — environment config plus a production startup guard that refuses
   to boot on placeholder secrets, a missing Gemini key, or a missing
   `DATABASE_URL`.
-- `db.py` — SQLite/Postgres adapter ported from sayli, thread-safe per handler.
-- `app.py` — `/health` and `/config`. `/config` is the single source of truth for
-  shared catalogs (journey stages, languages) so clients never hardcode a mirror.
-- 6 tests passing; both endpoints verified against a running server.
+- `db.py` — SQLite/Postgres adapter ported from sayli; one shared handle per
+  database so cross-module transactions (the account-deletion cascade) work.
+- `security.py` — shared-secret auth, per-IP rate limiting (Redis-aware),
+  upload cap, client-history sanitization. Ported from sayli.
+- `device_auth.py` — HMAC guest device tokens; identity resolution is session →
+  device token → 401, and never a client-named id (the IDOR fix, kept).
+- `accounts.py` — HMAC sessions, Google Sign-In (fails closed 503 until
+  `GOOGLE_CLIENT_ID` is configured), dev login (blocked in production), and an
+  account deletion that cascades through linked devices' data too.
+- `care_context.py` — journey stage + anchor dates; the week index is computed
+  at read time, never stored. Sign-in merges guest context (freshest wins).
+- `app.py` — routers wired; CORS outermost so even 429s are readable by the
+  browser.
+- **29 tests passing**, including tampered-token, cross-device IDOR,
+  token-kind-confusion, and delete-cascade cases; full guest → onboard →
+  sign-in → merged-context flow verified against a running server.
 
-**Next: P1** (backend core — device auth, accounts, care context), then **P2**,
-the clinical safety gate, which blocks all chat work.
+**Next: P2**, the clinical safety gate, which blocks all chat work.
 
 ## What is deliberately not built yet
 

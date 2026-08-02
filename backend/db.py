@@ -137,26 +137,46 @@ def _open_sqlite(path: str):
     return conn
 
 
+# One shared handle per database. Modules each call connect() at init, and they
+# MUST all receive the same object: a cross-module transaction (e.g. the
+# account-deletion cascade, which spans accounts + care_context tables) only
+# works if every module's writes ride the same underlying connection. Two
+# handles per thread would mean two SQLite connections, one uncommitted write
+# each — a "database is locked" deadlock (found by test, not by luck).
+_handles: dict[str, _ThreadLocalConn] = {}
+_handles_lock = threading.Lock()
+
+
 def connect(sqlite_path: str | None = None):
-    """Open a connection appropriate for the configured backend.
+    """Return the shared connection handle for the configured backend.
 
-    Returns a thread-safe handle exposing `.execute(sql, params).fetchone()/
-    .fetchall()`, `.commit()` and `.transaction()` — the subset every module
-    uses — that hands each thread its own underlying connection so concurrent
-    handlers can't corrupt one another's cursors.
+    The handle exposes `.execute(sql, params).fetchone()/.fetchall()`,
+    `.commit()` and `.transaction()` — the subset every module uses — and hands
+    each thread its own underlying connection so concurrent handlers can't
+    corrupt one another's cursors. Repeated calls with the same target return
+    the SAME handle (see _handles above).
 
-    `sqlite_path`: override the SQLite file this connection opens (default: the
-    shared `SQLITE_PATH`). Ignored on the Postgres backend.
+    `sqlite_path`: override the SQLite file (default: the shared `SQLITE_PATH`).
+    Ignored on the Postgres backend.
     """
     if IS_POSTGRES:
-        def _open_pg():
-            import psycopg  # lazy: only needed in the Postgres deployment
-            # autocommit so a per-call execute can't ride/steal another thread's
-            # transaction.
-            return _PGConn(psycopg.connect(_DATABASE_URL, autocommit=True))
-        return _ThreadLocalConn(_open_pg)
-    path = sqlite_path or SQLITE_PATH
-    return _ThreadLocalConn(lambda: _open_sqlite(path))
+        key = "pg"
+    else:
+        key = sqlite_path or SQLITE_PATH
+    with _handles_lock:
+        handle = _handles.get(key)
+        if handle is None:
+            if IS_POSTGRES:
+                def _open_pg():
+                    import psycopg  # lazy: only needed in the Postgres deployment
+                    # autocommit so a per-call execute can't ride/steal another
+                    # thread's transaction.
+                    return _PGConn(psycopg.connect(_DATABASE_URL, autocommit=True))
+                handle = _ThreadLocalConn(_open_pg)
+            else:
+                handle = _ThreadLocalConn(lambda: _open_sqlite(key))
+            _handles[key] = handle
+        return handle
 
 
 def like_param(term: str) -> str:
