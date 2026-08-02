@@ -1,0 +1,67 @@
+# ── Secrets ───────────────────────────────────────────────────────────────────
+# Never commit live API keys. backend/.env.example is the template.
+**/.env
+**/.env.local
+**/.env.*.local
+
+# ── macOS junk ────────────────────────────────────────────────────────────────
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Python (backend) ──────────────────────────────────────────────────────────
+**/.venv/
+**/venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ── SQLite (local data store — regenerated; never commit) ─────────────────────
+# Health data. Committing one of these would be a disclosure incident, not a
+# style nit.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Uploaded documents (prescriptions, reports, scans) — PHI, never in git.
+backend/uploads/
+
+# ── Node / web client ─────────────────────────────────────────────────────────
+**/node_modules/
+**/.next/
+**/dist/
+**/out/
+.wrangler/
+.vercel/
+*.tsbuildinfo
+
+# ── Editor / IDE ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*~
+
+# ── Logs / temp ───────────────────────────────────────────────────────────────
+*.log
+.cache/
+tmp/
+
+# ── Reference material ────────────────────────────────────────────────────────
+# ref/ holds three separate codebases we read but do not ship: the sayli
+# architecture donor (539M) and the two front-end-only Aira prototypes. They are
+# other products with their own histories and stay local — committing 27M of
+# someone else's source into this repo would be wrong.
+#
+# The two SPEC files are the exception: they define the product, so they are
+# tracked and a fresh clone gets them.
+ref/*
+!ref/mockup.png
+!ref/diagram.png
