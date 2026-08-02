@@ -21,7 +21,9 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 import config  # noqa: E402
 import accounts  # noqa: E402
 import care_context  # noqa: E402
+import chat  # noqa: E402
 import device_auth  # noqa: E402
+import prompts  # noqa: E402
 import safety  # noqa: E402
 import security  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
@@ -61,6 +63,7 @@ app.add_middleware(
 app.include_router(device_auth.router)
 app.include_router(accounts.router)
 app.include_router(care_context.router)
+app.include_router(chat.router)
 
 
 @app.get("/health")
@@ -78,6 +81,7 @@ def get_config() -> dict:
     return {
         "journey_stages": list(config.JOURNEY_STAGES),
         "languages": list(config.SUPPORTED_LANGUAGES),
+        "card_types": list(prompts.CARD_TYPES),
         "safety_gate_enabled": True,
         # Aira gives no diagnosis. Clients surface this next to AI replies.
         "ai_disclaimer": (

@@ -191,6 +191,35 @@ requires clinician review before any real user sees the product.
 
 ---
 
+## 11. The chat turn (P3)
+
+Every turn — `/respond` and `/respond_stream` alike — runs one spine:
+resolve learner → load care context → **gate** → branch → reply → cards.
+
+- **urgent / error** turns generate NO model reply; the generator is provably
+  never called (tested). Urgent Help copy is static and pre-translated
+  (en/hi/Hinglish) — that screen never depends on a model call. Self-harm gets
+  supportive copy.
+- **caution** flips a caution addendum into the system prompt: lead with
+  empathy, surface the care team.
+- The **trust label** travels with every response and is honest: `error` turns
+  say "Safety check unavailable", never "Safety checked". On SSE the gate event
+  is emitted FIRST, so no token can render ahead of the safety status.
+- **Action cards** are typed against the `CARD_TYPES` catalog (served in
+  `/config`), suggested by the small model in a separate call after the reply.
+  Contract: `suggest_cards` never raises; a card failure costs the cards, never
+  the reply. Unknown types are dropped server-side.
+- **Prompts are code, not a DB registry** — sayli's registry rows silently
+  shadowed code constants; the override direction gets decided when the P10
+  admin needs editable prompts, not implicitly before.
+- Reply generation failing after a passed gate surfaces as the same honest
+  `error` posture — there is no retry into an unscreened path, and no fallback
+  provider by design.
+
+SSE event order: `gate` → `delta`* → `cards`? → `done`; a mid-stream provider
+failure emits `error` then `done`.
+
+---
+
 ## Filled in as phases land
-- **P3** — chat turn pipeline, streaming, action-card tool schema
 - **P9** — voice loop

@@ -72,6 +72,23 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P3 complete** (2026-08-02). Chat is live behind the gate:
+
+- `prompts.py` — care-context-grounded system prompt (stage, week, name,
+  en/hi/Hinglish), escalate-don't-diagnose rules, the caution addendum, and
+  the typed `CARD_TYPES` catalog (served via `/config`).
+- `services.py` — all Gemini calls live here or in `safety.py`, nowhere else.
+  `suggest_cards` never raises; cards are garnish, the reply is not.
+- `chat.py` — `POST /respond` + `POST /respond_stream` (SSE). Gate on every
+  turn; urgent/error turns provably never call the model; the SSE gate event
+  precedes any token; the trust label is honest ("Safety check unavailable"
+  on error turns, never "Safety checked").
+- **77 tests passing.** Live-verified without a Gemini key: benign text →
+  honest `error` with no reply; self-harm → full Urgent Help payload, offline.
+
+**Next: P4-P7** (memory + the tabs), or **P8** (the web client) — the chat
+contract the client needs is now stable.
+
 **P2 complete** (2026-08-02). The safety gate exists and is tested:
 
 - `safety_taxonomy.py` — the red-flag taxonomy as clinician-reviewable data
