@@ -64,6 +64,20 @@ Tests:
 cd backend && .venv/bin/python -m pytest -q
 ```
 
+## Run the web client
+
+```bash
+cd web
+npm install
+npm run dev -- --host      # http://localhost:5173 (backend must be on :8001)
+```
+
+`VITE_API_URL` overrides the backend base URL. The app registers a guest
+device token on first load, runs onboarding inside chat, and unlocks the five
+tabs once a care context exists. With no Gemini key configured the chat
+demonstrates the fail-closed posture honestly (benign text → "Safety check
+unavailable", danger signs → the Urgent Help takeover, offline).
+
 First run creates `backend/aira.db` (SQLite, gitignored). **That file will hold
 health data** — it is excluded from git deliberately, along with
 `backend/uploads/`.
@@ -71,6 +85,24 @@ health data** — it is excluded from git deliberately, along with
 ---
 
 ## Current state
+
+**P8 complete** (2026-08-02). The web client is wired to the backend:
+
+- `web/` — Vite + React 19 SPA (the prototype's vinext/Cloudflare scaffolding
+  was dropped; the backend is FastAPI, the client is a static SPA). Visual
+  system rewritten from the prototype's palette.
+- Real flows only: guest device bootstrap → onboarding-in-chat →
+  `PUT /care-context` → tabs unlock. Chat streams over SSE with the gate
+  event routing urgent turns to the full-screen Urgent Help takeover and
+  error turns to an honest inline notice. Action cards render from the
+  backend's typed payloads.
+- The **emergency profile is localStorage-only and works offline** by design.
+  Features without a backend yet (medicines, Care Vault, memory review) are
+  labelled "coming soon" — nothing fake is presented as real.
+- Verified by a Node integration smoke running the REAL bundled `api.ts`
+  against the live backend: 13/13 checks (device bootstrap, week-24 context,
+  SSE gate-error + urgent event ordering, honest labels). In-browser
+  click-through is pending — see TODO.
 
 **P3 complete** (2026-08-02). Chat is live behind the gate:
 

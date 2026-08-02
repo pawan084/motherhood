@@ -72,6 +72,21 @@ the code.
 - [ ] Tune `GEMINI_SAFETY_MODEL` + measure real p95 gate latency once a key
       exists.
 
+### P8 — Web client
+- [x] Vite + React SPA wired to the backend (device bootstrap, onboarding-in-
+      chat, SSE chat with gate routing, offline emergency profile).
+- [x] Node integration smoke over the real bundled `api.ts` against the live
+      backend — 13/13.
+- [ ] **In-browser click-through pending**: the Claude-in-Chrome extension
+      can't reach localhost (site permission not granted for local addresses),
+      so the UI was verified by typecheck/build + the API-layer smoke, not by
+      driving the rendered app. Either grant the extension localhost access or
+      click through manually: `npm run dev -- --host` in `web/` + backend on
+      :8001.
+- [ ] Vite binds IPv6-only by default on this machine — `--host` is needed for
+      IPv4 loopback (Chrome resolves 127.0.0.1 first).
+- [ ] CORS allowlist for the production origin before deploy (`CORS_ORIGINS`).
+
 ### Carried from sayli's TODO (do not repeat these)
 - [ ] Single-source shared catalogs (stages, languages, red-flag taxonomy) from one
       backend endpoint. Sayli kept three hardcoded mirrors and they drifted.
