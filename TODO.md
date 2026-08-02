@@ -52,16 +52,25 @@ the code.
 - [ ] ARCHITECTURE.md, HANDOFF.md, README.md
 
 ### P2 — Safety gate (the one that matters)
-- [ ] Red-flag taxonomy as **data**, not scattered `if` statements, so a clinician
-      can review it without reading Python.
-- [ ] Deterministic rules run first and independently of the LLM.
-- [ ] LLM classifier for what the rules miss.
-- [ ] **Fail-closed** on any provider error → Urgent Help.
-- [ ] Audit table: every input, gate decision, and rationale.
-- [ ] Adversarial tests: negation ("no bleeding"), reported speech ("my friend had
-      bleeding"), past tense ("I bled last month"), hypotheticals, non-English and
-      Hinglish phrasing, and typos. False negatives are the dangerous direction.
-- [ ] Decide the **latency budget** — the gate is on the critical path of every turn.
+- [x] Red-flag taxonomy as **data** (`safety_taxonomy.py`) — reviewable without
+      reading Python; en / hi / Hinglish terms; `denial_terms` class for
+      negation-carrying phrasings.
+- [x] Deterministic rules run first; self-harm escalates with no network on the
+      path (< 50 ms, tested).
+- [x] LLM classifier (Gemini, JSON decision, temperature 0) for what rules miss.
+- [x] **Fail-closed** in every branch: rule hits + LLM down → urgent; clean
+      input + LLM down → `error` (no reply may be generated).
+- [x] Audit table `safety_audit`: every input, decision, rule hits, rationale,
+      latency.
+- [x] Adversarial tests (28): negation incl. Hindi postfix, absence-as-symptom
+      terms, floors, timeout, invalid model output, stage scoping, audit trail.
+- [x] Latency budget: `SAFETY_LLM_TIMEOUT_MS` (default 4000), enforced by a
+      worker-thread timeout.
+- [ ] **Live-classifier evals** with recorded Gemini fixtures (reported speech,
+      past tense, typos — the nuance the mocked suite can't pin). Needs a
+      GEMINI_API_KEY; build the eval harness when it exists.
+- [ ] Tune `GEMINI_SAFETY_MODEL` + measure real p95 gate latency once a key
+      exists.
 
 ### Carried from sayli's TODO (do not repeat these)
 - [ ] Single-source shared catalogs (stages, languages, red-flag taxonomy) from one

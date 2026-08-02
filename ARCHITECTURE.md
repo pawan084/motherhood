@@ -137,10 +137,60 @@ postpartum week 1 is the first seven days. Anchor dates are sanity-bounded at
 write time (a due date 5 years out is a typo, not a pregnancy). Changing stage
 clears the other stage's anchor so no stale date survives a transition.
 
+## 10. The safety gate, as built (P2)
+
+`safety_taxonomy.py` (data, clinician-reviewable) + `safety.py` (engine).
+
+**Decision vocabulary** — the gate's public contract, consumed by P3 and the
+client:
+
+| decision | meaning |
+|---|---|
+| `urgent` | route to Urgent Help; no AI reply |
+| `caution` | reply proceeds, but leads with support + surfaces the care team |
+| `ok` | reply proceeds normally |
+| `error` | gate could not verify a clean input; **no reply may be generated** — client shows a safe error with the ever-present Urgent Help affordance |
+
+`error` exists so a Gemini outage doesn't force a false choice between crying
+wolf (full urgent framing on "which fruits are good?") and silently replying
+unscreened. During an outage the reply generation is down anyway; the gate's
+job is to make sure nothing pretends otherwise.
+
+**Deterministic floors** (hold no matter what the model says):
+
+- Self-harm terms → `urgent` from the rules alone; the LLM is not consulted and
+  nothing on the path touches the network (tested < 50 ms).
+- Any non-negated urgent-rule hit → at least `caution`. "What should I do if I
+  have bleeding?" may legitimately be a question — the LLM adjudicates urgent
+  vs. caution — but it can never render as a plain reply.
+- Any caution-rule hit → at least `caution`.
+- LLM unavailable: rule hits → `urgent`; caution-only hits → `caution`; clean
+  input → `error`. Fail closed in every branch.
+
+**Negation model.** Markers within a ±4-token window route a hit to UNCERTAIN
+(LLM adjudicates — never cleared by rules). Two deliberate subtleties, both
+found by test: Hindi negates after the noun ("khoon *nahi* aa raha"), so the
+window looks both ways; and negation words *inside* an authored term are part
+of the danger sign itself ("no kicks", "can't feel the baby" — absence is the
+symptom), so the match span is not scanned. Denial phrasings that carry their
+own negation ("khoon nahi") are a separate `denial_terms` class in the
+taxonomy, routed straight to UNCERTAIN.
+
+**Stage scoping.** Rules declare the journey stages they apply to; an unknown
+or missing stage applies every rule — missing context widens the net, never
+narrows it.
+
+**Audit.** Every `screen()` writes input, context, decision, rule hits, source,
+and latency to `safety_audit`. An audit-write failure never blocks the decision
+but logs as an incident-level error.
+
+**Not verified by these tests:** the live classifier's judgment. The suite pins
+the deterministic guarantees with the LLM mocked; recorded-fixture evals
+against real Gemini output are tracked in TODO.md, and the taxonomy still
+requires clinician review before any real user sees the product.
+
 ---
 
 ## Filled in as phases land
-
-- **P2** — the red-flag taxonomy and the gate's decision contract
 - **P3** — chat turn pipeline, streaming, action-card tool schema
 - **P9** — voice loop

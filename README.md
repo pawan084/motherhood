@@ -72,6 +72,22 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P2 complete** (2026-08-02). The safety gate exists and is tested:
+
+- `safety_taxonomy.py` — the red-flag taxonomy as clinician-reviewable data
+  (bleeding, preeclampsia signs, fetal movement, fever, breathing/chest,
+  waters, seizure/fainting, self-harm; en/hi/Hinglish). **Not yet reviewed by
+  a clinician — human-gated in TODO.md.**
+- `safety.py` — deterministic rules + Gemini classifier, fail-closed in every
+  branch, with hard floors the model cannot override (self-harm → urgent with
+  no network on the path; any symptom hit → at least caution). Every decision
+  audited to `safety_audit`.
+- 28 adversarial tests over the deterministic guarantees (LLM mocked); live
+  classifier evals await a GEMINI_API_KEY.
+- **57 tests passing** repo-wide.
+
+**Next: P3** — the chat endpoint, now unblocked.
+
 **P1 complete** (2026-08-02). The backend core is up:
 
 - `config.py` — environment config plus a production startup guard that refuses

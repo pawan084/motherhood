@@ -22,6 +22,7 @@ import config  # noqa: E402
 import accounts  # noqa: E402
 import care_context  # noqa: E402
 import device_auth  # noqa: E402
+import safety  # noqa: E402
 import security  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
@@ -36,6 +37,7 @@ async def lifespan(_app: FastAPI):
     config.verify_production_config()
     accounts.init()
     care_context.init()
+    safety.init()
     log.info("Aira API starting (env=%s, postgres=%s)", config.ENV, bool(config.DATABASE_URL))
     yield
 
