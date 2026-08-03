@@ -308,9 +308,15 @@ fun MeScreen(
             }
         }
 
-        // ── Path preview (client ask: the path on Me too) ──────────────────
+        // ── Path preview: ONE next-milestone row. The full winding path
+        // lives on the Journey detail only — rendering it twice (here and
+        // there) was duplication, and weekly-changing content earns a
+        // preview, not a canvas, on the home. ──────────────────────────────
         state.journeyContent?.let { journey ->
-            if (journey.currentWeek != null && journey.milestones.isNotEmpty()) {
+            val week = journey.currentWeek
+            if (week != null && journey.milestones.isNotEmpty()) {
+                val next = journey.milestones.firstOrNull { it.week >= week }
+                    ?: journey.milestones.last()
                 AiraCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         SectionLabel("Your path", modifier = Modifier.weight(1f))
@@ -322,15 +328,43 @@ fun MeScreen(
                             )
                         }
                     }
-                    // Full path on Me (client's call) — every milestone,
-                    // bottom-to-top; tapping opens the week's guide.
-                    JourneyPathTimeline(
-                        milestones = journey.milestones,
-                        currentWeek = journey.currentWeek,
-                        shownWeek = null,
-                        sizeEmoji = journey.sizeEmoji,
-                        onSelect = { onOpenDetail(DetailPage.Journey) },
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenDetail(DetailPage.Journey) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(color = LilacMist, shape = RoundedCornerShape(14.dp)) {
+                            Text(
+                                next.emoji,
+                                modifier = Modifier.padding(10.dp),
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = if (next.week <= week) next.label
+                                else "Next: ${next.label}",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Ink,
+                            )
+                            Text(
+                                text = when {
+                                    next.week == week -> "Week ${next.week} · this week"
+                                    next.week < week -> "Week ${next.week}"
+                                    next.week - week == 1 -> "Week ${next.week} · next week"
+                                    else -> "Week ${next.week} · ${next.week - week} weeks away"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.ChevronRight, null,
+                            tint = Plum, modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }
