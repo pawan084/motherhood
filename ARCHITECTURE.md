@@ -340,7 +340,32 @@ Deploy: `Dockerfile` (slim, libpq, secrets never baked in, `ENV=production`
 so the startup guard is armed by default) + `smoke_test.sh` (read-only:
 liveness, catalogs, auth posture on learner AND admin routes).
 
+## 17. Voice (P9)
+
+`POST /respond_voice` (audio → transcript → **the same `_text_turn` spine as
+/respond**) + `POST /speak` (text → ElevenLabs MP3, LRU-cached per worker).
+
+The one decision that matters: **transcription is a separate Gemini call from
+reply generation** — sayli's fused audio→reply optimization is not available
+to Aira, because the gate must screen the transcript before any reply exists.
+A spoken danger sign escalates exactly like a typed one (tested: same
+generator-never-called guarantee).
+
+Silence/noise returns `decision: "empty"` — an invitation to try again, not
+an error and not an urgent escalation; the gate is not consulted on an empty
+transcript. Transcription failure is the honest `error` posture.
+
+Client: tap-to-toggle mic (MediaRecorder → webm/opus), transcript renders as
+the user's bubble, and the reply auto-plays via `/speak` — TTS failure never
+costs the text reply.
+
+**Not yet live-verified** (no GEMINI/ELEVENLABS keys): real STT accuracy for
+hi/Hinglish, whether Gemini accepts Chrome's webm/opus container (may need a
+transcode step — TODO.md), and real TTS quality/voice choice. The wiring
+guarantees are pinned by 11 mocked tests, and both fail-closed paths were
+live-verified keyless (STT down → honest error; TTS down → 502).
+
 ---
 
 ## Filled in as phases land
-- **P9** — voice loop
+*(all phases landed — P0-P10)*

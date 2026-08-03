@@ -86,6 +86,22 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**All build phases (P0–P10) complete** (2026-08-03).
+
+**P9 complete** — the voice loop, built and wired, live verification pending
+API keys:
+
+- `POST /respond_voice`: audio → Gemini transcript → **the same gated turn
+  spine as text**. Transcription is deliberately a separate call from reply
+  generation — the gate screens the transcript before any reply exists, so a
+  spoken danger sign escalates exactly like a typed one (tested). Silence →
+  `empty` (no gate, no crying wolf); STT failure → honest `error`.
+- `POST /speak`: ElevenLabs MP3, LRU-cached; TTS failure never costs the
+  text reply (502, client degrades silently).
+- Client: tap-to-toggle mic (MediaRecorder), transcript renders as your
+  bubble, replies auto-play. **139 backend tests.** Keyless fail-closed
+  paths live-verified; real STT/TTS quality checks listed in TODO.md.
+
 **P10 complete** (2026-08-03). Admin + deploy hardening:
 
 - `admin.py` — owner/support/content roles, PBKDF2 passwords, HMAC admin

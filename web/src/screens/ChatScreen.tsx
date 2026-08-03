@@ -8,9 +8,17 @@
  *  - `caution`/`ok` -> the reply streams in under its trust chip
  */
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Check, Mic, ShieldCheck, Sparkles, Square } from "lucide-react";
 
-import { Card, CareContext, putCareContext, respondStream, UrgentHelpPayload } from "../api";
+import {
+  Card,
+  CareContext,
+  putCareContext,
+  respondStream,
+  respondVoice,
+  speak,
+  UrgentHelpPayload,
+} from "../api";
 import { useApp } from "../state";
 
 type Message =
@@ -143,11 +151,93 @@ export default function ChatScreen({ onUrgent }: { onUrgent: (payload?: UrgentHe
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [micError, setMicError] = useState("");
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  const historyOf = (msgs: Message[]) =>
+    msgs
+      .filter((m): m is Extract<Message, { kind: "user" | "aira" }> => m.kind === "user" || m.kind === "aira")
+      .slice(-20)
+      .map((m) => ({ role: m.kind === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
+
+  const playReply = async (text: string) => {
+    const blob = await speak(text);
+    if (!blob) return; // voice is an enhancement; the text already rendered
+    const url = URL.createObjectURL(blob);
+    audioRef.current?.pause();
+    audioRef.current = new Audio(url);
+    audioRef.current.onended = () => URL.revokeObjectURL(url);
+    void audioRef.current.play().catch(() => URL.revokeObjectURL(url));
+  };
+
+  const sendVoice = async (blob: Blob) => {
+    setBusy(true);
+    try {
+      const turn = await respondVoice(blob, historyOf(messages));
+      if (turn.decision === "empty") {
+        setMessages((cur) => [...cur, { kind: "notice", text: turn.message ?? "I couldn't hear that." }]);
+        return;
+      }
+      if (turn.transcript) setMessages((cur) => [...cur, { kind: "user", text: turn.transcript! }]);
+      if (turn.decision === "urgent") {
+        onUrgent(turn.urgent_help);
+        setMessages((cur) => [
+          ...cur,
+          { kind: "notice", text: turn.urgent_help?.headline ?? "Please contact your care team now." },
+        ]);
+        return;
+      }
+      if (turn.decision === "error" || !turn.reply) {
+        setMessages((cur) => [
+          ...cur,
+          { kind: "aira", text: turn.message ?? "Aira can't safely respond right now.",
+            label: turn.safety?.label, decision: "error" },
+        ]);
+        return;
+      }
+      setMessages((cur) => [
+        ...cur,
+        { kind: "aira", text: turn.reply!, label: turn.safety?.label, decision: turn.decision, cards: turn.cards },
+      ]);
+      void playReply(turn.reply);
+    } catch {
+      setMessages((cur) => [...cur, { kind: "notice", text: "Voice turn failed — please try again." }]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleRecording = async () => {
+    setMicError("");
+    if (recording) {
+      recorderRef.current?.stop();
+      setRecording(false);
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: BlobPart[] = [];
+      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      recorder.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+        if (blob.size > 0) void sendVoice(blob);
+      };
+      recorderRef.current = recorder;
+      recorder.start();
+      setRecording(true);
+    } catch {
+      setMicError("Microphone unavailable — check the browser permission.");
+    }
+  };
 
   const send = async (event: FormEvent) => {
     event.preventDefault();
@@ -157,10 +247,7 @@ export default function ChatScreen({ onUrgent }: { onUrgent: (payload?: UrgentHe
     setBusy(true);
 
     // History from rendered messages (user/aira only, bounded server-side too).
-    const history = messages
-      .filter((m): m is Extract<Message, { kind: "user" | "aira" }> => m.kind === "user" || m.kind === "aira")
-      .slice(-20)
-      .map((m) => ({ role: m.kind === "user" ? ("user" as const) : ("assistant" as const), content: m.text }));
+    const history = historyOf(messages);
 
     setMessages((cur) => [...cur, { kind: "user", text }]);
     let replyIndex = -1;
@@ -279,15 +366,25 @@ export default function ChatScreen({ onUrgent }: { onUrgent: (payload?: UrgentHe
           );
         })}
       </main>
+      {micError && <p className="mic-error">{micError}</p>}
       <form className="composer" onSubmit={(e) => void send(e)}>
         <input
           aria-label="Message Aira"
-          placeholder="Message Aira…"
+          placeholder={recording ? "Listening…" : "Message Aira…"}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          disabled={busy}
+          disabled={busy || recording}
         />
-        <button className="composer-send" aria-label="Send message" disabled={busy || !input.trim()}>
+        <button
+          type="button"
+          className={recording ? "composer-mic recording" : "composer-mic"}
+          aria-label={recording ? "Stop recording" : "Speak to Aira"}
+          disabled={busy}
+          onClick={() => void toggleRecording()}
+        >
+          {recording ? <Square size={15} /> : <Mic size={17} />}
+        </button>
+        <button className="composer-send" aria-label="Send message" disabled={busy || recording || !input.trim()}>
           <ArrowRight size={17} />
         </button>
       </form>

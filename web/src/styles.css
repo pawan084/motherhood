@@ -263,6 +263,33 @@ button:disabled { cursor: default; opacity: .5; }
   display: grid;
   place-items: center;
 }
+.composer-mic {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--aubergine);
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.composer-mic.recording {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  animation: mic-pulse 1.4s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 #d34d4c55; }
+  50% { box-shadow: 0 0 0 9px #d34d4c00; }
+}
+.mic-error {
+  margin: 0;
+  padding: 4px 18px;
+  font-size: 12.5px;
+  color: var(--amber);
+  text-align: center;
+}
 
 /* ── Cards / lists ─────────────────────────────────────────────────────── */
 .inline-card {

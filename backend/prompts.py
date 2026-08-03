@@ -103,6 +103,14 @@ CARD_TYPES = {
     "partner_task": "Share a task with a partner",
 }
 
+TRANSCRIBE_PROMPT = """\
+Transcribe this audio verbatim. The speaker may use English, Hindi, or
+romanized Hinglish — transcribe in the language and script actually spoken
+(Devanagari for spoken Hindi, Latin for English/Hinglish). Return ONLY the
+transcript text, nothing else. If the audio contains no intelligible speech,
+return exactly: NONE
+"""
+
 MEMORY_EXTRACTION_PROMPT = """\
 You maintain the care memory of a maternal-wellness chat app. From ONE user
 message, extract 0-4 small facts worth remembering across conversations.

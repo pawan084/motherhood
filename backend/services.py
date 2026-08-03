@@ -10,11 +10,21 @@ failure returns [] and the reply stands alone.
 """
 import json
 import logging
+import os
+import threading
+from collections import OrderedDict
+
+import httpx
 
 import config
 import prompts
 
 log = logging.getLogger("aira.services")
+
+# ElevenLabs TTS. One warm voice for Aira (env-overridable); multilingual
+# model so en/hi/Hinglish replies all speak.
+ELEVEN_TTS_MODEL = os.environ.get("ELEVEN_TTS_MODEL", "eleven_multilingual_v2")
+ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 
 
 def _client():
@@ -62,6 +72,65 @@ def stream_reply(system: str, history: list[dict], text: str):
     for chunk in stream:
         if chunk.text:
             yield chunk.text
+
+
+def transcribe(audio: bytes, mime: str) -> str:
+    """Gemini STT: one multimodal call, transcript only. Raises on provider
+    failure (the route owns the honest-error posture); an empty transcript
+    returns "" — silence is not an error.
+
+    Deliberately a SEPARATE call from reply generation, unlike sayli's
+    one-call audio->reply turn: Aira's gate must screen the transcript BEFORE
+    any reply exists, so transcription cannot be fused with generation.
+    """
+    from google.genai import types
+    resp = _client().models.generate_content(
+        model=config.GEMINI_SAFETY_MODEL,
+        contents=[types.Content(role="user", parts=[
+            types.Part.from_bytes(data=audio, mime_type=mime),
+            types.Part.from_text(text=prompts.TRANSCRIBE_PROMPT),
+        ])],
+        config=types.GenerateContentConfig(temperature=0.0),
+    )
+    text = (resp.text or "").strip()
+    # The model is told to answer NONE for silence/noise; normalize to "".
+    return "" if text == "NONE" else text
+
+
+# --- TTS (ElevenLabs) with a small LRU cache ---------------------------------
+# Greetings and short replies repeat; every repeat re-bills ElevenLabs.
+# In-process LRU keyed by text — entries are MP3 bytes, so the cap stays low.
+# Per-worker by design; fold into Redis if multi-instance (same note as the
+# rate limiter).
+
+_TTS_CACHE_MAX = int(os.environ.get("AIRA_TTS_CACHE_SIZE", "64"))
+_tts_cache: "OrderedDict[str, bytes]" = OrderedDict()
+_tts_lock = threading.Lock()
+
+
+def tts_cached(text: str) -> bytes:
+    """MP3 bytes for `text`. Raises on provider failure."""
+    key = text
+    with _tts_lock:
+        if key in _tts_cache:
+            _tts_cache.move_to_end(key)
+            return _tts_cache[key]
+    r = httpx.post(
+        f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}",
+        params={"output_format": "mp3_44100_128"},
+        headers={"xi-api-key": config.ELEVENLABS_API_KEY,
+                 "Content-Type": "application/json"},
+        json={"text": text, "model_id": ELEVEN_TTS_MODEL},
+        timeout=60,
+    )
+    r.raise_for_status()
+    audio = r.content
+    with _tts_lock:
+        _tts_cache[key] = audio
+        _tts_cache.move_to_end(key)
+        while len(_tts_cache) > _TTS_CACHE_MAX:
+            _tts_cache.popitem(last=False)
+    return audio
 
 
 def extract_memory(user_text: str, ctx: dict | None) -> list[dict]:

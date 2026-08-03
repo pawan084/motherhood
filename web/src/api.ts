@@ -257,6 +257,47 @@ export async function forgetAllMemory(): Promise<void> {
   if (!r.ok) throw new Error(`forget failed: ${r.status}`);
 }
 
+export type VoiceTurn = {
+  decision: string;
+  transcript: string | null;
+  safety?: { decision: string; label: string };
+  urgent_help?: UrgentHelpPayload;
+  message?: string;
+  reply: string | null;
+  cards: Card[];
+};
+
+/** One voice turn: audio blob -> transcript + the same gated payload as text. */
+export async function respondVoice(
+  blob: Blob,
+  history: { role: "user" | "assistant"; content: string }[],
+): Promise<VoiceTurn> {
+  const form = new FormData();
+  form.append("file", blob, "turn.webm");
+  form.append("history", JSON.stringify(history));
+  const h: Record<string, string> = {};
+  if (deviceToken) h["X-Device-Token"] = deviceToken;
+  const r = await fetch(`${API}/respond_voice`, { method: "POST", headers: h, body: form });
+  if (!r.ok) throw new Error(`voice turn failed: ${r.status}`);
+  return r.json();
+}
+
+/** Aira's reply as MP3. Returns null on failure — voice is an enhancement,
+ * the text reply already rendered. */
+export async function speak(text: string): Promise<Blob | null> {
+  try {
+    const r = await fetch(`${API}/speak`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({ text }),
+    });
+    if (!r.ok) return null;
+    return await r.blob();
+  } catch {
+    return null;
+  }
+}
+
 /** POST /respond_stream and dispatch its SSE events. EventSource can't POST,
  * so this parses the stream by hand. Event order is guaranteed by the
  * backend: gate first, so the caller knows the turn's safety status before

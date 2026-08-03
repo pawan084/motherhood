@@ -19,8 +19,8 @@ before any token renders.
 import json
 import logging
 
-from fastapi import APIRouter, Depends
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile
+from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
 import care_context
@@ -108,8 +108,11 @@ def _prepare_turn(body: RespondIn, learner_id: str):
     return ctx, language, gate, history
 
 
-@router.post("/respond")
-def respond(body: RespondIn, learner_id: str = Depends(resolve_learner)):
+def _text_turn(learner_id: str, text: str, raw_history) -> dict:
+    """The whole non-streaming turn: gate -> reply -> cards -> memory.
+    Shared verbatim by /respond and /respond_voice — a voice turn gets exactly
+    the same gate guarantees as a typed one."""
+    body = RespondIn(text=text, history=raw_history)
     ctx, language, gate, history = _prepare_turn(body, learner_id)
     safety_block = {"decision": gate.decision, "label": _trust_label(gate.decision)}
 
@@ -128,20 +131,80 @@ def respond(body: RespondIn, learner_id: str = Depends(resolve_learner)):
     system = build_system(ctx, caution=(gate.decision == "caution"),
                           memories=memory.recall(learner_id) if personalise else [])
     try:
-        reply = services.generate_reply(system, history, body.text)
+        reply = services.generate_reply(system, history, text)
     except Exception as e:  # noqa: BLE001
         # The gate passed but generation failed: same honest posture as a gate
         # error — no silent retry into an unscreened path.
         log.warning("reply generation failed: %s", e)
         return {"decision": "error", "safety": safety_block,
                 "message": _ERROR_MESSAGE, "reply": None, "cards": []}
-    cards = services.suggest_cards(body.text, reply, ctx)
+    cards = services.suggest_cards(text, reply, ctx)
     # Memory extraction runs only on turns Aira replied to. Urgent/error turns
     # store nothing here (urgent inputs live in the safety audit instead).
     if personalise:
-        memory.remember(learner_id, services.extract_memory(body.text, ctx))
+        memory.remember(learner_id, services.extract_memory(text, ctx))
     return {"decision": gate.decision, "safety": safety_block,
             "reply": reply, "cards": cards}
+
+
+@router.post("/respond")
+def respond(body: RespondIn, learner_id: str = Depends(resolve_learner)):
+    return _text_turn(learner_id, body.text, body.history)
+
+
+@router.post("/respond_voice")
+async def respond_voice(file: UploadFile, history: str = Form(default="[]"),
+                        learner_id: str = Depends(resolve_learner)):
+    """A voice turn: transcribe -> the SAME text-turn spine as /respond.
+
+    Transcription is a separate call by design (services.transcribe): the gate
+    must screen the transcript before any reply exists, so sayli's fused
+    audio->reply optimization is not available to Aira.
+    """
+    audio = await security.read_capped(file)
+    mime = file.content_type or "audio/webm"
+    try:
+        transcript = services.transcribe(audio, mime)
+    except Exception as e:  # noqa: BLE001
+        # Same honest posture as everywhere: transcription down = no turn,
+        # said plainly, with the ever-present urgent-help affordance client-side.
+        log.warning("transcription failed: %s", e)
+        return {"decision": "error", "transcript": None,
+                "safety": {"decision": "error", "label": _trust_label("error")},
+                "message": _ERROR_MESSAGE, "reply": None, "cards": []}
+    if not transcript:
+        # Silence/noise is not an error and must not cry wolf: no gate, no
+        # reply, just an invitation to try again.
+        return {"decision": "empty", "transcript": "",
+                "message": "I couldn't hear that — could you try again?",
+                "reply": None, "cards": []}
+    try:
+        raw_history = json.loads(history)
+    except ValueError:
+        raw_history = []
+    payload = _text_turn(learner_id, transcript, raw_history)
+    payload["transcript"] = transcript
+    return payload
+
+
+class SpeakIn(BaseModel):
+    text: str
+
+
+@router.post("/speak")
+def speak(body: SpeakIn, learner_id: str = Depends(resolve_learner)):
+    """Text -> MP3 (ElevenLabs, LRU-cached). Used by the client to voice
+    Aira's replies; bounded and authenticated like every learner route."""
+    text = body.text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+    try:
+        audio = services.tts_cached(text[:800])
+    except Exception as e:  # noqa: BLE001
+        log.warning("tts failed: %s", e)
+        raise HTTPException(status_code=502, detail="voice unavailable")
+    return Response(content=audio, media_type="audio/mpeg",
+                    headers={"Cache-Control": "no-store"})
 
 
 @router.post("/respond_stream")

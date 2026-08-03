@@ -95,6 +95,14 @@ the code.
       IPv4 loopback (Chrome resolves 127.0.0.1 first).
 - [ ] CORS allowlist for the production origin before deploy (`CORS_ORIGINS`).
 
+### P9 — Voice (built, pending live verification — needs both API keys)
+- [ ] Verify Gemini accepts MediaRecorder's webm/opus container; if not, add a
+      server-side transcode (ffmpeg) step.
+- [ ] STT accuracy pass for Hindi/Hinglish speech.
+- [ ] Choose Aira's ElevenLabs voice (`ELEVENLABS_VOICE_ID` currently the
+      library default) + TTS quality pass.
+- [ ] Safari records mp4/aac, not webm — verify the mime passthrough there.
+
 ### Carried from sayli's TODO (do not repeat these)
 - [ ] Single-source shared catalogs (stages, languages, red-flag taxonomy) from one
       backend endpoint. Sayli kept three hardcoded mirrors and they drifted.
