@@ -36,6 +36,27 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
 
     private val appContext get() = getApplication<Application>()
 
+    init {
+        // Returning user: skip straight to Me. runCatching because JVM unit
+        // tests construct this with a stub Application (no SharedPreferences).
+        val onboarded = runCatching { AiraApi.isOnboarded(appContext) }.getOrDefault(false)
+        if (onboarded) {
+            _uiState.update {
+                it.copy(
+                    stage = AppStage.Main,
+                    destination = MainDestination.Me,
+                    messages = listOf(
+                        ChatMessage(
+                            id = 1,
+                            fromAira = true,
+                            text = "Welcome back. How are you feeling today?",
+                        ),
+                    ),
+                )
+            }
+        }
+    }
+
     fun startOnboarding() {
         _uiState.update { it.copy(stage = AppStage.Onboarding) }
     }
@@ -88,6 +109,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     ),
             )
         }
+        runCatching { AiraApi.setOnboarded(appContext) }
         viewModelScope.launch {
             runCatching { pushCareContext(state) }
                 .onFailure {

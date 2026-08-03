@@ -83,6 +83,8 @@ Aira is wellness support, not diagnosis or emergency care. The UI deliberately r
 This app now runs against the real Aira API (see `net/AiraApi.kt`):
 - guest device token minted via `POST /device/register` (SharedPreferences;
   TODO EncryptedSharedPreferences before release)
+- onboarding completion persists next to the token, so relaunch (even after
+  force-stop) lands returning users straight on Me — no re-onboarding
 - onboarding writes the care context (`PUT /care-context`); pregnant/postpartum
   journeys ask a coarse anchor question (approximate week / baby's age)
 - every chat turn is `POST /respond` — the server-side safety gate decides;

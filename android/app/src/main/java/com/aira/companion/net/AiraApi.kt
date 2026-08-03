@@ -32,6 +32,7 @@ import java.net.URL
 object AiraApi {
     private const val PREFS = "aira_net"
     private const val KEY_TOKEN = "device_token"
+    private const val KEY_ONBOARDED = "onboarded"
 
     val baseUrl: String get() = BuildConfig.AIRA_BACKEND_URL.trimEnd('/')
     private val base: String get() = baseUrl
@@ -51,6 +52,16 @@ object AiraApi {
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    /** Whether this device has completed onboarding — lives next to the
+     * device token because they answer the same question ("who is this?")
+     * and must be wiped together if a sign-out/erase flow ever lands. */
+    fun isOnboarded(context: Context): Boolean =
+        prefs(context).getBoolean(KEY_ONBOARDED, false)
+
+    fun setOnboarded(context: Context) {
+        prefs(context).edit().putBoolean(KEY_ONBOARDED, true).apply()
+    }
 
     private fun request(
         method: String,
