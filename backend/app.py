@@ -31,6 +31,7 @@ import privacy  # noqa: E402
 import prompts  # noqa: E402
 import safety  # noqa: E402
 import security  # noqa: E402
+import wellness  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
@@ -50,6 +51,7 @@ async def lifespan(_app: FastAPI):
     memory.init()
     privacy.init()
     safety.init()
+    wellness.init()
     log.info("Aira API starting (env=%s, postgres=%s)", config.ENV, bool(config.DATABASE_URL))
     yield
 
@@ -83,6 +85,7 @@ app.include_router(chat.router)
 app.include_router(journey.router)
 app.include_router(memory.router)
 app.include_router(privacy.router)
+app.include_router(wellness.router)
 app.include_router(admin.router)
 # Demo personas exist ONLY where dev login is allowed — never in production
 # (accounts.ALLOW_DEV_LOGIN is env-driven and dev_login itself re-checks).

@@ -103,7 +103,9 @@ def link_and_merge(uid: str, x_device_token: str | None) -> None:
     import care_context
     import memory
     import privacy
+    import wellness
     care_context.merge(did, uid)
     memory.merge(did, uid)
     care.merge(did, uid)
     privacy.merge(did, uid)
+    wellness.merge(did, uid)

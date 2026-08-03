@@ -197,12 +197,14 @@ def _erase_user(user_id: str) -> None:
     import care_context
     import memory
     import privacy
+    import wellness
     with _conn.transaction():
         for lid in ids:
             care_context.erase(lid)
             memory.erase(lid)
             care.erase(lid)
             privacy.erase(lid)
+            wellness.erase(lid)
         _conn.execute("DELETE FROM account_devices WHERE user_id=?", (user_id,))
         _conn.execute("DELETE FROM accounts WHERE id=?", (user_id,))
 

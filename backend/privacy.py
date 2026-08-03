@@ -23,6 +23,7 @@ import care
 import care_context
 import db
 import memory
+import wellness
 from device_auth import resolve_learner
 
 router = APIRouter(tags=["privacy"])
@@ -122,6 +123,7 @@ def export_data(learner_id: str = Depends(resolve_learner)):
         "documents": [dict(zip(("id", "kind", "filename", "size", "created"), d)) for d in docs],
         "appointments": [dict(zip(("title", "when_ts", "location", "notes"), a)) for a in apts],
         "care_plan": [dict(zip(("title", "done", "created"), p)) for p in plan],
+        **wellness.export(learner_id),
         "safety_audit": [dict(zip(("ts", "input", "stage", "week", "decision", "source", "reason"), a)) for a in audit],
         "note": "Document files download individually via /documents/{id}.",
     }
@@ -137,5 +139,6 @@ def delete_learner_data(learner_id: str = Depends(resolve_learner)):
         care_context.erase(learner_id)
         memory.erase(learner_id)
         care.erase(learner_id)
+        wellness.erase(learner_id)
         erase(learner_id)
     return {"ok": True}

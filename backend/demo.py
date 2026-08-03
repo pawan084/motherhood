@@ -21,6 +21,7 @@ import care
 import care_context
 import device_auth
 import memory
+import wellness
 
 router = APIRouter(tags=["demo"])
 
@@ -107,5 +108,23 @@ def create_demo(persona: str):
             " VALUES (?,?,?,?,?)",
             (f"plan_demo_{did[-8:]}_{i}", did, item, 1 if i == 0 else 0, now))
     conn.commit()
+    # A lived-in Me tab: recent moods + the seeded habit reminders with a
+    # couple of water ticks (all through the real module).
+    wconn = wellness._conn
+    for offset, mood in enumerate(("okay", "tired", "great")):
+        wconn.execute(
+            "INSERT INTO moods (learner_id, day, mood, ts) VALUES (?,?,?,?)"
+            " ON CONFLICT (learner_id, day) DO NOTHING",
+            (did, _iso(-offset), mood, now))
+    wellness._seed_reminders(did)
+    water = wconn.execute(
+        "SELECT id FROM reminders WHERE learner_id=? AND kind='water'",
+        (did,)).fetchone()
+    if water:
+        wconn.execute(
+            "INSERT INTO reminder_ticks (reminder_id, day, ticks, ts) VALUES (?,?,3,?)"
+            " ON CONFLICT (reminder_id, day) DO NOTHING",
+            (water[0], _iso(0), now))
+    wconn.commit()
     return {"device_token": token, "persona": persona,
             "display_name": ctx.get("display_name")}
