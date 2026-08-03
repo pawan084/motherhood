@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Delete
@@ -166,23 +167,27 @@ fun JourneyDetailScreen(
         Spacer(Modifier.height(14.dp))
 
         if (shown != null) {
-            SectionLabel("Weekly timeline")
-            Spacer(Modifier.height(8.dp))
-            WeekTimeline(
-                shownWeek = shown,
-                currentWeek = content.currentWeek,
-                totalWeeks = total ?: 42,
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel("Your path", modifier = Modifier.weight(1f))
+                // Fine-grained week stepper (the path's nodes are milestones).
+                IconButton(onClick = { if (shown > 1) onBrowseWeek(shown - 1) }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Previous week",
+                         tint = Plum, modifier = Modifier.size(18.dp))
+                }
+                Text("Week $shown", style = MaterialTheme.typography.labelMedium, color = Ink)
+                IconButton(onClick = { if (shown < (total ?: 42)) onBrowseWeek(shown + 1) }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Next week",
+                         tint = Plum, modifier = Modifier.size(18.dp))
+                }
+            }
+            Spacer(Modifier.height(4.dp))
+            JourneyPathTimeline(
                 milestones = content.milestones,
+                currentWeek = content.currentWeek,
+                shownWeek = shown,
+                sizeEmoji = content.sizeEmoji,
                 onSelect = onBrowseWeek,
             )
-            val next = content.milestones.firstOrNull { it.week > (content.currentWeek ?: 0) }
-            if (next != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    "Next milestone: ${next.emoji} ${next.label} · week ${next.week}",
-                    style = MaterialTheme.typography.bodySmall, color = InkMuted,
-                )
-            }
             Spacer(Modifier.height(16.dp))
         }
         JourneySection("Your body", content.yourself)
@@ -207,71 +212,6 @@ private fun JourneySection(label: String, body: String) {
         Text(body, style = MaterialTheme.typography.bodyMedium, color = Ink)
     }
     Spacer(Modifier.height(12.dp))
-}
-
-@Composable
-private fun WeekTimeline(
-    shownWeek: Int,
-    currentWeek: Int?,
-    totalWeeks: Int,
-    milestones: List<com.aira.companion.model.Milestone>,
-    onSelect: (Int) -> Unit,
-) {
-    val scroll = rememberScrollState()
-    val density = LocalDensity.current
-    val milestoneByWeek = milestones.associateBy { it.week }
-    // Bring the shown week into view; without this the row always opened at
-    // week 1 and the current week sat off-screen ("no timeline" at week 8+).
-    LaunchedEffect(shownWeek) {
-        val chipPx = with(density) { 52.dp.toPx() }
-        scroll.animateScrollTo(((shownWeek - 3).coerceAtLeast(0) * chipPx).toInt())
-    }
-    Row(
-        modifier = Modifier.horizontalScroll(scroll),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        (1..totalWeeks).forEach { week ->
-            val selected = week == shownWeek
-            val isCurrent = week == currentWeek
-            val past = currentWeek != null && week < currentWeek
-            val milestone = milestoneByWeek[week]
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(
-                    onClick = { onSelect(week) },
-                    shape = CircleShape,
-                    color = when {
-                        selected -> Plum
-                        isCurrent -> Lilac
-                        past -> LilacMist
-                        else -> Paper
-                    },
-                    contentColor = if (selected) Paper else Ink,
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        when {
-                            selected || isCurrent -> Plum
-                            milestone != null -> Plum.copy(alpha = 0.45f)
-                            else -> OutlineSoft
-                        },
-                    ),
-                ) {
-                    Text(
-                        text = "$week",
-                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-                // Milestone marker under its week — what makes this a timeline.
-                if (milestone != null) {
-                    Text(
-                        milestone.emoji,
-                        style = MaterialTheme.typography.labelMedium,
-                    )
-                }
-            }
-        }
-    }
 }
 
 // ── Moods ────────────────────────────────────────────────────────────────────
