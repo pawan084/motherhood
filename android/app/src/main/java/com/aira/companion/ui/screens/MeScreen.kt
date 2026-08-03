@@ -227,9 +227,13 @@ fun MeScreen(
             }
             // Server-ranked nudges live INSIDE the care section (formerly a
             // separate "Right now" card): most of them point here anyway.
-            // mood_checkin stays dropped — the picker is directly above.
+            // Nudges that duplicate a control on THIS screen are dropped —
+            // mood_checkin (the picker is directly above) and water_pace
+            // (the droplet row is directly below). Chat keeps both: nothing
+            // there shows mood or water state.
             val focusItems = state.todayFeed?.focus
-                ?.filter { it.kind != "mood_checkin" }.orEmpty()
+                ?.filter { it.kind != "mood_checkin" && it.kind != "water_pace" }
+                .orEmpty()
             if (focusItems.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     focusItems.forEach { focus ->
