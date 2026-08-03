@@ -158,30 +158,7 @@ fun MeScreen(
             }
         }
 
-        // ── Right now: proactive, server-ranked focus — ONE card, compact
-        // rows (was one card per nudge; the page is a home, not a feed).
-        // mood_checkin is dropped HERE (not server-side): the mood picker is
-        // right below, and a nudge duplicating a visible control is noise.
-        // Chat still shows it — no picker lives there. ─────────────────────
-        val focusItems = state.todayFeed?.focus
-            ?.filter { it.kind != "mood_checkin" }.orEmpty()
-        if (focusItems.isNotEmpty()) {
-            AiraCard(containerColor = LilacMist) {
-                SectionLabel("Right now")
-                Spacer(Modifier.height(4.dp))
-                focusItems.forEachIndexed { index, focus ->
-                    if (index > 0) HorizontalDivider(color = Lilac)
-                    FocusRow(focus) {
-                        when (focus.kind) {
-                            "milestone_week" -> onOpenDetail(DetailPage.Journey)
-                            else -> onOpenDetail(DetailPage.Care)
-                        }
-                    }
-                }
-            }
-        }
-
-        // ── Mood check-in (emoji picker) + history link ────────────────────
+        // ── Today: mood + nudges + care in one interactive card ────────────
         AiraCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionLabel("How are you today?", modifier = Modifier.weight(1f))
@@ -247,6 +224,24 @@ fun MeScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkMuted,
                 )
+            }
+            // Server-ranked nudges live INSIDE the care section (formerly a
+            // separate "Right now" card): most of them point here anyway.
+            // mood_checkin stays dropped — the picker is directly above.
+            val focusItems = state.todayFeed?.focus
+                ?.filter { it.kind != "mood_checkin" }.orEmpty()
+            if (focusItems.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    focusItems.forEach { focus ->
+                        FocusNudge(focus) {
+                            when (focus.kind) {
+                                "milestone_week" -> onOpenDetail(DetailPage.Journey)
+                                else -> onOpenDetail(DetailPage.Care)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
             }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.reminders.forEach { reminder ->
@@ -341,28 +336,32 @@ fun MeScreen(
 }
 
 @Composable
-private fun FocusRow(focus: TodayFocus, onTap: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onTap)
-            .padding(vertical = 9.dp),
-        verticalAlignment = Alignment.CenterVertically,
+private fun FocusNudge(focus: TodayFocus, onTap: () -> Unit) {
+    Surface(
+        onClick = onTap,
+        modifier = Modifier.fillMaxWidth(),
+        color = LilacMist,
+        shape = RoundedCornerShape(14.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(focus.title, style = MaterialTheme.typography.titleSmall, color = Ink)
-            if (focus.body.isNotBlank()) {
-                Text(
-                    focus.body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = InkMuted,
-                )
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(focus.title, style = MaterialTheme.typography.titleSmall, color = Ink)
+                if (focus.body.isNotBlank()) {
+                    Text(
+                        focus.body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                }
             }
+            Icon(
+                Icons.Filled.ChevronRight, null,
+                tint = Plum, modifier = Modifier.size(18.dp),
+            )
         }
-        Icon(
-            Icons.Filled.ChevronRight, null,
-            tint = Plum, modifier = Modifier.size(18.dp),
-        )
     }
 }
 
