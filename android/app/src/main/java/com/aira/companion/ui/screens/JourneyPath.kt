@@ -56,6 +56,7 @@ fun JourneyPathTimeline(
     sizeEmoji: String?,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    showStartLabel: Boolean = true,
 ) {
     val nodes = buildList {
         addAll(milestones.map { PathNode(it.week, it.label, it.emoji) })
@@ -170,7 +171,7 @@ fun JourneyPathTimeline(
         }
 
         // The start of the path, under the lowest node.
-        Text(
+        if (showStartLabel) Text(
             text = "Your journey begins",
             style = MaterialTheme.typography.labelMedium,
             color = InkMuted,
@@ -180,4 +181,31 @@ fun JourneyPathTimeline(
                 .padding(bottom = 2.dp),
         )
     }
+}
+
+/** A compact slice of the path for the Me tab: the last milestone passed,
+ * the "you are here" node, and the next one ahead — the dashboard keeps its
+ * cards, the path keeps its presence. Tapping anything opens the full path. */
+@Composable
+fun JourneyPathPreview(
+    milestones: List<Milestone>,
+    currentWeek: Int?,
+    sizeEmoji: String?,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (currentWeek == null || milestones.isEmpty()) return
+    val prev = milestones.lastOrNull { it.week <= currentWeek }
+    val next = milestones.firstOrNull { it.week > currentWeek }
+    val slice = listOfNotNull(prev, next).filter { it.week != currentWeek } +
+        listOfNotNull(milestones.firstOrNull { it.week == currentWeek })
+    JourneyPathTimeline(
+        milestones = slice.distinct(),
+        currentWeek = currentWeek,
+        shownWeek = null,
+        sizeEmoji = sizeEmoji,
+        onSelect = { onOpen() },
+        modifier = modifier,
+        showStartLabel = false,
+    )
 }

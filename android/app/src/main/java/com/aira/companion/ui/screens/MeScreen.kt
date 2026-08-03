@@ -136,6 +136,30 @@ fun MeScreen(
             }
         }
 
+        // ── Path preview (client ask: the path on Me too) ──────────────────
+        state.journeyContent?.let { journey ->
+            if (journey.currentWeek != null && journey.milestones.isNotEmpty()) {
+                AiraCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SectionLabel("Your path", modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onOpenDetail(DetailPage.Journey) }) {
+                            Text(
+                                "Full path",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Plum,
+                            )
+                        }
+                    }
+                    JourneyPathPreview(
+                        milestones = journey.milestones,
+                        currentWeek = journey.currentWeek,
+                        sizeEmoji = journey.sizeEmoji,
+                        onOpen = { onOpenDetail(DetailPage.Journey) },
+                    )
+                }
+            }
+        }
+
         // ── Mood check-in (emoji picker) + history link ────────────────────
         AiraCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
