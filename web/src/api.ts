@@ -93,6 +93,24 @@ export async function putCareContext(body: {
   return (await r.json()).context;
 }
 
+export type MemoryItem = { id: string; kind: string; content: string; updated: number };
+
+export async function getMemory(): Promise<MemoryItem[]> {
+  const r = await fetch(`${API}/memory`, { headers: headers() });
+  if (!r.ok) throw new Error(`memory failed: ${r.status}`);
+  return (await r.json()).items;
+}
+
+export async function forgetMemoryItem(id: string): Promise<void> {
+  const r = await fetch(`${API}/memory/${id}`, { method: "DELETE", headers: headers() });
+  if (!r.ok) throw new Error(`forget failed: ${r.status}`);
+}
+
+export async function forgetAllMemory(): Promise<void> {
+  const r = await fetch(`${API}/memory`, { method: "DELETE", headers: headers() });
+  if (!r.ok) throw new Error(`forget failed: ${r.status}`);
+}
+
 /** POST /respond_stream and dispatch its SSE events. EventSource can't POST,
  * so this parses the stream by hand. Event order is guaranteed by the
  * backend: gate first, so the caller knows the turn's safety status before

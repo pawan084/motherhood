@@ -86,6 +86,20 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P4 complete** (2026-08-03). Memory — "What Aira remembers" — is live:
+
+- `memory.py` — structured facts (fact/concern/symptom/preference) extracted
+  per chat turn by the small model, never transcripts. Readable AND deletable
+  (`GET /memory`, `DELETE /memory/{id}`, `DELETE /memory`); a deletion is out
+  of the prompt by the very next turn. Urgent/error turns store nothing.
+  Sign-in reassigns device memories to the account; account deletion erases
+  them.
+- You tab renders the real memory list with per-item forget + forget-all.
+- **87 backend tests**; client smoke 15/15 against the live backend.
+
+**Next: P5** (Journey week content), **P6** (Care), **P7** (You: export,
+partner access).
+
 **P8 complete** (2026-08-02). The web client is wired to the backend:
 
 - `web/` — Vite + React 19 SPA (the prototype's vinext/Cloudflare scaffolding

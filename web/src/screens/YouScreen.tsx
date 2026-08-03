@@ -1,11 +1,11 @@
 /** You: the real controls — edit care context (the same PUT the onboarding
- * uses), language, and the standing privacy commitments. Memory review,
- * partner access, and export/delete are P4/P7 backend features, shown as
- * roadmap. */
-import { useState } from "react";
-import { Check, EyeOff, LockKeyhole, ShieldCheck } from "lucide-react";
+ * uses), language, "What Aira remembers" (read AND delete — deletion takes
+ * effect on the very next chat turn), and the standing privacy commitments.
+ * Partner access and export are P7 backend features, shown as roadmap. */
+import { useEffect, useState } from "react";
+import { Brain, Check, EyeOff, LockKeyhole, ShieldCheck, X } from "lucide-react";
 
-import { putCareContext } from "../api";
+import { forgetAllMemory, forgetMemoryItem, getMemory, MemoryItem, putCareContext } from "../api";
 import { useApp } from "../state";
 
 const LANGUAGES = [
@@ -19,6 +19,65 @@ const STAGE_TITLES: Record<string, string> = {
   pregnant: "Pregnant",
   postpartum: "Postpartum",
 };
+
+const KIND_LABELS: Record<string, string> = {
+  fact: "Fact",
+  concern: "Concern",
+  symptom: "Symptom",
+  preference: "Preference",
+};
+
+function MemorySection() {
+  const [items, setItems] = useState<MemoryItem[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  const load = () => {
+    getMemory()
+      .then(setItems)
+      .catch(() => setFailed(true));
+  };
+  useEffect(load, []);
+
+  const forget = async (id: string) => {
+    setItems((cur) => cur?.filter((i) => i.id !== id) ?? null);
+    await forgetMemoryItem(id).catch(load); // on failure, re-sync with truth
+  };
+
+  return (
+    <section className="memory-section">
+      <div className="memory-head">
+        <Brain size={17} />
+        <div>
+          <strong>What Aira remembers</strong>
+          <small>From your conversations. Remove anything, any time.</small>
+        </div>
+      </div>
+      {failed && <p className="field-error">Couldn't load memories right now.</p>}
+      {items && items.length === 0 && (
+        <p className="memory-empty">Nothing yet — Aira remembers small helpful facts as you chat.</p>
+      )}
+      {items?.map((item) => (
+        <div className="memory-row" key={item.id}>
+          <em>{KIND_LABELS[item.kind] ?? item.kind}</em>
+          <span>{item.content}</span>
+          <button aria-label={`Forget "${item.content}"`} onClick={() => void forget(item.id)}>
+            <X size={15} />
+          </button>
+        </div>
+      ))}
+      {items && items.length > 0 && (
+        <button
+          className="card-link"
+          onClick={() => {
+            void forgetAllMemory().then(() => setItems([]));
+          }}
+        >
+          Forget everything
+        </button>
+      )}
+    </section>
+  );
+}
 
 export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) {
   const { context, setContext } = useApp();
@@ -87,11 +146,13 @@ export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) 
           <small>Your data is keyed to this device until you sign in.</small>
         </span>
       </div>
+      <MemorySection />
+
       <div className="privacy-note">
         <EyeOff size={17} />
         <span>
-          <strong>Coming: full data controls</strong>
-          <small>Review what Aira remembers, export, and delete — with the memory features.</small>
+          <strong>Coming: export & partner access</strong>
+          <small>Download your data and share tasks with a partner — with the P7 features.</small>
         </span>
       </div>
       <div className="privacy-note ok">

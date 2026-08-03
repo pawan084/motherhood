@@ -59,8 +59,11 @@ _LANGUAGE_LINES = {
 }
 
 
-def build_system(ctx: dict | None, caution: bool = False) -> str:
-    """Assemble the system prompt from the learner's care context."""
+def build_system(ctx: dict | None, caution: bool = False,
+                 memories: list[dict] | None = None) -> str:
+    """Assemble the system prompt from the learner's care context and the
+    freshest memory items. A deleted memory disappears from here on the very
+    next turn — that immediacy is the point of "What Aira remembers"."""
     lines = []
     if ctx:
         stage_line = _STAGE_LINES.get(ctx.get("stage") or "", "")
@@ -71,6 +74,8 @@ def build_system(ctx: dict | None, caution: bool = False) -> str:
     if not lines:
         lines.append("You don't yet know their stage — it's fine to gently ask "
                      "where they are in their journey.")
+    for item in memories or []:
+        lines.append(f"({item['kind']}) {item['content']}")
     language = (ctx or {}).get("language") or "en"
     prompt = SYSTEM_TEMPLATE.format(
         context_block="\n".join(f"- {line}" for line in lines),
@@ -97,6 +102,31 @@ CARD_TYPES = {
     "symptom_log": "Log a symptom, mood, or sleep entry",
     "partner_task": "Share a task with a partner",
 }
+
+MEMORY_EXTRACTION_PROMPT = """\
+You maintain the care memory of a maternal-wellness chat app. From ONE user
+message, extract 0-4 small facts worth remembering across conversations.
+Most messages contain NOTHING worth remembering — an empty list is the common
+answer.
+
+Reply with JSON only: {{"items": [{{"kind": "...", "content": "..."}}]}}
+
+kind must be exactly one of:
+- "fact": a stable care-relevant fact ("first pregnancy", "works night shifts")
+- "concern": something currently worrying them ("anxious about the scan")
+- "symptom": a non-urgent symptom they mentioned ("mild backache this week")
+- "preference": how they want Aira to behave ("prefers short answers",
+  "wants Hindi")
+
+Rules:
+- content: one short third-person phrase, max 12 words, in English.
+- Only what the USER said about themselves. Never infer, diagnose, or store
+  anything about other people.
+- No transient chit-chat ("said good morning"), no questions they asked.
+
+User message:
+{user_text}
+"""
 
 CARD_SUGGESTION_PROMPT = """\
 You pick follow-up action cards for a maternal-wellness chat app. Given the

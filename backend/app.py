@@ -23,6 +23,7 @@ import accounts  # noqa: E402
 import care_context  # noqa: E402
 import chat  # noqa: E402
 import device_auth  # noqa: E402
+import memory  # noqa: E402
 import prompts  # noqa: E402
 import safety  # noqa: E402
 import security  # noqa: E402
@@ -39,6 +40,7 @@ async def lifespan(_app: FastAPI):
     config.verify_production_config()
     accounts.init()
     care_context.init()
+    memory.init()
     safety.init()
     log.info("Aira API starting (env=%s, postgres=%s)", config.ENV, bool(config.DATABASE_URL))
     yield
@@ -64,6 +66,7 @@ app.include_router(device_auth.router)
 app.include_router(accounts.router)
 app.include_router(care_context.router)
 app.include_router(chat.router)
+app.include_router(memory.router)
 
 
 @app.get("/health")

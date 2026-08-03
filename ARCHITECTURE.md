@@ -219,6 +219,28 @@ resolve learner → load care context → **gate** → branch → reply → card
 SSE event order: `gate` → `delta`* → `cards`? → `done`; a mid-stream provider
 failure emits `error` then `done`.
 
+## 12. Memory (P4)
+
+`memory.py` — small structured facts extracted from the learner's own
+messages, never transcripts (chat history is not persisted server-side).
+
+- **A control surface, not a display.** `GET /memory`, `DELETE /memory/{id}`,
+  `DELETE /memory`. Deletion is immediate: the next turn's system prompt no
+  longer contains the fact (tested end to end through the chat route).
+- **Extraction runs only on turns Aira replied to** (ok/caution). Urgent and
+  error turns store nothing here — urgent inputs live in the safety audit,
+  a different record under different rules.
+- Kinds are a closed catalog (fact / concern / symptom / preference),
+  enforced twice: in the extractor's validation and again in the store
+  (defense in depth against a misbehaving model).
+- Near-duplicates refresh their timestamp instead of duplicating; a per-
+  learner cap (60) evicts oldest-updated; prompts carry only the freshest 8.
+  Memory sharpens the conversation — it must not become a dossier.
+- On sign-in, device memories are **reassigned** to the account (not copied);
+  account deletion cascades through them.
+- On the streaming path, extraction runs after `done` is delivered so it can
+  never delay a turn; on both paths `extract_memory` never raises.
+
 ---
 
 ## Filled in as phases land

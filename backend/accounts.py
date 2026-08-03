@@ -193,10 +193,12 @@ def _erase_user(user_id: str) -> None:
     devices = [r[0] for r in _conn.execute(
         "SELECT device FROM account_devices WHERE user_id=?", (user_id,)).fetchall()]
     ids = [user_id, *devices]
-    import care_context  # local import to avoid a startup cycle
+    import care_context  # local imports to avoid a startup cycle
+    import memory
     with _conn.transaction():
         for lid in ids:
             care_context.erase(lid)
+            memory.erase(lid)
         _conn.execute("DELETE FROM account_devices WHERE user_id=?", (user_id,))
         _conn.execute("DELETE FROM accounts WHERE id=?", (user_id,))
 

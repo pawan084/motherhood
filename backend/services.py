@@ -64,6 +64,35 @@ def stream_reply(system: str, history: list[dict], text: str):
             yield chunk.text
 
 
+def extract_memory(user_text: str, ctx: dict | None) -> list[dict]:
+    """0-4 memory items from the learner's OWN message. NEVER raises — memory
+    is enrichment, and a failure must not affect the turn. Kind validation is
+    duplicated in memory.remember (defense in depth: this bound is the
+    model's, that one is the store's)."""
+    try:
+        from google.genai import types
+        resp = _client().models.generate_content(
+            model=config.GEMINI_SAFETY_MODEL,
+            contents=prompts.MEMORY_EXTRACTION_PROMPT.format(user_text=user_text[:2000]),
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json", temperature=0.0),
+        )
+        data = json.loads(resp.text)
+        items = []
+        for item in data.get("items", [])[:4]:
+            if not isinstance(item, dict):
+                continue
+            if item.get("kind") not in ("fact", "concern", "symptom", "preference"):
+                continue
+            content = str(item.get("content", "")).strip()
+            if content:
+                items.append({"kind": item["kind"], "content": content[:200]})
+        return items
+    except Exception as e:  # noqa: BLE001
+        log.warning("memory extraction failed (turn unaffected): %s", e)
+        return []
+
+
 def suggest_cards(user_text: str, reply: str, ctx: dict | None) -> list[dict]:
     """0-3 typed action cards for this turn. NEVER raises: cards are garnish,
     and a failure here must not cost the user their reply."""
