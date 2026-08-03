@@ -100,6 +100,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
+import com.aira.companion.model.AiraUiState
+import com.aira.companion.model.Appointment
+import com.aira.companion.model.Medicine
+import com.aira.companion.model.MemoryItem
+import com.aira.companion.model.PlanItem
+import com.aira.companion.model.moodEmoji
+import com.aira.companion.model.moodOptions
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChoiceCard
@@ -219,9 +226,18 @@ fun ToolTraySheet(
 @Composable
 fun DynamicToolSheet(
     tool: AiraTool,
+    state: AiraUiState,
     onDismiss: () -> Unit,
     onNotify: (String) -> Unit,
     onUrgentHelp: () -> Unit,
+    onSaveMood: (String) -> Unit,
+    onCreateReminder: (String, Int) -> Unit,
+    onAddMedicine: (String, String, String) -> Unit,
+    onMedicineTaken: (String) -> Unit,
+    onAddAppointment: (String, Double, String) -> Unit,
+    onAddPlanItem: (String) -> Unit,
+    onTogglePlanItem: (String) -> Unit,
+    onForgetMemory: (String) -> Unit,
 ) {
     val documentLauncher =
         rememberLauncherForActivityResult(
@@ -259,10 +275,10 @@ fun DynamicToolSheet(
 
             when (tool) {
                 AiraTool.Notifications -> NotificationsTool(onNotify)
-                AiraTool.CheckIn -> CheckInTool(onNotify)
-                AiraTool.Reminder -> ReminderTool(onNotify)
-                AiraTool.Medicines -> MedicinesTool(onNotify)
-                AiraTool.Appointment -> AppointmentTool(onNotify)
+                AiraTool.CheckIn -> CheckInTool(state, onSaveMood, onDismiss)
+                AiraTool.Reminder -> ReminderTool(onCreateReminder, onDismiss)
+                AiraTool.Medicines -> MedicinesTool(state.medicines, onAddMedicine, onMedicineTaken)
+                AiraTool.Appointment -> AppointmentTool(state.appointments, onAddAppointment, onNotify)
                 AiraTool.CareVault ->
                     CareVaultTool(
                         onPickDocument = {
@@ -282,13 +298,13 @@ fun DynamicToolSheet(
                         onPickPartnerPhoto = { partnerPhotoLauncher.launch("image/*") },
                         onNotify = onNotify,
                     )
-                AiraTool.CarePlan -> CarePlanTool(onNotify)
+                AiraTool.CarePlan -> CarePlanTool(state.planItems, onAddPlanItem, onTogglePlanItem)
                 AiraTool.Privacy -> PrivacyTool(onNotify)
-                AiraTool.Memory -> MemoryTool(onNotify)
+                AiraTool.Memory -> MemoryTool(state.memoryItems, onForgetMemory)
                 AiraTool.Voice -> VoiceTool(onNotify)
                 AiraTool.Partner -> PartnerTool(onNotify)
                 AiraTool.Support -> SupportTool(onNotify, onUrgentHelp)
-                AiraTool.Emergency -> EmergencyProfileTool(onNotify)
+                AiraTool.Emergency -> EmergencyProfileTool(state, onNotify)
             }
         }
     }
@@ -347,113 +363,182 @@ private fun NotificationsTool(onNotify: (String) -> Unit) {
 }
 
 @Composable
-private fun CheckInTool(onNotify: (String) -> Unit) {
-    var mood by remember { mutableStateOf("Steady") }
-    var energy by remember { mutableStateOf("Medium") }
+private fun CheckInTool(
+    state: AiraUiState,
+    onSaveMood: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // The same closed catalog the backend accepts — one row per day, upserted.
+    val today = java.time.LocalDate.now().toString()
+    val todayMood = state.moods.lastOrNull { it.day == today }?.mood
+    var mood by remember { mutableStateOf(todayMood ?: "okay") }
     Text("How are you feeling right now?", style = MaterialTheme.typography.titleMedium, color = Ink)
     Spacer(Modifier.height(12.dp))
     ChoiceChips(
-        options = listOf("Good", "Steady", "Low", "Anxious"),
-        selected = mood,
-        onSelect = { mood = it },
+        options = moodOptions.map { "${moodEmoji[it] ?: ""} ${it.replaceFirstChar(Char::uppercase)}" },
+        selected = "${moodEmoji[mood] ?: ""} ${mood.replaceFirstChar(Char::uppercase)}",
+        onSelect = { label -> mood = moodOptions.first { label.endsWith(it, ignoreCase = true) } },
     )
-    Spacer(Modifier.height(18.dp))
-    Text("Energy", style = MaterialTheme.typography.titleSmall, color = Ink)
-    Spacer(Modifier.height(8.dp))
-    ChoiceChips(
-        options = listOf("Low", "Medium", "High"),
-        selected = energy,
-        onSelect = { energy = it },
-    )
-    Spacer(Modifier.height(18.dp))
-    OutlinedTextField(
-        value = "",
-        onValueChange = {},
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Anything you want Aira to know?") },
-        minLines = 3,
-        shape = RoundedCornerShape(17.dp),
-    )
+    if (todayMood != null) {
+        Spacer(Modifier.height(10.dp))
+        InfoBanner(
+            icon = Icons.Outlined.CheckCircle,
+            text = "Logged today: ${todayMood.replaceFirstChar(Char::uppercase)}. Saving again replaces it.",
+            color = SageMist,
+        )
+    }
     Spacer(Modifier.height(18.dp))
     PrimaryButton(
         label = "Save check-in",
-        onClick = { onNotify("Check-in saved: $mood mood, $energy energy.") },
+        onClick = {
+            onSaveMood(mood)
+            onDismiss()
+        },
         modifier = Modifier.fillMaxWidth(),
     )
 }
 
 @Composable
-private fun ReminderTool(onNotify: (String) -> Unit) {
-    var title by remember { mutableStateOf("Prenatal vitamin") }
-    var time by remember { mutableStateOf("8:00 PM") }
-    var repeat by remember { mutableStateOf(true) }
-
+private fun ReminderTool(
+    onCreateReminder: (String, Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var title by remember { mutableStateOf("") }
+    var timesLabel by remember { mutableStateOf("Once a day") }
+    val target = when (timesLabel) {
+        "4x a day" -> 4
+        "8x a day" -> 8
+        else -> 1
+    }
     OutlinedTextField(
         value = title,
         onValueChange = { title = it },
         modifier = Modifier.fillMaxWidth(),
         label = { Text("Reminder") },
-        leadingIcon = { Icon(Icons.Outlined.Medication, null) },
+        placeholder = { Text("e.g. Afternoon rest") },
+        leadingIcon = { Icon(Icons.Outlined.AccessTime, null) },
         shape = RoundedCornerShape(17.dp),
     )
     Spacer(Modifier.height(12.dp))
-    Text("Time", style = MaterialTheme.typography.titleSmall, color = Ink)
+    Text("How often?", style = MaterialTheme.typography.titleSmall, color = Ink)
     Spacer(Modifier.height(8.dp))
     ChoiceChips(
-        options = listOf("8:00 AM", "2:00 PM", "8:00 PM"),
-        selected = time,
-        onSelect = { time = it },
+        options = listOf("Once a day", "4x a day", "8x a day"),
+        selected = timesLabel,
+        onSelect = { timesLabel = it },
     )
     Spacer(Modifier.height(14.dp))
-    SettingLine(
-        title = "Repeat daily",
-        subtitle = "Aira will ask before changing this routine",
-        checked = repeat,
-        onCheckedChange = { repeat = it },
+    InfoBanner(
+        icon = Icons.Outlined.CheckCircle,
+        text = "Lives in Today's care on Me — tick it off as you go.",
+        color = SageMist,
     )
     Spacer(Modifier.height(18.dp))
     PrimaryButton(
         label = "Create reminder",
-        onClick = { onNotify("Reminder created for $time.") },
+        enabled = title.isNotBlank(),
+        onClick = {
+            onCreateReminder(title.trim(), target)
+            onDismiss()
+        },
         modifier = Modifier.fillMaxWidth(),
     )
 }
 
 @Composable
-private fun MedicinesTool(onNotify: (String) -> Unit) {
-    AiraCard(containerColor = LilacMist) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(46.dp)
-                        .background(Plum, RoundedCornerShape(15.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Medication, null, tint = Paper)
+private fun MedicinesTool(
+    medicines: List<Medicine>?,
+    onAddMedicine: (String, String, String) -> Unit,
+    onMedicineTaken: (String) -> Unit,
+) {
+    when {
+        medicines == null ->
+            Text("Loading your medicines…", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+        medicines.isEmpty() ->
+            InfoBanner(
+                icon = Icons.Outlined.Medication,
+                text = "No medicines saved yet — add the first below.",
+                color = SageMist,
+            )
+        else -> medicines.forEach { medicine ->
+            AiraCard(containerColor = if (medicine.takenToday) SageMist else LilacMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(46.dp)
+                                .background(Plum, RoundedCornerShape(15.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Outlined.Medication, null, tint = Paper)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(medicine.name, style = MaterialTheme.typography.titleMedium, color = Ink)
+                        Text(
+                            text = listOf(medicine.dose, medicine.timeOfDay)
+                                .filter { it.isNotBlank() }
+                                .joinToString(" · ")
+                                .ifBlank { "As prescribed" },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                PrimaryButton(
+                    label = if (medicine.takenToday) "Taken today" else "Mark as taken",
+                    enabled = !medicine.takenToday,
+                    onClick = { onMedicineTaken(medicine.id) },
+                    modifier = Modifier.fillMaxWidth(),
+                    trailingIcon = Icons.Filled.Check,
+                )
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Prenatal vitamin", style = MaterialTheme.typography.titleMedium, color = Ink)
-                Text("1 tablet · 8:00 PM", style = MaterialTheme.typography.bodySmall, color = InkMuted)
-            }
+            Spacer(Modifier.height(10.dp))
         }
-        Spacer(Modifier.height(16.dp))
-        PrimaryButton(
-            label = "Mark as taken",
-            onClick = { onNotify("Prenatal vitamin marked as taken.") },
-            modifier = Modifier.fillMaxWidth(),
-            trailingIcon = Icons.Filled.Check,
-        )
     }
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(6.dp))
     InfoBanner(
         icon = Icons.Outlined.HealthAndSafety,
         text = "Aira can remind and organise, but does not change medication advice.",
         color = SageMist,
     )
     Spacer(Modifier.height(12.dp))
-    OutlinedButton(onClick = { onNotify("Add-medicine flow ready for API integration.") }, modifier = Modifier.fillMaxWidth()) {
+    var name by remember { mutableStateOf("") }
+    var dose by remember { mutableStateOf("") }
+    var time by remember { mutableStateOf("") }
+    OutlinedTextField(
+        value = name, onValueChange = { name = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Medicine name") },
+        shape = RoundedCornerShape(17.dp),
+    )
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(
+            value = dose, onValueChange = { dose = it },
+            modifier = Modifier.weight(1f),
+            label = { Text("Dose") },
+            placeholder = { Text("1 tablet") },
+            shape = RoundedCornerShape(17.dp),
+        )
+        OutlinedTextField(
+            value = time, onValueChange = { time = it },
+            modifier = Modifier.weight(1f),
+            label = { Text("Time") },
+            placeholder = { Text("20:00") },
+            shape = RoundedCornerShape(17.dp),
+        )
+    }
+    Spacer(Modifier.height(10.dp))
+    OutlinedButton(
+        onClick = {
+            onAddMedicine(name.trim(), dose.trim(), time.trim())
+            name = ""; dose = ""; time = ""
+        },
+        enabled = name.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
         Icon(Icons.Filled.Add, null)
         Spacer(Modifier.width(8.dp))
         Text("Add medicine")
@@ -461,44 +546,136 @@ private fun MedicinesTool(onNotify: (String) -> Unit) {
 }
 
 @Composable
-private fun AppointmentTool(onNotify: (String) -> Unit) {
-    val checked = remember { mutableStateListOf(false, false, false) }
-    val questions =
-        listOf(
-            "Do I need any tests this week?",
-            "What changes should I expect next?",
-            "How can I manage fatigue better?",
-        )
-    AiraCard(containerColor = LilacMist) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.CalendarMonth, null, tint = Plum)
-            Spacer(Modifier.width(10.dp))
-            Column {
-                Text("Tomorrow · 10:30 AM", style = MaterialTheme.typography.titleSmall, color = Ink)
-                Text("Dr. Meera Shah · City Care", style = MaterialTheme.typography.bodySmall, color = InkMuted)
+private fun AppointmentTool(
+    appointments: List<Appointment>?,
+    onAddAppointment: (String, Double, String) -> Unit,
+    onNotify: (String) -> Unit,
+) {
+    val nowSec = System.currentTimeMillis() / 1000.0
+    val next = appointments?.filter { it.whenTs >= nowSec }?.minByOrNull { it.whenTs }
+    when {
+        appointments == null ->
+            Text("Checking your appointments…", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+        next == null ->
+            InfoBanner(
+                icon = Icons.Outlined.CalendarMonth,
+                text = "No upcoming appointment saved — add one below and Aira will nudge you the day before.",
+                color = SageMist,
+            )
+        else ->
+            AiraCard(containerColor = LilacMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.CalendarMonth, null, tint = Plum)
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = java.time.format.DateTimeFormatter.ofPattern("EEE d MMM · HH:mm")
+                                .format(
+                                    java.time.Instant.ofEpochSecond(next.whenTs.toLong())
+                                        .atZone(java.time.ZoneId.systemDefault()),
+                                ),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                        Text(
+                            text = listOf(next.title, next.location).filter { it.isNotBlank() }
+                                .joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+            }
+    }
+    Spacer(Modifier.height(14.dp))
+    if (next != null) {
+        val checked = remember { mutableStateListOf(false, false, false) }
+        val questions =
+            listOf(
+                "Do I need any tests this week?",
+                "What changes should I expect next?",
+                "How can I manage fatigue better?",
+            )
+        SectionLabel("Suggested questions")
+        Spacer(Modifier.height(8.dp))
+        questions.forEachIndexed { index, question ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { checked[index] = !checked[index] }
+                        .padding(vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = checked[index], onCheckedChange = { checked[index] = it })
+                Text(question, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
             }
         }
-    }
-    Spacer(Modifier.height(16.dp))
-    SectionLabel("Suggested questions")
-    Spacer(Modifier.height(8.dp))
-    questions.forEachIndexed { index, question ->
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { checked[index] = !checked[index] }
-                    .padding(vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
+        OutlinedButton(
+            onClick = {
+                val brief = questions.filterIndexed { i, _ -> checked[i] }.joinToString("\n")
+                clipboard.setText(androidx.compose.ui.text.AnnotatedString(brief))
+                onNotify("Questions copied — paste them into your visit notes.")
+            },
+            enabled = checked.any { it },
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Checkbox(checked = checked[index], onCheckedChange = { checked[index] = it })
-            Text(question, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+            Text("Copy selected questions")
         }
+        Spacer(Modifier.height(14.dp))
     }
+    SectionLabel("Add an appointment")
+    Spacer(Modifier.height(8.dp))
+    var title by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var dayLabel by remember { mutableStateOf("Tomorrow") }
+    var timeLabel by remember { mutableStateOf("10:30") }
+    OutlinedTextField(
+        value = title, onValueChange = { title = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("What is it?") },
+        placeholder = { Text("Antenatal check-up") },
+        shape = RoundedCornerShape(17.dp),
+    )
+    Spacer(Modifier.height(8.dp))
+    ChoiceChips(
+        options = listOf("Tomorrow", "In 3 days", "Next week"),
+        selected = dayLabel,
+        onSelect = { dayLabel = it },
+    )
+    Spacer(Modifier.height(8.dp))
+    ChoiceChips(
+        options = listOf("09:00", "10:30", "14:00", "17:00"),
+        selected = timeLabel,
+        onSelect = { timeLabel = it },
+    )
+    Spacer(Modifier.height(8.dp))
+    OutlinedTextField(
+        value = location, onValueChange = { location = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Where (optional)") },
+        shape = RoundedCornerShape(17.dp),
+    )
     Spacer(Modifier.height(12.dp))
     PrimaryButton(
-        label = "Save visit brief",
-        onClick = { onNotify("Visit brief saved with ${checked.count { it }} selected questions.") },
+        label = "Save appointment",
+        enabled = title.isNotBlank(),
+        onClick = {
+            val days = when (dayLabel) {
+                "In 3 days" -> 3L
+                "Next week" -> 7L
+                else -> 1L
+            }
+            val (h, m) = timeLabel.split(":").map(String::toInt)
+            val ts = java.time.LocalDate.now().plusDays(days)
+                .atTime(h, m)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toEpochSecond()
+                .toDouble()
+            onAddAppointment(title.trim(), ts, location.trim())
+            title = ""; location = ""
+        },
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -739,29 +916,51 @@ private fun CompanionTool(
 }
 
 @Composable
-private fun CarePlanTool(onNotify: (String) -> Unit) {
-    val complete = remember { mutableStateListOf(true, false, false) }
-    listOf(
-        "Daily prenatal vitamin",
-        "Prepare appointment questions",
-        "Complete two-minute reset",
-    ).forEachIndexed { index, item ->
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .clickable { complete[index] = !complete[index] }
-                    .padding(vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Checkbox(checked = complete[index], onCheckedChange = { complete[index] = it })
-            Text(item, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+private fun CarePlanTool(
+    items: List<PlanItem>?,
+    onAddPlanItem: (String) -> Unit,
+    onTogglePlanItem: (String) -> Unit,
+) {
+    when {
+        items == null ->
+            Text("Loading your plan…", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+        items.isEmpty() ->
+            InfoBanner(
+                icon = Icons.Outlined.CheckCircle,
+                text = "Nothing on your plan yet — add the first step below.",
+                color = SageMist,
+            )
+        else -> items.forEach { item ->
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onTogglePlanItem(item.id) }
+                        .padding(vertical = 9.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(checked = item.done, onCheckedChange = { onTogglePlanItem(item.id) })
+                Text(item.title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+            }
         }
     }
     Spacer(Modifier.height(14.dp))
+    var newItem by remember { mutableStateOf("") }
+    OutlinedTextField(
+        value = newItem, onValueChange = { newItem = it },
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text("Add to your plan") },
+        placeholder = { Text("e.g. Book the anomaly scan") },
+        shape = RoundedCornerShape(17.dp),
+    )
+    Spacer(Modifier.height(10.dp))
     PrimaryButton(
-        label = "Save care plan",
-        onClick = { onNotify("Care plan updated.") },
+        label = "Add step",
+        enabled = newItem.isNotBlank(),
+        onClick = {
+            onAddPlanItem(newItem.trim())
+            newItem = ""
+        },
         modifier = Modifier.fillMaxWidth(),
     )
 }
@@ -800,20 +999,16 @@ private fun PrivacyTool(onNotify: (String) -> Unit) {
 }
 
 @Composable
-private fun MemoryTool(onNotify: (String) -> Unit) {
-    val memories =
-        remember {
-            mutableStateListOf(
-                "You are 24 weeks pregnant",
-                "You prefer English with occasional Hindi",
-                "You noted fatigue on Monday",
-                "Your next appointment is tomorrow",
-            )
-        }
-    if (memories.isEmpty()) {
-        InfoBanner(Icons.Outlined.Memory, "Aira is not currently remembering any care context.", SageMist)
-    } else {
-        memories.toList().forEach { memory ->
+private fun MemoryTool(
+    items: List<MemoryItem>?,
+    onForgetMemory: (String) -> Unit,
+) {
+    when {
+        items == null ->
+            Text("Checking what Aira remembers…", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+        items.isEmpty() ->
+            InfoBanner(Icons.Outlined.Memory, "Aira is not currently remembering any care context.", SageMist)
+        else -> items.forEach { item ->
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = Paper,
@@ -826,12 +1021,9 @@ private fun MemoryTool(onNotify: (String) -> Unit) {
                 ) {
                     Icon(Icons.Outlined.Memory, null, tint = Plum, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text(memory, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
-                    IconButton(onClick = {
-                        memories.remove(memory)
-                        onNotify("Memory removed.")
-                    }) {
-                        Icon(Icons.Filled.DeleteOutline, contentDescription = "Forget $memory", tint = InkMuted)
+                    Text(item.content, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    IconButton(onClick = { onForgetMemory(item.id) }) {
+                        Icon(Icons.Filled.DeleteOutline, contentDescription = "Forget this", tint = InkMuted)
                     }
                 }
             }
@@ -913,25 +1105,37 @@ private fun SupportTool(
 }
 
 @Composable
-private fun EmergencyProfileTool(onNotify: (String) -> Unit) {
+private fun EmergencyProfileTool(
+    state: AiraUiState,
+    onNotify: (String) -> Unit,
+) {
+    val care = state.careSummary
     AiraCard(containerColor = UrgentMist) {
-        Text("Maya Sharma · Week 24", style = MaterialTheme.typography.titleMedium, color = Ink)
+        Text(
+            text = listOfNotNull(
+                care?.displayName?.takeIf { it.isNotBlank() },
+                care?.week?.let { "Week $it" }
+                    ?: care?.stage?.replaceFirstChar(Char::uppercase)?.replace('_', ' '),
+            ).joinToString(" · ").ifBlank { "Your profile" },
+            style = MaterialTheme.typography.titleMedium,
+            color = Ink,
+        )
         Spacer(Modifier.height(8.dp))
-        Text("Blood group: B+", style = MaterialTheme.typography.bodyMedium, color = Ink)
-        Text("Allergies: None recorded", style = MaterialTheme.typography.bodyMedium, color = Ink)
-        Text("Primary care team: City Care", style = MaterialTheme.typography.bodyMedium, color = Ink)
-        Text("Emergency contact: Arjun · +91 98••• ••210", style = MaterialTheme.typography.bodyMedium, color = Ink)
+        // Honest placeholders: these fields are not collected yet.
+        Text("Blood group: not recorded", style = MaterialTheme.typography.bodyMedium, color = Ink)
+        Text("Allergies: not recorded", style = MaterialTheme.typography.bodyMedium, color = Ink)
+        Text("Emergency contact: not recorded", style = MaterialTheme.typography.bodyMedium, color = Ink)
     }
     Spacer(Modifier.height(14.dp))
     InfoBanner(
         icon = Icons.Outlined.Lock,
-        text = "This profile can be made available offline from device settings.",
+        text = "Recording blood group, allergies and an emergency contact is coming — nothing here is invented.",
         color = SageMist,
     )
     Spacer(Modifier.height(14.dp))
     PrimaryButton(
         label = "Update emergency profile",
-        onClick = { onNotify("Emergency profile editor opened.") },
+        onClick = { onNotify("Emergency profile editing arrives with sign-in.") },
         modifier = Modifier.fillMaxWidth(),
     )
 }

@@ -32,12 +32,12 @@ enum class AiraTool(
     CheckIn("How are you?", "Daily check-in"),
     Reminder("Create a reminder", "Aira tool"),
     Medicines("Medicines", "Care routine"),
-    Appointment("Visit copilot", "Tomorrow · 10:30 AM"),
+    Appointment("Visit copilot", "Care planning"),
     CareVault("Add to Care Vault", "Private document upload"),
     Reset("A two-minute reset", "Guided wellness"),
     Symptom("Log a symptom", "Track, don’t diagnose"),
     Companion("Companion mode", "Avatar & connection"),
-    CarePlan("Your care plan", "Week 24 priorities"),
+    CarePlan("Your care plan", "Your priorities"),
     Privacy("Privacy centre", "Your data, your control"),
     Memory("What Aira remembers", "Care context"),
     Voice("Voice & language", "Conversation settings"),
@@ -157,6 +157,29 @@ data class TodayFeed(
     val focus: List<TodayFocus>,
 )
 
+/** GET /medicines — real rows, today's taken state computed server-side. */
+data class Medicine(
+    val id: String,
+    val name: String,
+    val dose: String,
+    val timeOfDay: String,
+    val takenToday: Boolean,
+)
+
+/** GET /appointments — whenTs is unix seconds. */
+data class Appointment(
+    val id: String,
+    val title: String,
+    val whenTs: Double,
+    val location: String,
+)
+
+/** GET /care-plan items. */
+data class PlanItem(val id: String, val title: String, val done: Boolean)
+
+/** GET /memory — what Aira remembers, deletable per item. */
+data class MemoryItem(val id: String, val content: String)
+
 data class WellnessReport(
     val days: Int,
     val moods: List<MoodEntry>,
@@ -218,6 +241,12 @@ data class AiraUiState(
     val moodHistory: List<MoodEntry> = emptyList(),
     val report: WellnessReport? = null,
     val todayFeed: TodayFeed? = null,
+    // Tool-sheet data (loaded when the sheet opens; null = not yet loaded,
+    // so sheets can tell "loading" from "genuinely empty").
+    val medicines: List<Medicine>? = null,
+    val appointments: List<Appointment>? = null,
+    val planItems: List<PlanItem>? = null,
+    val memoryItems: List<MemoryItem>? = null,
 )
 
 data class OnboardingPrompt(

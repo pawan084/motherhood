@@ -157,14 +157,16 @@ fun MeScreen(
             }
         }
 
-        // ── Right now: proactive, time-aware focus (max 2, server-ranked) ──
-        state.todayFeed?.focus?.forEach { focus ->
+        // ── Right now: proactive, time-aware focus (max 2, server-ranked).
+        // mood_checkin is dropped HERE (not server-side): the mood picker is
+        // two cards below, and a nudge duplicating a visible control is
+        // noise. Chat still shows it — no picker lives there. ──────────────
+        state.todayFeed?.focus?.filter { it.kind != "mood_checkin" }?.forEach { focus ->
             FocusCard(focus) {
                 when (focus.kind) {
                     "appointment_soon", "evening_wrapup", "water_pace" ->
                         onOpenDetail(DetailPage.Care)
                     "milestone_week" -> onOpenDetail(DetailPage.Journey)
-                    // mood_checkin: the picker is directly below
                 }
             }
         }

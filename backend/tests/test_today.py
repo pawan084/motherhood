@@ -92,3 +92,20 @@ def test_evening_wrapup(client):
     client.get("/reminders", headers=h)
     kinds = [f["kind"] for f in client.get("/today?hour=20", headers=h).json()["focus"]]
     assert "evening_wrapup" in kinds or "water_pace" in kinds  # capped at 2, ranked
+
+
+def test_water_and_wrapup_never_nag_about_the_same_item(client):
+    """Dedupe: when water_pace fires and water is the ONLY open item, the
+    evening wrap-up stays silent instead of restating it."""
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    client.post("/moods", json={"mood": "okay"}, headers=h)
+    reminders = client.get("/reminders", headers=h).json()["reminders"]
+    # Finish everything except water (leave water at 0 so water_pace fires).
+    for r in reminders:
+        if r["kind"] != "water":
+            for _ in range(r["target_per_day"]):
+                client.post(f"/reminders/{r['id']}/tick", headers=h)
+    kinds = [f["kind"] for f in client.get("/today?hour=20", headers=h).json()["focus"]]
+    assert "water_pace" in kinds
+    assert "evening_wrapup" not in kinds

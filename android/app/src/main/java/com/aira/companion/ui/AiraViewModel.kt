@@ -324,6 +324,103 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ── Tool-sheet data + actions (P11 part 3): sheets render server truth;
+    // loads fire from LaunchedEffect(state.activeTool) in MainExperience ─────
+
+    fun loadToolData(tool: AiraTool) {
+        viewModelScope.launch {
+            when (tool) {
+                AiraTool.Medicines -> runCatching { AiraApi.getMedicines(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(medicines = fresh) } }
+                AiraTool.Appointment -> runCatching { AiraApi.getAppointments(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(appointments = fresh) } }
+                AiraTool.CarePlan -> runCatching { AiraApi.getCarePlan(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(planItems = fresh) } }
+                AiraTool.Memory -> runCatching { AiraApi.getMemory(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(memoryItems = fresh) } }
+                else -> Unit
+            }
+        }
+    }
+
+    fun addMedicine(name: String, dose: String, timeOfDay: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addMedicine(appContext, name, dose, timeOfDay) }
+                .onSuccess {
+                    loadToolData(AiraTool.Medicines)
+                    notify("$name added to your medicines.")
+                }
+                .onFailure { notify("Couldn't add $name — try again in a moment.") }
+        }
+    }
+
+    fun markMedicineTakenFromSheet(id: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.markMedicineTaken(appContext, id) }
+                .onSuccess { loadToolData(AiraTool.Medicines) }
+                .onFailure { notify("Couldn't record that — try again in a moment.") }
+        }
+    }
+
+    fun addAppointment(title: String, whenTs: Double, location: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addAppointment(appContext, title, whenTs, location) }
+                .onSuccess {
+                    loadToolData(AiraTool.Appointment)
+                    notify("Appointment saved.")
+                }
+                .onFailure { notify("Couldn't save the appointment — try again in a moment.") }
+        }
+    }
+
+    fun addPlanItem(title: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addPlanItem(appContext, title) }
+                .onSuccess { loadToolData(AiraTool.CarePlan) }
+                .onFailure { notify("Couldn't add that to your plan — try again in a moment.") }
+        }
+    }
+
+    fun togglePlanItem(id: String) {
+        // Optimistic: flip locally, re-sync on failure.
+        _uiState.update { state ->
+            state.copy(planItems = state.planItems?.map {
+                if (it.id == id) it.copy(done = !it.done) else it
+            })
+        }
+        viewModelScope.launch {
+            runCatching { AiraApi.togglePlanItem(appContext, id) }
+                .onFailure { loadToolData(AiraTool.CarePlan) }
+        }
+    }
+
+    fun forgetMemory(id: String) {
+        _uiState.update { state ->
+            state.copy(memoryItems = state.memoryItems?.filterNot { it.id == id })
+        }
+        viewModelScope.launch {
+            runCatching { AiraApi.forgetMemory(appContext, id) }
+                .onSuccess { notify("Memory removed.") }
+                .onFailure {
+                    loadToolData(AiraTool.Memory)
+                    notify("Couldn't remove that memory — try again in a moment.")
+                }
+        }
+    }
+
+    /** Create a real reminder from the tool sheet (server assigns id/seed). */
+    fun createReminder(title: String, targetPerDay: Int) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addReminder(appContext, title, "custom", targetPerDay) }
+                .onSuccess {
+                    runCatching { AiraApi.getReminders(appContext) }
+                        .onSuccess { fresh -> _uiState.update { it.copy(reminders = fresh) } }
+                    notify("Reminder created — it lives in Today's care on Me.")
+                }
+                .onFailure { notify("Couldn't create the reminder — try again in a moment.") }
+        }
+    }
+
     fun openTools() {
         _uiState.update { it.copy(toolsOpen = true) }
     }

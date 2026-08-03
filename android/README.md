@@ -94,8 +94,11 @@ This app now runs against the real Aira API (see `net/AiraApi.kt`):
 - debug builds allow cleartext (dev LAN); release pins an invalid URL until a
   production API exists
 
-Not yet ported: SSE streaming, voice, tool-sheet content (sheets like the
-Visit copilot still show prototype data), sign-in.
+Not yet ported: SSE streaming, voice, sign-in. Tool sheets wired to real
+endpoints: check-in (/moods), reminder (/reminders), medicines, visit
+copilot (/appointments), care plan, memory. Still prototype: Care Vault
+upload flow, Reset, Symptom log, Companion, Voice, Partner, Support,
+Privacy toggles, emergency-profile fields (honest "not recorded").
 
 ---
 

@@ -144,10 +144,16 @@ def get_today(hour: int | None = Query(default=None, ge=0, le=23),
             })
 
     if slot == "evening":
+        # Dedupe: if the water card already fired, water is spoken for —
+        # the wrap-up must count only OTHER open items, and stay silent
+        # when there are none (two cards nagging about the same glass of
+        # water is noise, not proactivity).
+        exclude_water = any(f["kind"] == "water_pace" for f in focus)
         open_care = wellness._conn.execute(
             "SELECT COUNT(*) FROM reminders r LEFT JOIN reminder_ticks t"
             " ON t.reminder_id = r.id AND t.day = ?"
-            " WHERE r.learner_id=? AND COALESCE(t.ticks,0) < r.target_per_day",
+            " WHERE r.learner_id=? AND COALESCE(t.ticks,0) < r.target_per_day"
+            + (" AND r.kind != 'water'" if exclude_water else ""),
             (today_iso, learner_id)).fetchone()[0]
         if open_care:
             focus.append({

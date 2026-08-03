@@ -6,6 +6,10 @@ import com.aira.companion.model.CareSummary
 import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.Milestone
 import com.aira.companion.model.ActionCard
+import com.aira.companion.model.Appointment
+import com.aira.companion.model.Medicine
+import com.aira.companion.model.MemoryItem
+import com.aira.companion.model.PlanItem
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.ReminderReport
@@ -208,6 +212,88 @@ object AiraApi {
                 },
             )
         }
+
+    // ── Tool sheets (P11 part 3): the same owner-scoped endpoints the web
+    // client uses; every list is enveloped. ─────────────────────────────────
+
+    suspend fun getMedicines(context: Context): List<Medicine> = withContext(Dispatchers.IO) {
+        val arr = request("GET", "/medicines", ensureDeviceToken(context), null)
+            .optJSONArray("medicines") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.let {
+                Medicine(
+                    id = it.getString("id"),
+                    name = it.getString("name"),
+                    dose = it.optString("dose"),
+                    timeOfDay = it.optString("time_of_day"),
+                    takenToday = it.optBoolean("taken_today"),
+                )
+            }
+        }
+    }
+
+    suspend fun addMedicine(context: Context, name: String, dose: String, timeOfDay: String) =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST", "/medicines", ensureDeviceToken(context),
+                JSONObject().put("name", name).put("dose", dose)
+                    .put("time_of_day", timeOfDay),
+            )
+        }
+
+    suspend fun getAppointments(context: Context): List<Appointment> = withContext(Dispatchers.IO) {
+        val arr = request("GET", "/appointments", ensureDeviceToken(context), null)
+            .optJSONArray("appointments") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.let {
+                Appointment(
+                    id = it.getString("id"),
+                    title = it.getString("title"),
+                    whenTs = it.getDouble("when_ts"),
+                    location = it.optString("location"),
+                )
+            }
+        }
+    }
+
+    suspend fun addAppointment(context: Context, title: String, whenTs: Double, location: String) =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST", "/appointments", ensureDeviceToken(context),
+                JSONObject().put("title", title).put("when_ts", whenTs)
+                    .put("location", location),
+            )
+        }
+
+    suspend fun getCarePlan(context: Context): List<PlanItem> = withContext(Dispatchers.IO) {
+        val arr = request("GET", "/care-plan", ensureDeviceToken(context), null)
+            .optJSONArray("items") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.let {
+                PlanItem(it.getString("id"), it.getString("title"), it.optBoolean("done"))
+            }
+        }
+    }
+
+    suspend fun addPlanItem(context: Context, title: String) = withContext(Dispatchers.IO) {
+        request("POST", "/care-plan", ensureDeviceToken(context), JSONObject().put("title", title))
+    }
+
+    suspend fun togglePlanItem(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/care-plan/$id/toggle", ensureDeviceToken(context), JSONObject())
+    }
+
+    suspend fun getMemory(context: Context): List<MemoryItem> = withContext(Dispatchers.IO) {
+        val arr = request("GET", "/memory", ensureDeviceToken(context), null)
+            .optJSONArray("items") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i ->
+            arr.optJSONObject(i)?.let { MemoryItem(it.getString("id"), it.getString("content")) }
+        }
+    }
+
+    suspend fun forgetMemory(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("DELETE", "/memory/$id", ensureDeviceToken(context), null)
+    }
 
     /** The weekly/monthly report source: mood series + each reminder's
      * per-day tick history (medicines included). */

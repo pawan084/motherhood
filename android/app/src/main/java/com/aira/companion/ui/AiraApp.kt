@@ -123,6 +123,10 @@ private fun MainExperience(
     LaunchedEffect(state.detail) {
         state.detail?.let(viewModel::loadDetailData)
     }
+    // Tool sheets render server truth — fetch when one opens.
+    LaunchedEffect(state.activeTool) {
+        state.activeTool?.let(viewModel::loadToolData)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -227,9 +231,18 @@ private fun MainExperience(
         state.activeTool?.let { tool ->
             DynamicToolSheet(
                 tool = tool,
+                state = state,
                 onDismiss = viewModel::closeTool,
                 onNotify = viewModel::notify,
                 onUrgentHelp = viewModel::openUrgentHelp,
+                onSaveMood = viewModel::setMood,
+                onCreateReminder = viewModel::createReminder,
+                onAddMedicine = viewModel::addMedicine,
+                onMedicineTaken = viewModel::markMedicineTakenFromSheet,
+                onAddAppointment = viewModel::addAppointment,
+                onAddPlanItem = viewModel::addPlanItem,
+                onTogglePlanItem = viewModel::togglePlanItem,
+                onForgetMemory = viewModel::forgetMemory,
             )
         }
 
