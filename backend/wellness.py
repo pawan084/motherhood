@@ -39,13 +39,22 @@ _conn = None
 MOODS = ("great", "okay", "tired", "low", "unwell")
 REMINDER_KINDS = ("water", "exercise", "custom")
 
-# Per-learner defaults, seeded on first list. Stable ids make the seeding
-# idempotent AND let a deletion stick (a deleted default is never re-seeded
-# because we track seeding per learner, not per row).
-_DEFAULT_REMINDERS = [
-    ("water", "Drink water", 8),
-    ("exercise", "Move a little", 1),
-]
+# Per-learner defaults, seeded on first list. Stable seeding-per-learner lets
+# a deletion stick (a deleted default is never re-seeded). Postpartum gets a
+# recovery-shaped set — the same seeds for every stage was review point #23.
+# HUMAN-GATED like all seeded content: clinician review before real users.
+def _default_reminders(learner_id: str) -> list[tuple[str, str, int]]:
+    ctx = care_context.get(learner_id)
+    if ctx and ctx["stage"] == "postpartum":
+        return [
+            ("water", "Drink water", 8),
+            ("custom", "Rest when baby rests", 1),
+            ("exercise", "Gentle pelvic floor", 1),
+        ]
+    return [
+        ("water", "Drink water", 8),
+        ("exercise", "Move a little", 1),
+    ]
 
 
 def init() -> None:
@@ -83,6 +92,13 @@ def init() -> None:
             msg = str(e).lower()
             if "duplicate column" not in msg and "already exists" not in msg:
                 raise
+    c.execute("CREATE TABLE IF NOT EXISTS video_watched ("
+              " learner_id TEXT NOT NULL, video_id TEXT NOT NULL, ts REAL,"
+              " PRIMARY KEY (learner_id, video_id))")
+    c.execute("CREATE TABLE IF NOT EXISTS tip_feedback ("
+              " learner_id TEXT NOT NULL, tip_id TEXT NOT NULL,"
+              " helpful INTEGER NOT NULL, ts REAL,"
+              " PRIMARY KEY (learner_id, tip_id))")
     for table in ("moods", "reminders"):
         c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_learner"
                   f" ON {table} (learner_id)")
@@ -117,6 +133,13 @@ def merge(did: str, uid: str) -> None:
         " SELECT ?, ts FROM reminder_seeded WHERE learner_id=?"
         " ON CONFLICT (learner_id) DO NOTHING", (uid, did))
     _conn.execute("DELETE FROM reminder_seeded WHERE learner_id=?", (did,))
+    for table, key in (("video_watched", "video_id"), ("tip_feedback", "tip_id")):
+        cols = "video_id, ts" if table == "video_watched" else "tip_id, helpful, ts"
+        _conn.execute(
+            f"INSERT INTO {table} (learner_id, {cols})"
+            f" SELECT ?, {cols} FROM {table} WHERE learner_id=?"
+            f" ON CONFLICT (learner_id, {key}) DO NOTHING", (uid, did))
+        _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (did,))
     _conn.commit()
 
 
@@ -124,7 +147,8 @@ def erase(learner_id: str) -> None:
     """Deletion cascade hook (accounts + guest learner-data paths)."""
     _conn.execute("DELETE FROM reminder_ticks WHERE reminder_id IN"
                   " (SELECT id FROM reminders WHERE learner_id=?)", (learner_id,))
-    for table in ("moods", "reminders", "reminder_seeded"):
+    for table in ("moods", "reminders", "reminder_seeded",
+                  "video_watched", "tip_feedback"):
         _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner_id,))
 
 
@@ -136,10 +160,19 @@ def export(learner_id: str) -> dict:
     reminders = _conn.execute(
         "SELECT title, kind, target_per_day, created FROM reminders"
         " WHERE learner_id=?", (learner_id,)).fetchall()
+    watched = _conn.execute(
+        "SELECT video_id, ts FROM video_watched WHERE learner_id=?",
+        (learner_id,)).fetchall()
+    feedback = _conn.execute(
+        "SELECT tip_id, helpful, ts FROM tip_feedback WHERE learner_id=?",
+        (learner_id,)).fetchall()
     return {
         "moods": [dict(zip(("day", "mood", "note"), m)) for m in moods],
         "reminders": [dict(zip(("title", "kind", "target_per_day", "created"), r))
                       for r in reminders],
+        "videos_watched": [dict(zip(("video_id", "ts"), w)) for w in watched],
+        "tip_feedback": [dict(zip(("tip_id", "helpful", "ts"), f))
+                         for f in feedback],
     }
 
 
@@ -181,7 +214,7 @@ def _seed_reminders(learner_id: str) -> None:
                      (learner_id,)).fetchone():
         return
     now = time.time()
-    for kind, title, target in _DEFAULT_REMINDERS:
+    for kind, title, target in _default_reminders(learner_id):
         _conn.execute(
             "INSERT INTO reminders (id, learner_id, title, kind, target_per_day, created)"
             " VALUES (?,?,?,?,?,?)",
@@ -213,15 +246,16 @@ def list_reminders(include_medicines: bool = Query(default=False),
     if include_medicines:
         import care  # local import: avoids a cycle at module load
         meds = care._conn.execute(
-            "SELECT m.id, m.name, m.time_of_day,"
+            "SELECT m.id, m.name, m.time_of_day, m.dose,"
             " CASE WHEN t.day IS NULL THEN 0 ELSE 1 END"
             " FROM medicines m LEFT JOIN medicine_taken t"
             " ON t.medicine_id = m.id AND t.day = ?"
             " WHERE m.learner_id=? ORDER BY m.time_of_day, m.created",
             (today, learner_id)).fetchall()
-        out += [{"id": m[0], "title": m[1] + (f" · {m[2]}" if m[2] else ""),
+        out += [{"id": m[0], "title": m[1],
+                 "detail": " · ".join(x for x in (m[3], m[2]) if x),
                  "kind": "medicine", "target_per_day": 1,
-                 "ticks_today": m[3], "done_today": bool(m[3])} for m in meds]
+                 "ticks_today": m[4], "done_today": bool(m[4])} for m in meds]
     return {"reminders": out}
 
 
@@ -264,6 +298,48 @@ def tick_reminder(reminder_id: str, learner_id: str = Depends(resolve_learner)):
         "SELECT ticks FROM reminder_ticks WHERE reminder_id=? AND day=?",
         (reminder_id, today)).fetchone()[0]
     return {"ticks_today": ticks, "done_today": ticks >= row[0]}
+
+
+@router.post("/reminders/{reminder_id}/untick")
+def untick_reminder(reminder_id: str, learner_id: str = Depends(resolve_learner)):
+    """Undo for an accidental tick — decrements, floored at zero."""
+    row = _conn.execute(
+        "SELECT 1 FROM reminders WHERE id=? AND learner_id=?",
+        (reminder_id, learner_id)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    today = date.today().isoformat()
+    _conn.execute(
+        "UPDATE reminder_ticks SET ticks = MAX(ticks - 1, 0), ts=?"
+        " WHERE reminder_id=? AND day=?", (time.time(), reminder_id, today))
+    _conn.commit()
+    ticks_row = _conn.execute(
+        "SELECT t.ticks, r.target_per_day FROM reminder_ticks t"
+        " JOIN reminders r ON r.id = t.reminder_id"
+        " WHERE t.reminder_id=? AND t.day=?", (reminder_id, today)).fetchone()
+    ticks = ticks_row[0] if ticks_row else 0
+    target = ticks_row[1] if ticks_row else 1
+    return {"ticks_today": ticks, "done_today": ticks >= target}
+
+
+class TargetIn(BaseModel):
+    target_per_day: int
+
+
+@router.post("/reminders/{reminder_id}/target")
+def set_target(reminder_id: str, body: TargetIn,
+               learner_id: str = Depends(resolve_learner)):
+    """Personalise the daily target (e.g. a doctor said 10 glasses)."""
+    row = _conn.execute(
+        "SELECT 1 FROM reminders WHERE id=? AND learner_id=?",
+        (reminder_id, learner_id)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    target = max(1, min(24, body.target_per_day))
+    _conn.execute("UPDATE reminders SET target_per_day=? WHERE id=?",
+                  (target, reminder_id))
+    _conn.commit()
+    return {"target_per_day": target}
 
 
 @router.delete("/reminders/{reminder_id}")
@@ -371,5 +447,26 @@ def suggested_video(learner_id: str = Depends(resolve_learner)):
         " ORDER BY week_start, id", (ctx["stage"],)).fetchall()
     if not rows:
         return {"video": None}
-    row = rows[date.today().toordinal() % len(rows)]
+    # Unwatched-first (review #32): re-suggesting a watched video while
+    # unwatched ones exist wastes the slot. Once everything is watched the
+    # rotation covers the full catalog again.
+    watched = {r[0] for r in _conn.execute(
+        "SELECT video_id FROM video_watched WHERE learner_id=?",
+        (learner_id,)).fetchall()}
+    pool = [r for r in rows if r[0] not in watched] or rows
+    row = pool[date.today().toordinal() % len(pool)]
     return {"video": _video_dict(row)}
+
+
+@router.post("/videos/{video_id}/watched")
+def mark_watched(video_id: str, learner_id: str = Depends(resolve_learner)):
+    """Completion signal from the in-app player; drives unwatched-first."""
+    if not _conn.execute("SELECT 1 FROM videos WHERE id=?",
+                         (video_id,)).fetchone():
+        raise HTTPException(status_code=404, detail="not found")
+    _conn.execute(
+        "INSERT INTO video_watched (learner_id, video_id, ts) VALUES (?,?,?)"
+        " ON CONFLICT (learner_id, video_id) DO UPDATE SET ts=excluded.ts",
+        (learner_id, video_id, time.time()))
+    _conn.commit()
+    return {"ok": True}

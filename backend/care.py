@@ -172,6 +172,16 @@ def mark_taken(medicine_id: str, learner_id: str = Depends(resolve_learner)):
     return {"ok": True}
 
 
+@router.post("/medicines/{medicine_id}/untaken")
+def unmark_taken(medicine_id: str, learner_id: str = Depends(resolve_learner)):
+    """Undo for an accidental "taken" tap — deletes today's row only."""
+    _owned("medicines", medicine_id, learner_id)
+    _conn.execute("DELETE FROM medicine_taken WHERE medicine_id=? AND day=?",
+                  (medicine_id, date.today().isoformat()))
+    _conn.commit()
+    return {"ok": True}
+
+
 @router.delete("/medicines/{medicine_id}")
 def delete_medicine(medicine_id: str, learner_id: str = Depends(resolve_learner)):
     _owned("medicines", medicine_id, learner_id)

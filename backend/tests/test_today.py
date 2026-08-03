@@ -1,5 +1,5 @@
 """The /today proactive feed: tip rotation, focus rules, time-awareness."""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 
 def _register(client) -> dict:
@@ -109,3 +109,55 @@ def test_water_and_wrapup_never_nag_about_the_same_item(client):
     kinds = [f["kind"] for f in client.get("/today?hour=20", headers=h).json()["focus"]]
     assert "water_pace" in kinds
     assert "evening_wrapup" not in kinds
+
+
+# ── review-batch: date param, streak, recap, countdowns ──────────────────────
+
+def test_device_date_param_drives_tip_and_validation(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    t1 = client.get("/today?hour=10&date=2026-08-03", headers=h).json()["tip"]["text"]
+    t2 = client.get("/today?hour=10&date=2026-08-04", headers=h).json()["tip"]["text"]
+    assert t1 != t2  # adjacent days never repeat (pool >= 3)
+    assert client.get("/today?date=nope", headers=h).status_code == 422
+
+
+def test_streak_counts_full_days_and_forgives_today(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    reminders = client.get("/reminders", headers=h).json()["reminders"]
+    body = client.get("/today?hour=10", headers=h).json()
+    assert body["context"]["streak"] == 0
+    for r in reminders:
+        for _ in range(r["target_per_day"]):
+            client.post(f"/reminders/{r['id']}/tick", headers=h)
+    body = client.get("/today?hour=10", headers=h).json()
+    assert body["context"]["streak"] == 1
+    # Tomorrow morning (nothing ticked yet): the streak of 1 holds — an
+    # incomplete today doesn't break the run.
+    from datetime import date as _d, timedelta as _td
+    tomorrow = (_d.today() + _td(days=1)).isoformat()
+    body = client.get(f"/today?hour=8&date={tomorrow}", headers=h).json()
+    assert body["context"]["streak"] == 1
+
+
+def test_appointment_focus_carries_when_ts_and_countdown(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    client.post("/moods", json={"mood": "okay"}, headers=h)
+    ts = (datetime.now() + timedelta(hours=5)).timestamp()
+    client.post("/appointments", json={"title": "Scan", "when_ts": ts}, headers=h)
+    focus = client.get("/today?hour=10", headers=h).json()["focus"]
+    apt = next(f for f in focus if f["kind"] == "appointment_soon")
+    assert apt["when_ts"] == ts
+    assert "In about" in apt["body"]
+
+
+def test_sunday_recap_present_only_on_sunday(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    # 2026-08-09 is a Sunday; 2026-08-05 is a Wednesday.
+    sunday = client.get("/today?hour=10&date=2026-08-09", headers=h).json()
+    assert "recap" in sunday and "water_avg" in sunday["recap"]
+    weekday = client.get("/today?hour=10&date=2026-08-05", headers=h).json()
+    assert "recap" not in weekday

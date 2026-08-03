@@ -93,7 +93,8 @@ def test_medicines_merge_into_reminders(client):
     merged = client.get("/reminders?include_medicines=true", headers=h).json()["reminders"]
     med = next(r for r in merged if r["kind"] == "medicine")
     assert med["id"] == mid                       # the REAL medicine id
-    assert "Prenatal vitamin" in med["title"] and "20:00" in med["title"]
+    assert med["title"] == "Prenatal vitamin"
+    assert med["detail"] == "20:00"                # dose/time ride separately
     assert med["done_today"] is False
     # Write path stays on the medicines endpoint; the merge reflects it.
     client.post(f"/medicines/{mid}/taken", headers=h)
@@ -249,3 +250,91 @@ def test_report_owner_scoped_and_windowed(client):
     report_b = client.get("/report", headers=b).json()
     assert report_b["moods"] == []
     assert client.get("/report?days=3", headers=a).status_code == 422  # ge=7
+
+
+# ── review-batch endpoints (untick, target, watched, stage seeds) ────────────
+
+def test_untick_decrements_and_floors(client):
+    h = _register(client)
+    water = next(r for r in client.get("/reminders", headers=h).json()["reminders"]
+                 if r["kind"] == "water")
+    client.post(f"/reminders/{water['id']}/tick", headers=h)
+    client.post(f"/reminders/{water['id']}/tick", headers=h)
+    out = client.post(f"/reminders/{water['id']}/untick", headers=h).json()
+    assert out["ticks_today"] == 1
+    # Floors at zero — undoing more than was done is a no-op, not negative.
+    client.post(f"/reminders/{water['id']}/untick", headers=h)
+    out = client.post(f"/reminders/{water['id']}/untick", headers=h).json()
+    assert out["ticks_today"] == 0
+
+
+def test_untick_is_owner_scoped(client):
+    h1, h2 = _register(client), _register(client)
+    water = next(r for r in client.get("/reminders", headers=h1).json()["reminders"]
+                 if r["kind"] == "water")
+    assert client.post(f"/reminders/{water['id']}/untick", headers=h2).status_code == 404
+
+
+def test_water_target_editable_and_clamped(client):
+    h = _register(client)
+    water = next(r for r in client.get("/reminders", headers=h).json()["reminders"]
+                 if r["kind"] == "water")
+    out = client.post(f"/reminders/{water['id']}/target",
+                      json={"target_per_day": 10}, headers=h).json()
+    assert out["target_per_day"] == 10
+    assert client.post(f"/reminders/{water['id']}/target",
+                       json={"target_per_day": 99}, headers=h).json()["target_per_day"] == 24
+    h2 = _register(client)
+    assert client.post(f"/reminders/{water['id']}/target",
+                       json={"target_per_day": 5}, headers=h2).status_code == 404
+
+
+def test_medicine_untaken_undoes_today(client):
+    h = _register(client)
+    mid = client.post("/medicines", json={"name": "Iron"}, headers=h).json()["id"]
+    client.post(f"/medicines/{mid}/taken", headers=h)
+    client.post(f"/medicines/{mid}/untaken", headers=h)
+    meds = client.get("/medicines", headers=h).json()["medicines"]
+    assert meds[0]["taken_today"] is False
+
+
+def test_postpartum_gets_recovery_seeds(client):
+    h = _register(client)
+    birth = date.today().isoformat()
+    client.put("/care-context", json={"stage": "postpartum", "birth_date": birth},
+               headers=h)
+    titles = [r["title"] for r in client.get("/reminders", headers=h).json()["reminders"]]
+    assert "Rest when baby rests" in titles
+    assert "Gentle pelvic floor" in titles
+    assert "Drink water" in titles
+
+
+def test_watched_drives_unwatched_first_rotation(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 24)
+    sys_wellness = sys.modules["wellness"]
+    all_ids = [r[0] for r in sys_wellness._conn.execute(
+        "SELECT id FROM videos WHERE stage='pregnant' ORDER BY week_start, id")]
+    suggested = client.get("/videos/suggested", headers=h).json()["video"]
+    # Watch today's pick: tomorrow's pool shrinks, today re-picks from the rest.
+    client.post(f"/videos/{suggested['id']}/watched", headers=h)
+    after = client.get("/videos/suggested", headers=h).json()["video"]
+    assert after["id"] != suggested["id"]
+    # Watch everything: the rotation falls back to the full catalog.
+    for vid in all_ids:
+        client.post(f"/videos/{vid}/watched", headers=h)
+    assert client.get("/videos/suggested", headers=h).json()["video"] is not None
+    # Unknown id is a 404, not a silent write.
+    assert client.post("/videos/nope/watched", headers=h).status_code == 404
+
+
+def test_watched_and_feedback_survive_merge_and_export(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    suggested = client.get("/videos/suggested", headers=h).json()["video"]
+    client.post(f"/videos/{suggested['id']}/watched", headers=h)
+    client.post("/today/tip-feedback", json={"tip_id": "pregnant-1", "helpful": True},
+                headers=h)
+    export = client.get("/export", headers=h).json()
+    assert export["videos_watched"][0]["video_id"] == suggested["id"]
+    assert export["tip_feedback"][0]["tip_id"] == "pregnant-1"
