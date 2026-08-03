@@ -222,6 +222,22 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             if (care == null && moods == null && reminders == null) {
                 notify("Couldn't reach Aira's care service — showing what's cached.")
             }
+            // Widget cache (review #55): the widget renders from prefs and
+            // never talks to the network itself.
+            runCatching {
+                val water = (reminders ?: _uiState.value.reminders)
+                    .firstOrNull { it.kind == "water" }
+                appContext.getSharedPreferences(
+                    "aira_net", android.content.Context.MODE_PRIVATE,
+                )
+                    .edit()
+                    .putInt("widget_week", care?.week ?: -1)
+                    .putInt("widget_day", feed?.dayInWeek ?: -1)
+                    .putInt("widget_water", water?.ticksToday ?: -1)
+                    .putInt("widget_target", water?.targetPerDay ?: -1)
+                    .apply()
+                com.aira.companion.widget.AiraWidgetProvider.pushUpdate(appContext)
+            }
         }
     }
 

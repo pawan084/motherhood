@@ -15,22 +15,28 @@ import com.aira.companion.R
 class CareReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (!CareReminders.isEnabled(context)) return
-        CareReminders.ensureChannel(context)
-        val open = PendingIntent.getActivity(
-            context, 0,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-        val notification = Notification.Builder(context, CareReminders.CHANNEL_ID)
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("A moment for you")
-            .setContentText("How's today going? Your care check-ins are waiting.")
-            .setContentIntent(open)
-            .setAutoCancel(true)
-            .build()
-        context.getSystemService(NotificationManager::class.java)
-            .notify(4201, notification)
+        postNudge(context)
     }
+}
+
+/** Shared by the daily alarm and the enable-time preview — one posting path,
+ * so what the user sees at 3 PM is exactly what they saw when opting in. */
+fun postNudge(context: Context) {
+    CareReminders.ensureChannel(context)
+    val open = PendingIntent.getActivity(
+        context, 0,
+        Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        },
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+    val notification = Notification.Builder(context, CareReminders.CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_notification)
+        .setContentTitle("A moment for you")
+        .setContentText("How's today going? Your care check-ins are waiting.")
+        .setContentIntent(open)
+        .setAutoCancel(true)
+        .build()
+    context.getSystemService(NotificationManager::class.java)
+        .notify(4201, notification)
 }

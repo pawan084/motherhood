@@ -27,7 +27,15 @@ object CareReminders {
     fun setEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_ENABLED, enabled).apply()
-        if (enabled) schedule(context) else cancel(context)
+        if (enabled) {
+            schedule(context)
+            // Immediate preview: shows the user exactly what the daily
+            // nudge looks like AND proves the posting path works on this
+            // device (some OEMs quietly break scheduled notifications).
+            postNudge(context)
+        } else {
+            cancel(context)
+        }
     }
 
     fun ensureChannel(context: Context) {
