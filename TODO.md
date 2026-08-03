@@ -21,6 +21,11 @@ the code.
       covered entity relationship, but state health-privacy laws may still bite) —
       decide the target market before the schema hardens, because it changes
       retention and residency.
+- [ ] **Safety-audit retention vs. deletion** (P7 decision, made visibly in
+      ARCHITECTURE §15): audit rows survive account/learner-data deletion on an
+      accountability rationale. Legal review must confirm whether that is
+      defensible in the chosen jurisdiction, and set a retention period + an
+      anonymisation step if not.
 - [ ] **Clinical review of the red-flag taxonomy** (P2) by someone qualified. The
       rules can be written from published obstetric guidance, but shipping them to
       real pregnant users without a clinician signing off is not acceptable.

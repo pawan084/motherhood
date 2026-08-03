@@ -25,6 +25,7 @@ from pydantic import BaseModel
 
 import care_context
 import memory
+import privacy
 import safety
 import security
 import services
@@ -120,8 +121,12 @@ def respond(body: RespondIn, learner_id: str = Depends(resolve_learner)):
         return {"decision": "error", "safety": safety_block,
                 "message": _ERROR_MESSAGE, "reply": None, "cards": []}
 
+    # The ai_personalisation consent has real effect: off means no memories in
+    # the prompt AND no extraction from this turn. The care context itself
+    # (stage/week) still grounds replies — it is the product, not personalisation.
+    personalise = privacy.consent(learner_id, "ai_personalisation")
     system = build_system(ctx, caution=(gate.decision == "caution"),
-                          memories=memory.recall(learner_id))
+                          memories=memory.recall(learner_id) if personalise else [])
     try:
         reply = services.generate_reply(system, history, body.text)
     except Exception as e:  # noqa: BLE001
@@ -133,7 +138,8 @@ def respond(body: RespondIn, learner_id: str = Depends(resolve_learner)):
     cards = services.suggest_cards(body.text, reply, ctx)
     # Memory extraction runs only on turns Aira replied to. Urgent/error turns
     # store nothing here (urgent inputs live in the safety audit instead).
-    memory.remember(learner_id, services.extract_memory(body.text, ctx))
+    if personalise:
+        memory.remember(learner_id, services.extract_memory(body.text, ctx))
     return {"decision": gate.decision, "safety": safety_block,
             "reply": reply, "cards": cards}
 
@@ -163,8 +169,9 @@ def respond_stream(body: RespondIn, learner_id: str = Depends(resolve_learner)):
             return
 
         yield sse(gate_event)
+        personalise = privacy.consent(learner_id, "ai_personalisation")
         system = build_system(ctx, caution=(gate.decision == "caution"),
-                              memories=memory.recall(learner_id))
+                              memories=memory.recall(learner_id) if personalise else [])
         parts: list[str] = []
         try:
             for chunk in services.stream_reply(system, history, body.text):
@@ -180,7 +187,8 @@ def respond_stream(body: RespondIn, learner_id: str = Depends(resolve_learner)):
             yield sse({"type": "cards", "cards": cards})
         yield sse({"type": "done"})
         # After the stream is fully delivered: extraction can't delay the turn.
-        memory.remember(learner_id, services.extract_memory(body.text, ctx))
+        if personalise:
+            memory.remember(learner_id, services.extract_memory(body.text, ctx))
 
     return StreamingResponse(event_stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache",

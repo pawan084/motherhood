@@ -282,6 +282,35 @@ idempotent taken-today log), documents, appointments, care plan.
   needs the Gemini key). Uploads store what the USER says the document is —
   nothing pretends to have read it.
 
+## 15. Privacy controls (P7)
+
+`privacy.py` — consents, export, guest deletion. Three rules shaped it:
+
+1. **A consent must DO something.** `ai_personalisation` off means the chat
+   prompt carries no memories AND extraction is skipped (pinned by a test
+   that toggles it off mid-conversation and inspects the prompts). The care
+   context itself still grounds replies — stage/week is the product, not
+   personalisation. Existing memories are retained, not erased, when the
+   toggle goes off — collecting and keeping are separate consents; deletion
+   remains an explicit act on the memory screen.
+2. **Export is complete and own-data-only**: care context, memories, care
+   data, consents, and the learner's safety-audit entries (their inputs and
+   the decisions made about them — a record they have a right to see).
+3. **Guests can delete too**: `DELETE /learner-data` erases everything keyed
+   to the resolved learner id, no account required.
+
+Consent merge on sign-in: existing account rows win — an explicit choice is
+never overwritten by a merge.
+
+**Open legal question (TODO.md):** safety-audit rows are currently RETAINED
+through both deletion paths, on an accountability rationale (they record
+escalation decisions). Whether retention is defensible post-deletion, and for
+how long, is a data-protection question for the legal review — not something
+this codebase should decide silently. It is decided *visibly* here.
+
+Partner access is deferred: it needs a second-party consent flow designed
+properly (invitation, scope, revocation), not bolted on.
+
 ---
 
 ## Filled in as phases land

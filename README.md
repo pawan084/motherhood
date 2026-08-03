@@ -86,6 +86,19 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P7 complete** (2026-08-03). Privacy controls are real:
+
+- `privacy.py` — the `ai_personalisation` consent with real effect (off = no
+  memories in prompts, no extraction; existing memories retained until
+  explicitly deleted), full JSON export (including the learner's own
+  safety-audit entries), and `DELETE /learner-data` so guests can delete
+  everything without an account.
+- You tab: working toggle, "Download my data", and a confirmed
+  delete-everything that returns the app to onboarding.
+- Deferred deliberately: partner access (needs a second-party consent flow).
+  Open legal question flagged: audit-row retention after deletion
+  (ARCHITECTURE §15, TODO.md). **116 backend tests.**
+
 **P6 complete** (2026-08-03). The Care tab is real:
 
 - `care.py` — medicines (+ idempotent taken-today), documents

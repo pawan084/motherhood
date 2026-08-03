@@ -195,6 +195,27 @@ export async function deletePlanItem(id: string): Promise<void> {
   await json(await fetch(`${API}/care-plan/${id}`, { method: "DELETE", headers: headers() }));
 }
 
+// ── Privacy ─────────────────────────────────────────────────────────────────
+
+export async function getConsents(): Promise<Record<string, boolean>> {
+  return (await json<{ consents: Record<string, boolean> }>(
+    await fetch(`${API}/consents`, { headers: headers() }),
+  )).consents;
+}
+export async function putConsents(consents: Record<string, boolean>): Promise<Record<string, boolean>> {
+  return (await json<{ consents: Record<string, boolean> }>(
+    await fetch(`${API}/consents`, { method: "PUT", headers: headers(), body: JSON.stringify(consents) }),
+  )).consents;
+}
+export async function exportData(): Promise<Blob> {
+  const r = await fetch(`${API}/export`, { headers: headers() });
+  if (!r.ok) throw new Error(`export failed: ${r.status}`);
+  return new Blob([await r.text()], { type: "application/json" });
+}
+export async function deleteLearnerData(): Promise<void> {
+  await json(await fetch(`${API}/learner-data`, { method: "DELETE", headers: headers() }));
+}
+
 export type JourneyContent = {
   id: string;
   title: string;

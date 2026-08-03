@@ -102,6 +102,8 @@ def link_and_merge(uid: str, x_device_token: str | None) -> None:
     import care  # local imports to avoid a startup cycle
     import care_context
     import memory
+    import privacy
     care_context.merge(did, uid)
     memory.merge(did, uid)
     care.merge(did, uid)
+    privacy.merge(did, uid)

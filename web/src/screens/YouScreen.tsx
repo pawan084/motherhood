@@ -1,11 +1,23 @@
 /** You: the real controls — edit care context (the same PUT the onboarding
  * uses), language, "What Aira remembers" (read AND delete — deletion takes
- * effect on the very next chat turn), and the standing privacy commitments.
- * Partner access and export are P7 backend features, shown as roadmap. */
+ * effect on the very next chat turn), the AI-personalisation consent (real
+ * effect: off = no memories in prompts, no extraction), data export, and
+ * delete-everything (works for guests). Partner access remains deferred —
+ * it needs its own consent-flow design, not a rushed one. */
 import { useEffect, useState } from "react";
-import { Brain, Check, EyeOff, LockKeyhole, ShieldCheck, X } from "lucide-react";
+import { Brain, Check, Download, LockKeyhole, ShieldCheck, Trash2, Users, X } from "lucide-react";
 
-import { forgetAllMemory, forgetMemoryItem, getMemory, MemoryItem, putCareContext } from "../api";
+import {
+  deleteLearnerData,
+  exportData,
+  forgetAllMemory,
+  forgetMemoryItem,
+  getConsents,
+  getMemory,
+  MemoryItem,
+  putCareContext,
+  putConsents,
+} from "../api";
 import { useApp } from "../state";
 
 const LANGUAGES = [
@@ -73,6 +85,88 @@ function MemorySection() {
           }}
         >
           Forget everything
+        </button>
+      )}
+    </section>
+  );
+}
+
+function PrivacyControls() {
+  const { refresh } = useApp();
+  const [personalise, setPersonalise] = useState<boolean | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  useEffect(() => {
+    void getConsents().then((c) => setPersonalise(c.ai_personalisation));
+  }, []);
+
+  const toggle = async () => {
+    if (personalise === null) return;
+    const next = !personalise;
+    setPersonalise(next); // optimistic
+    const saved = await putConsents({ ai_personalisation: next }).catch(() => null);
+    if (saved) setPersonalise(saved.ai_personalisation);
+  };
+
+  const download = async () => {
+    const blob = await exportData();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aira-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const wipe = async () => {
+    await deleteLearnerData();
+    setConfirming(false);
+    await refresh(); // context is gone -> the app returns to onboarding
+  };
+
+  return (
+    <section className="memory-section">
+      <div className="memory-head">
+        <LockKeyhole size={17} />
+        <div>
+          <strong>Privacy controls</strong>
+          <small>Real switches, not decoration.</small>
+        </div>
+      </div>
+      <div className="control-line">
+        <span>
+          <strong>AI personalisation</strong>
+          <small>Off: Aira stops using and collecting memories. Existing ones stay until you delete them.</small>
+        </span>
+        <button
+          className={personalise ? "switch on" : "switch"}
+          role="switch"
+          aria-checked={personalise ?? false}
+          aria-label="Toggle AI personalisation"
+          disabled={personalise === null}
+          onClick={() => void toggle()}
+        >
+          <i />
+        </button>
+      </div>
+      <button className="secondary-action" onClick={() => void download()}>
+        <Download size={15} /> Download my data (JSON)
+      </button>
+      {confirming ? (
+        <div className="wipe-confirm">
+          <p>Delete your care context, memories, medicines, documents and plan from Aira? This cannot be undone.</p>
+          <div>
+            <button className="danger-action" onClick={() => void wipe()}>
+              <Trash2 size={15} /> Delete everything
+            </button>
+            <button className="card-link" onClick={() => setConfirming(false)}>
+              Keep my data
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="card-link danger-text" onClick={() => setConfirming(true)}>
+          Delete all my data
         </button>
       )}
     </section>
@@ -147,12 +241,13 @@ export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) 
         </span>
       </div>
       <MemorySection />
+      <PrivacyControls />
 
       <div className="privacy-note">
-        <EyeOff size={17} />
+        <Users size={17} />
         <span>
-          <strong>Coming: export & partner access</strong>
-          <small>Download your data and share tasks with a partner — with the P7 features.</small>
+          <strong>Coming: partner access</strong>
+          <small>Sharing tasks with a partner needs its own consent flow — it's being designed, not rushed.</small>
         </span>
       </div>
       <div className="privacy-note ok">

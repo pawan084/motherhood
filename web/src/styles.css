@@ -687,6 +687,44 @@ button:disabled { cursor: default; opacity: .5; }
   padding: 4px;
 }
 
+/* ── Privacy controls ──────────────────────────────────────────────────── */
+.control-line { display: flex; align-items: center; gap: 12px; }
+.control-line > span { flex: 1; }
+.control-line strong { display: block; font-size: 14px; }
+.control-line small { color: var(--muted); font-size: 12px; line-height: 1.35; display: block; }
+.switch {
+  width: 46px; height: 28px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--ivory);
+  position: relative;
+  flex: 0 0 auto;
+  transition: background .15s ease;
+}
+.switch i {
+  position: absolute;
+  top: 2.5px; left: 3px;
+  width: 21px; height: 21px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px #211d2033;
+  transition: transform .15s ease;
+}
+.switch.on { background: var(--aubergine); border-color: var(--aubergine); }
+.switch.on i { transform: translateX(18px); }
+.wipe-confirm {
+  border: 1px solid #d34d4c3a;
+  background: var(--red-soft);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.wipe-confirm p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+.wipe-confirm > div { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.wipe-confirm .danger-action { min-width: 0; min-height: 42px; }
+
 /* ── Urgent help ───────────────────────────────────────────────────────── */
 .urgent-screen {
   position: absolute;
