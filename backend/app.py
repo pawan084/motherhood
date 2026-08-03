@@ -64,7 +64,12 @@ app.add_middleware(security.RateLimitMiddleware)
 # production too. Tightened to an allowlist before launch — see TODO.md.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(","),
+    # Dev default covers both spellings of loopback — a tab opened at
+    # 127.0.0.1:5173 is the same app as localhost:5173, but browsers treat
+    # them as different origins (found live: the app showed its offline state
+    # purely because of the origin spelling).
+    allow_origins=os.environ.get(
+        "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
