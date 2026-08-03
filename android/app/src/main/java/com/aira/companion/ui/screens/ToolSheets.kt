@@ -551,6 +551,7 @@ private fun AppointmentTool(
     onAddAppointment: (String, Double, String) -> Unit,
     onNotify: (String) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val nowSec = System.currentTimeMillis() / 1000.0
     val next = appointments?.filter { it.whenTs >= nowSec }?.minByOrNull { it.whenTs }
     when {
@@ -586,6 +587,43 @@ private fun AppointmentTool(
                     }
                 }
             }
+    }
+    if (next != null) {
+        Spacer(Modifier.height(8.dp))
+        // Hands the appointment to the system calendar (review #16) — an
+        // INSERT intent the user confirms in their calendar app.
+        OutlinedButton(
+            onClick = {
+                runCatching {
+                    val startMs = (next.whenTs * 1000).toLong()
+                    context.startActivity(
+                        android.content.Intent(android.content.Intent.ACTION_INSERT).apply {
+                            data = android.provider.CalendarContract.Events.CONTENT_URI
+                            putExtra(android.provider.CalendarContract.Events.TITLE, next.title)
+                            putExtra(
+                                android.provider.CalendarContract.EXTRA_EVENT_BEGIN_TIME,
+                                startMs,
+                            )
+                            putExtra(
+                                android.provider.CalendarContract.EXTRA_EVENT_END_TIME,
+                                startMs + 45 * 60 * 1000,
+                            )
+                            if (next.location.isNotBlank()) {
+                                putExtra(
+                                    android.provider.CalendarContract.Events.EVENT_LOCATION,
+                                    next.location,
+                                )
+                            }
+                        },
+                    )
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(Icons.Outlined.CalendarMonth, null)
+            Spacer(Modifier.width(8.dp))
+            Text("Add to calendar")
+        }
     }
     Spacer(Modifier.height(14.dp))
     if (next != null) {

@@ -278,6 +278,9 @@ data class AiraUiState(
     val weekJustFlipped: Int? = null,
     // In-app player overlay (hosted videos only; YouTube stays external).
     val playerVideo: VideoItem? = null,
+    // True when a Me refresh failed but older data is still on screen.
+    val meStale: Boolean = false,
+    val namePromptDismissed: Boolean = false,
 )
 
 data class OnboardingPrompt(

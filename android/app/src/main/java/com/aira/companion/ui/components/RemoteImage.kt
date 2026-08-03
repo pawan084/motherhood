@@ -29,14 +29,33 @@ import java.net.URL
  * break a row. For anything heavier than thumbnails, adopt Coil instead. */
 private val cache = LruCache<String, Bitmap>(24)
 
-private suspend fun fetchBitmap(url: String): Bitmap? = withContext(Dispatchers.IO) {
-    cache.get(url) ?: runCatching {
-        val conn = URL(url).openConnection() as HttpURLConnection
-        conn.connectTimeout = 6_000
-        conn.readTimeout = 10_000
-        conn.inputStream.use(BitmapFactory::decodeStream)
-    }.getOrNull()?.also { cache.put(url, it) }
-}
+/** Disk layer under the memory LRU: thumbs survive process death instead of
+ * re-downloading every launch. Keyed by url hash in cacheDir (the OS may
+ * clear it — that's the contract we want). */
+private fun diskFile(context: android.content.Context, url: String): java.io.File =
+    java.io.File(context.cacheDir, "thumb_" + url.hashCode().toUInt().toString(16))
+
+private suspend fun fetchBitmap(context: android.content.Context, url: String): Bitmap? =
+    withContext(Dispatchers.IO) {
+        cache.get(url)?.let { return@withContext it }
+        val disk = diskFile(context, url)
+        if (disk.exists()) {
+            runCatching { BitmapFactory.decodeFile(disk.path) }.getOrNull()?.let {
+                cache.put(url, it)
+                return@withContext it
+            }
+        }
+        runCatching {
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.connectTimeout = 6_000
+            conn.readTimeout = 10_000
+            conn.inputStream.use { it.readBytes() }
+        }.getOrNull()?.let { bytes ->
+            runCatching { disk.writeBytes(bytes) }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                ?.also { cache.put(url, it) }
+        }
+    }
 
 /** YouTube thumbnail for a video id (mqdefault = 320x180, plenty for rows). */
 fun youtubeThumbnailUrl(youtubeId: String): String =
@@ -48,8 +67,9 @@ fun RemoteImage(
     contentDescription: String?,
     modifier: Modifier = Modifier,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val bitmap by produceState<Bitmap?>(initialValue = cache.get(url), url) {
-        if (value == null) value = fetchBitmap(url)
+        if (value == null) value = fetchBitmap(context.applicationContext, url)
     }
     val current = bitmap
     if (current != null) {

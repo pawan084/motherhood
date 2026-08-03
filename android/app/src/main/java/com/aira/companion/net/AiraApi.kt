@@ -217,6 +217,13 @@ object AiraApi {
         prefs(context).edit().putInt("last_seen_week", week).apply()
     }
 
+    fun namePromptDismissed(context: Context): Boolean =
+        prefs(context).getBoolean("name_prompt_dismissed", false)
+
+    fun setNamePromptDismissed(context: Context) {
+        prefs(context).edit().putBoolean("name_prompt_dismissed", true).apply()
+    }
+
     suspend fun addReminder(
         context: Context,
         title: String,

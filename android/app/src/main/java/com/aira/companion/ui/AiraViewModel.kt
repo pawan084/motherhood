@@ -41,6 +41,11 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
     init {
         // Returning user: skip straight to Me. runCatching because JVM unit
         // tests construct this with a stub Application (no SharedPreferences).
+        val nameDismissed = runCatching { AiraApi.namePromptDismissed(appContext) }
+            .getOrDefault(false)
+        if (nameDismissed) {
+            _uiState.update { it.copy(namePromptDismissed = true) }
+        }
         val onboarded = runCatching { AiraApi.isOnboarded(appContext) }.getOrDefault(false)
         if (onboarded) {
             _uiState.update {
@@ -207,6 +212,10 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     journeyContent = journey ?: state.journeyContent,
                     todayFeed = feed ?: state.todayFeed,
                     weekJustFlipped = flipped ?: state.weekJustFlipped,
+                    // Stale flag (review #39): every fetch failed but old
+                    // data is still on screen — say so instead of lying.
+                    meStale = care == null && feed == null &&
+                        state.careSummary != null,
                     meLoading = false,
                 )
             }
@@ -245,6 +254,17 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     notify("Couldn't save your check-in — try again in a moment.")
                 }
         }
+    }
+
+    fun sendTipFeedback(tipId: String, helpful: Boolean) {
+        viewModelScope.launch {
+            runCatching { AiraApi.sendTipFeedback(appContext, tipId, helpful) }
+        }
+    }
+
+    fun dismissNamePrompt() {
+        runCatching { AiraApi.setNamePromptDismissed(appContext) }
+        _uiState.update { it.copy(namePromptDismissed = true) }
     }
 
     fun acknowledgeWeekFlip() {

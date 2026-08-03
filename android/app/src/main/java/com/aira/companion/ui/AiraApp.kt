@@ -160,10 +160,15 @@ private fun MainExperience(
                         onTick = viewModel::tickReminder,
                         onUntick = viewModel::untickReminder,
                         onOpenDetail = viewModel::openDetail,
+                        onOpenTool = viewModel::openTool,
                         onTalkToAira = {
                             viewModel.selectDestination(MainDestination.Chat)
                         },
                         onAckWeekFlip = viewModel::acknowledgeWeekFlip,
+                        onTipFeedback = viewModel::sendTipFeedback,
+                        onSaveName = viewModel::updateDisplayName,
+                        onDismissName = viewModel::dismissNamePrompt,
+                        onRefresh = viewModel::refreshMe,
                         modifier = Modifier.padding(padding),
                     )
                 MainDestination.Chat ->

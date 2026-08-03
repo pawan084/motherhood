@@ -43,6 +43,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.MoodEntry
@@ -529,7 +531,12 @@ fun CareDetailScreen(
  * the pace is visible without a single word (review #25). */
 @Composable
 fun WaterDroplets(ticks: Int, target: Int, expectedNow: Int = -1) {
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.semantics {
+            contentDescription = "$ticks of $target glasses today"
+        },
+    ) {
         repeat(target.coerceAtMost(12)) { index ->
             val behindPace = index >= ticks && index < expectedNow
             Icon(

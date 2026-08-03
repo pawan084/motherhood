@@ -1,6 +1,7 @@
 package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +22,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.outlined.ThumbDown
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.DetailPage
@@ -77,6 +82,10 @@ private fun journeyNext(state: AiraUiState): String? {
     return "${next.emoji} ${next.label} · Week ${next.week} · $distance"
 }
 
+/** Nudges never duplicated on Me: each one's control is already on this
+ * screen (mood picker above, droplet row below). Chat shows the full set. */
+private val ME_SUPPRESSED_NUDGES = setOf("mood_checkin", "water_pace")
+
 /** Where the droplet row SHOULD be by this hour (7am-9pm pace) — the same
  * formula the server's water_pace nudge uses. */
 fun expectedWaterByNow(target: Int): Int {
@@ -96,6 +105,8 @@ private fun stageLabel(stage: String): String = when (stage) {
  * check-in (tap history -> mood detail), graphical Today's care (tap ->
  * care detail), and the suggested video with thumbnail + week context. */
 @Composable
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class,
+       androidx.compose.foundation.ExperimentalFoundationApi::class)
 fun MeScreen(
     state: AiraUiState,
     onOpenPlayer: (com.aira.companion.model.VideoItem) -> Unit,
@@ -104,26 +115,77 @@ fun MeScreen(
     onTick: (Reminder) -> Unit,
     onUntick: (Reminder) -> Unit,
     onOpenDetail: (DetailPage) -> Unit,
+    onOpenTool: (com.aira.companion.model.AiraTool) -> Unit,
     onTalkToAira: () -> Unit,
     onAckWeekFlip: () -> Unit,
+    onTipFeedback: (String, Boolean) -> Unit,
+    onSaveName: (String) -> Unit,
+    onDismissName: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val today = LocalDate.now().toString()
     val todayMood = state.moods.lastOrNull { it.day == today }?.mood
 
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(
+        isRefreshing = state.meLoading,
+        onRefresh = onRefresh,
+        modifier = modifier.fillMaxSize(),
+    ) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
+        // ── Honest staleness: a failed refresh over old data says so ───────
+        if (state.meStale) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = SageMist,
+                shape = RoundedCornerShape(12.dp),
+            ) {
+                Text(
+                    "Offline — showing your last update. Pull to retry.",
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+        }
         // ── Journey hero -> weekly timeline detail ─────────────────────────
         GradientHeroSurface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onOpenDetail(DetailPage.Journey) },
+                .combinedClickable(
+                    onClick = { onOpenDetail(DetailPage.Journey) },
+                    onLongClick = {
+                        // Share the week (review #36) — text only, via the
+                        // system sheet; the user picks the destination.
+                        val care = state.careSummary ?: return@combinedClickable
+                        val text = listOfNotNull(
+                            care.week?.let { w ->
+                                state.todayFeed?.dayInWeek?.let { d -> "Week $w · Day $d" }
+                                    ?: "Week $w"
+                            },
+                            state.journeyContent?.sizeEmoji,
+                            state.todayFeed?.daysToGo?.let { "$it days to go" },
+                        ).joinToString(" ") + " — tracked with Aira"
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent.createChooser(
+                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(android.content.Intent.EXTRA_TEXT, text)
+                                    },
+                                    "Share your week",
+                                ),
+                            )
+                        }
+                    },
+                ),
         ) {
             Column {
                 val care = state.careSummary
@@ -153,8 +215,15 @@ fun MeScreen(
                             color = Ink,
                             modifier = Modifier.weight(1f),
                         )
-                        state.journeyContent?.sizeEmoji?.let {
-                            Text(it, style = MaterialTheme.typography.headlineLarge)
+                        state.journeyContent?.sizeEmoji?.let { emoji ->
+                            Text(
+                                emoji,
+                                style = MaterialTheme.typography.headlineLarge,
+                                modifier = Modifier.semantics {
+                                    contentDescription = state.journeyContent?.sizeLabel
+                                        ?.let { "Baby is about the size of $it" } ?: ""
+                                },
+                            )
                         }
                     }
                     Text(
@@ -227,6 +296,67 @@ fun MeScreen(
                     }
                     IconButton(onClick = onAckWeekFlip) {
                         Icon(Icons.Filled.Close, "Dismiss", tint = InkMuted)
+                    }
+                }
+            }
+        }
+
+        // ── First run: ask the name once (review #1); greeting personalises
+        // the moment it's saved. Dismissable, never nags again. ────────────
+        val care = state.careSummary
+        if (care != null && care.displayName.isBlank() && !state.namePromptDismissed) {
+            AiraCard(containerColor = LilacMist) {
+                Text(
+                    "What should Aira call you?",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Ink,
+                )
+                Spacer(Modifier.height(8.dp))
+                var name by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Your name (optional)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                )
+                Row {
+                    TextButton(onClick = onDismissName) {
+                        Text("Not now", color = InkMuted)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        onClick = {
+                            onSaveName(name.trim())
+                            onDismissName()
+                        },
+                        enabled = name.isNotBlank(),
+                    ) { Text("Save", color = Plum) }
+                }
+            }
+        }
+
+        // ── Sunday recap (review #35): the weekly digest, feed-driven ──────
+        state.todayFeed?.recapMoods?.let { moodCount ->
+            AiraCard(containerColor = LilacMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        SectionLabel("Your week")
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = listOfNotNull(
+                                "$moodCount mood check-in${if (moodCount == 1) "" else "s"}",
+                                state.todayFeed?.recapWaterAvg?.let {
+                                    "~$it glasses of water a day"
+                                },
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Ink,
+                        )
+                    }
+                    TextButton(onClick = { onOpenDetail(DetailPage.Moods) }) {
+                        Text("Reports", color = Plum)
                     }
                 }
             }
@@ -363,14 +493,17 @@ fun MeScreen(
             // (the droplet row is directly below). Chat keeps both: nothing
             // there shows mood or water state.
             val focusItems = state.todayFeed?.focus
-                ?.filter { it.kind != "mood_checkin" && it.kind != "water_pace" }
-                .orEmpty()
+                ?.filter { it.kind !in ME_SUPPRESSED_NUDGES }.orEmpty()
             if (focusItems.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     focusItems.forEach { focus ->
                         FocusNudge(focus) {
                             when (focus.kind) {
                                 "milestone_week" -> onOpenDetail(DetailPage.Journey)
+                                // The Visit copilot holds the real appointment
+                                // + question checklist — the natural landing.
+                                "appointment_soon" ->
+                                    onOpenTool(com.aira.companion.model.AiraTool.Appointment)
                                 else -> onOpenDetail(DetailPage.Care)
                             }
                         }
@@ -395,6 +528,49 @@ fun MeScreen(
                 state.todayFeed?.tipText?.let { tip ->
                     Spacer(Modifier.height(6.dp))
                     Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "General wellness guidance — not medical advice.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = InkMuted,
+                    )
+                    // One thumb per tip (review #29) — the ack is local so
+                    // the row doesn't beg twice in one sitting.
+                    val tipId = state.todayFeed?.tipId
+                    if (tipId != null) {
+                        var acked by remember(tipId) { mutableStateOf(false) }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (!acked) {
+                                Text(
+                                    "Helpful?",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = InkMuted,
+                                )
+                                IconButton(onClick = {
+                                    onTipFeedback(tipId, true); acked = true
+                                }) {
+                                    Icon(
+                                        Icons.Outlined.ThumbUp, "Helpful",
+                                        tint = Plum, modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                                IconButton(onClick = {
+                                    onTipFeedback(tipId, false); acked = true
+                                }) {
+                                    Icon(
+                                        Icons.Outlined.ThumbDown, "Not helpful",
+                                        tint = InkMuted, modifier = Modifier.size(16.dp),
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    "Thanks — noted.",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = InkMuted,
+                                )
+                            }
+                        }
+                    }
                 }
                 state.suggestedVideo?.let { video ->
                     Spacer(Modifier.height(10.dp))
@@ -439,7 +615,20 @@ fun MeScreen(
             }
         }
 
+        // ── Data transparency on the home itself (review #54) ──────────────
+        TextButton(
+            onClick = { onOpenTool(com.aira.companion.model.AiraTool.Memory) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                "What Aira remembers ›",
+                style = MaterialTheme.typography.labelMedium,
+                color = InkMuted,
+            )
+        }
+
         Spacer(Modifier.height(8.dp))
+    }
     }
 }
 
