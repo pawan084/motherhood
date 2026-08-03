@@ -93,6 +93,108 @@ export async function putCareContext(body: {
   return (await r.json()).context;
 }
 
+// ── Care ────────────────────────────────────────────────────────────────────
+
+export type Medicine = {
+  id: string;
+  name: string;
+  dose: string;
+  time_of_day: string;
+  notes: string;
+  taken_today: boolean;
+};
+
+export type CareDocument = {
+  id: string;
+  kind: string;
+  filename: string;
+  size: number;
+  created: number;
+};
+
+export type Appointment = {
+  id: string;
+  title: string;
+  when_ts: number;
+  location: string;
+  notes: string;
+};
+
+export type PlanItem = { id: string; title: string; done: boolean };
+
+async function json<T>(r: Response): Promise<T> {
+  if (!r.ok) {
+    const detail = (await r.json().catch(() => null))?.detail;
+    throw new Error(typeof detail === "string" ? detail : `request failed: ${r.status}`);
+  }
+  return r.json();
+}
+
+export async function listMedicines(): Promise<Medicine[]> {
+  return (await json<{ medicines: Medicine[] }>(await fetch(`${API}/medicines`, { headers: headers() }))).medicines;
+}
+export async function addMedicine(body: { name: string; dose?: string; time_of_day?: string }): Promise<void> {
+  await json(await fetch(`${API}/medicines`, { method: "POST", headers: headers(), body: JSON.stringify(body) }));
+}
+export async function markMedicineTaken(id: string): Promise<void> {
+  await json(await fetch(`${API}/medicines/${id}/taken`, { method: "POST", headers: headers() }));
+}
+export async function deleteMedicine(id: string): Promise<void> {
+  await json(await fetch(`${API}/medicines/${id}`, { method: "DELETE", headers: headers() }));
+}
+
+export async function listDocuments(): Promise<CareDocument[]> {
+  return (await json<{ documents: CareDocument[] }>(await fetch(`${API}/documents`, { headers: headers() }))).documents;
+}
+export async function uploadDocument(file: File, kind: string): Promise<void> {
+  const form = new FormData();
+  form.append("file", file);
+  form.append("kind", kind);
+  const h: Record<string, string> = {};
+  const token = localStorage.getItem("aira.device_token");
+  if (token) h["X-Device-Token"] = token;
+  await json(await fetch(`${API}/documents`, { method: "POST", headers: h, body: form }));
+}
+export function documentUrl(id: string): string {
+  return `${API}/documents/${id}`;
+}
+export async function fetchDocumentBlob(id: string): Promise<Blob> {
+  const r = await fetch(`${API}/documents/${id}`, { headers: headers() });
+  if (!r.ok) throw new Error(`download failed: ${r.status}`);
+  return r.blob();
+}
+export async function deleteDocument(id: string): Promise<void> {
+  await json(await fetch(`${API}/documents/${id}`, { method: "DELETE", headers: headers() }));
+}
+
+export async function listAppointments(): Promise<Appointment[]> {
+  return (await json<{ appointments: Appointment[] }>(await fetch(`${API}/appointments`, { headers: headers() })))
+    .appointments;
+}
+export async function addAppointment(body: {
+  title: string;
+  when_ts: number;
+  location?: string;
+}): Promise<void> {
+  await json(await fetch(`${API}/appointments`, { method: "POST", headers: headers(), body: JSON.stringify(body) }));
+}
+export async function deleteAppointment(id: string): Promise<void> {
+  await json(await fetch(`${API}/appointments/${id}`, { method: "DELETE", headers: headers() }));
+}
+
+export async function listPlan(): Promise<PlanItem[]> {
+  return (await json<{ items: PlanItem[] }>(await fetch(`${API}/care-plan`, { headers: headers() }))).items;
+}
+export async function addPlanItem(title: string): Promise<void> {
+  await json(await fetch(`${API}/care-plan`, { method: "POST", headers: headers(), body: JSON.stringify({ title }) }));
+}
+export async function togglePlanItem(id: string): Promise<void> {
+  await json(await fetch(`${API}/care-plan/${id}/toggle`, { method: "POST", headers: headers() }));
+}
+export async function deletePlanItem(id: string): Promise<void> {
+  await json(await fetch(`${API}/care-plan/${id}`, { method: "DELETE", headers: headers() }));
+}
+
 export type JourneyContent = {
   id: string;
   title: string;

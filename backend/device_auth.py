@@ -99,7 +99,9 @@ def link_and_merge(uid: str, x_device_token: str | None) -> None:
     if not did:
         return
     accounts.link_device(uid, did)
-    import care_context  # local imports to avoid a startup cycle
+    import care  # local imports to avoid a startup cycle
+    import care_context
     import memory
     care_context.merge(did, uid)
     memory.merge(did, uid)
+    care.merge(did, uid)

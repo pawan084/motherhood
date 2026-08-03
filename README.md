@@ -86,6 +86,18 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P6 complete** (2026-08-03). The Care tab is real:
+
+- `care.py` — medicines (+ idempotent taken-today), documents
+  (upload/download/delete; server-generated paths, extension whitelist, size
+  cap), appointments, care plan. All owner-scoped; sign-in merge moves files
+  between directories; account deletion removes files from disk too.
+- Care tab UI: appointments with add form, medicines with taken-dots, the
+  Care Vault with real upload/download, care-plan checklist — plus the
+  offline emergency profile.
+- Deferred honestly: reminder delivery (web push infra) and AI document
+  extraction (queued work + needs the key). **110 backend tests.**
+
 **P5 complete** (2026-08-03). Journey has real content:
 
 - `seed_journey.py` — 16 week-banded content units (pregnant 1–42, postpartum

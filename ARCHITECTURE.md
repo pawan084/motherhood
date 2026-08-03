@@ -261,6 +261,27 @@ The seed copy is general-knowledge material written for development. It is
 flagged HUMAN-GATED like the safety taxonomy: clinician review before real
 users. Every band's "prepare" section points worry back to the care team.
 
+## 14. Care (P6)
+
+`care.py` — four owner-scoped resources sharing one module: medicines (+
+idempotent taken-today log), documents, appointments, care plan.
+
+- **Documents are PHI.** Files live at `UPLOAD_DIR/{learner}/{doc_id}.{ext}`
+  — every path component server-generated, extension whitelist (pdf/jpg/png),
+  the shared size cap. A hostile client filename influences only the display
+  name (pinned by a traversal test). Downloads are authenticated and go
+  through fetch→blob in the client (a bare <a href> would arrive without
+  credentials). Local disk is the dev stand-in; production needs object
+  storage.
+- **The identity flows extend to files**: sign-in merge physically moves
+  each document into the account's directory; the deletion cascade removes
+  files from disk, not just rows — deleting the row but orphaning the PDF
+  would make "delete my account" a lie. Both are tested.
+- Deliberately deferred: reminder *delivery* (web push needs a service
+  worker + VAPID) and AI document extraction (queued work by design, and it
+  needs the Gemini key). Uploads store what the USER says the document is —
+  nothing pretends to have read it.
+
 ---
 
 ## Filled in as phases land

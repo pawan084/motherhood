@@ -529,6 +529,119 @@ button:disabled { cursor: default; opacity: .5; }
 .privacy-note strong { display: block; color: var(--ink); font-size: 14px; }
 .privacy-note small { color: var(--muted); font-size: 12.5px; }
 
+/* ── Care sections ─────────────────────────────────────────────────────── */
+.care-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  border-radius: 15px;
+  padding: 14px 15px;
+}
+.care-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.care-section-head > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--aubergine-2);
+  font-weight: 600;
+}
+.care-section-head > button {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--pearl);
+  display: grid;
+  place-items: center;
+  color: var(--aubergine);
+}
+.care-empty { margin: 0; color: var(--muted); font-size: 13px; }
+.care-add, .plan-add { display: flex; flex-direction: column; gap: 8px; }
+.plan-add { flex-direction: row; }
+.plan-add input { flex: 1; }
+.care-add input, .plan-add input {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--pearl);
+  padding: 10px 12px;
+  font-size: 14.5px;
+}
+.plan-add button {
+  width: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--lilac-soft);
+  color: var(--aubergine);
+  display: grid;
+  place-items: center;
+}
+.care-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: var(--pearl);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 9px 12px;
+}
+.care-row > div { flex: 1; min-width: 0; }
+.care-row strong { display: block; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.care-row small { color: var(--muted); font-size: 12px; }
+.care-row > button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  padding: 5px;
+}
+.care-date {
+  min-width: 44px;
+  text-align: center;
+  border: 1px solid var(--lilac);
+  background: var(--lilac-soft);
+  border-radius: 10px;
+  padding: 5px 0;
+  color: var(--aubergine);
+  flex: 0 0 auto !important;
+}
+.care-date strong { font-family: var(--serif); font-size: 17px; }
+.care-date small { font-size: 10px; text-transform: uppercase; color: var(--aubergine-2); }
+.taken-dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: var(--paper);
+  color: transparent;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+.taken-dot.taken { background: var(--sage-soft); border-color: var(--sage); color: var(--sage); }
+.done-text { text-decoration: line-through; color: var(--muted); }
+.vault-upload { display: flex; gap: 8px; }
+.vault-upload select {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--pearl);
+  padding: 9px 11px;
+  font-size: 14px;
+}
+.trust-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* ── Memory (What Aira remembers) ──────────────────────────────────────── */
 .memory-section {
   display: flex;
