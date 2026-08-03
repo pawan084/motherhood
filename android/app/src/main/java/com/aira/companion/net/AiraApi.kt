@@ -3,6 +3,7 @@ package com.aira.companion.net
 import android.content.Context
 import com.aira.companion.BuildConfig
 import com.aira.companion.model.CareSummary
+import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.VideoItem
@@ -149,6 +150,48 @@ object AiraApi {
     suspend fun tickReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
         request("POST", "/reminders/$id/tick", ensureDeviceToken(context), JSONObject())
     }
+
+    suspend fun addReminder(
+        context: Context,
+        title: String,
+        kind: String = "custom",
+        targetPerDay: Int = 1,
+    ) = withContext(Dispatchers.IO) {
+        request(
+            "POST", "/reminders", ensureDeviceToken(context),
+            JSONObject().put("title", title).put("kind", kind)
+                .put("target_per_day", targetPerDay),
+        )
+    }
+
+    suspend fun deleteReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("DELETE", "/reminders/$id", ensureDeviceToken(context), null)
+    }
+
+    /** Week-banded journey content; `week` pages within the caller's own
+     * stage without touching the stored context. */
+    suspend fun getJourney(context: Context, week: Int? = null): JourneyContent? =
+        withContext(Dispatchers.IO) {
+            val token = ensureDeviceToken(context)
+            val path = if (week != null) "/journey?week=$week" else "/journey"
+            val json = try {
+                request("GET", path, token, null)
+            } catch (e: ApiException) {
+                // 404 = no care context yet; that's a state, not a failure.
+                if (e.message?.contains("404") == true) return@withContext null
+                throw e
+            }
+            val content = json.optJSONObject("content") ?: return@withContext null
+            JourneyContent(
+                currentWeek = if (json.isNull("current_week")) null else json.getInt("current_week"),
+                shownWeek = if (json.isNull("shown_week")) null else json.getInt("shown_week"),
+                title = content.optString("title"),
+                yourself = content.optString("yourself"),
+                baby = content.optString("baby"),
+                prepare = content.optString("prepare"),
+                disclaimer = json.optString("disclaimer"),
+            )
+        }
 
     suspend fun markMedicineTaken(context: Context, id: String) = withContext(Dispatchers.IO) {
         request("POST", "/medicines/$id/taken", ensureDeviceToken(context), JSONObject())

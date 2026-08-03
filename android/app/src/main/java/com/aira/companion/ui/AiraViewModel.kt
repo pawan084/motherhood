@@ -7,6 +7,7 @@ import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.ChatMessage
+import com.aira.companion.model.DetailPage
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.OnboardingAnswer
@@ -153,12 +154,14 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             val moods = runCatching { AiraApi.getMoods(appContext) }.getOrNull()
             val reminders = runCatching { AiraApi.getReminders(appContext) }.getOrNull()
             val suggested = runCatching { AiraApi.getSuggestedVideo(appContext) }.getOrNull()
+            val journey = runCatching { AiraApi.getJourney(appContext) }.getOrNull()
             _uiState.update { state ->
                 state.copy(
                     careSummary = care ?: state.careSummary,
                     moods = moods ?: state.moods,
                     reminders = reminders ?: state.reminders,
                     suggestedVideo = suggested ?: state.suggestedVideo,
+                    journeyContent = journey ?: state.journeyContent,
                     meLoading = false,
                 )
             }
@@ -219,6 +222,72 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeSettings() {
         _uiState.update { it.copy(settingsOpen = false) }
+    }
+
+    // ── Detail pages (Journey / Moods / Care) — pure transitions; their data
+    // loads fire from LaunchedEffect(state.detail) in MainExperience ─────────
+
+    fun openDetail(page: DetailPage) {
+        _uiState.update { it.copy(detail = page, toolsOpen = false) }
+    }
+
+    fun closeDetail() {
+        _uiState.update { it.copy(detail = null) }
+    }
+
+    fun loadDetailData(page: DetailPage) {
+        viewModelScope.launch {
+            when (page) {
+                DetailPage.Journey ->
+                    runCatching { AiraApi.getJourney(appContext) }
+                        .onSuccess { c -> _uiState.update { it.copy(journeyContent = c) } }
+                        .onFailure { notify("Couldn't load this week's guide right now.") }
+                DetailPage.Moods ->
+                    runCatching { AiraApi.getMoods(appContext, days = 30) }
+                        .onSuccess { m -> _uiState.update { it.copy(moodHistory = m) } }
+                        .onFailure { notify("Couldn't load your mood history right now.") }
+                DetailPage.Care ->
+                    runCatching { AiraApi.getReminders(appContext) }
+                        .onSuccess { r -> _uiState.update { it.copy(reminders = r) } }
+                        .onFailure { notify("Couldn't sync reminders right now.") }
+            }
+        }
+    }
+
+    /** Browse another week inside the journey detail (never mutates the
+     * stored context — same contract as the web client). */
+    fun browseJourneyWeek(week: Int) {
+        viewModelScope.launch {
+            runCatching { AiraApi.getJourney(appContext, week) }
+                .onSuccess { c -> _uiState.update { it.copy(journeyContent = c) } }
+                .onFailure { notify("Couldn't load week $week right now.") }
+        }
+    }
+
+    fun addReminder(title: String, kind: String, targetPerDay: Int) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addReminder(appContext, title, kind, targetPerDay) }
+                .onSuccess {
+                    runCatching { AiraApi.getReminders(appContext) }
+                        .onSuccess { r -> _uiState.update { it.copy(reminders = r) } }
+                }
+                .onFailure { notify("Couldn't add that reminder — try again in a moment.") }
+        }
+    }
+
+    fun deleteReminder(reminder: Reminder) {
+        if (reminder.kind == "medicine") return // medicines are managed in their own sheet
+        _uiState.update { state ->
+            state.copy(reminders = state.reminders.filterNot { it.id == reminder.id })
+        }
+        viewModelScope.launch {
+            runCatching { AiraApi.deleteReminder(appContext, reminder.id) }
+                .onFailure {
+                    runCatching { AiraApi.getReminders(appContext) } // re-sync
+                        .onSuccess { r -> _uiState.update { it.copy(reminders = r) } }
+                    notify("Couldn't remove that — it's back until it syncs.")
+                }
+        }
     }
 
     fun openTools() {

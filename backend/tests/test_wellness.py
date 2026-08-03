@@ -149,7 +149,7 @@ def test_suggested_for_ttc_and_no_context(client):
 def test_video_seed_once_admin_edit_survives(client):
     wellness = sys.modules["wellness"]
     wellness._conn.execute(
-        "UPDATE videos SET title='Edited' WHERE id='vid-preg-mid-movement'")
+        "UPDATE videos SET title='Edited' WHERE id='vid-preg-tri1-3d'")
     wellness._conn.commit()
     wellness._conn = None
     wellness.init()

@@ -37,10 +37,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.CareSummary
+import com.aira.companion.model.DetailPage
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.screens.AiraChatScreen
+import com.aira.companion.ui.screens.CareDetailScreen
+import com.aira.companion.ui.screens.JourneyDetailScreen
+import com.aira.companion.ui.screens.MoodDetailScreen
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.MeScreen
 import com.aira.companion.ui.screens.OnboardingChatScreen
@@ -101,6 +105,9 @@ private fun MainExperience(
             else -> Unit
         }
     }
+    LaunchedEffect(state.detail) {
+        state.detail?.let(viewModel::loadDetailData)
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -129,7 +136,7 @@ private fun MainExperience(
                         state = state,
                         onSetMood = viewModel::setMood,
                         onTick = viewModel::tickReminder,
-                        onOpenTool = viewModel::openTool,
+                        onOpenDetail = viewModel::openDetail,
                         modifier = Modifier.padding(padding),
                     )
                 MainDestination.Chat ->
@@ -148,6 +155,36 @@ private fun MainExperience(
                         loading = state.videosLoading,
                         modifier = Modifier.padding(padding),
                     )
+            }
+        }
+
+        state.detail?.let { page ->
+            BackHandler { viewModel.closeDetail() }
+            Surface(modifier = Modifier.fillMaxSize(), color = Ivory) {
+                when (page) {
+                    DetailPage.Journey ->
+                        JourneyDetailScreen(
+                            content = state.journeyContent,
+                            onBrowseWeek = viewModel::browseJourneyWeek,
+                            onClose = viewModel::closeDetail,
+                            modifier = Modifier.statusBarsPadding(),
+                        )
+                    DetailPage.Moods ->
+                        MoodDetailScreen(
+                            history = state.moodHistory,
+                            onClose = viewModel::closeDetail,
+                            modifier = Modifier.statusBarsPadding(),
+                        )
+                    DetailPage.Care ->
+                        CareDetailScreen(
+                            reminders = state.reminders,
+                            onTick = viewModel::tickReminder,
+                            onAdd = viewModel::addReminder,
+                            onDelete = viewModel::deleteReminder,
+                            onClose = viewModel::closeDetail,
+                            modifier = Modifier.statusBarsPadding(),
+                        )
+                }
             }
         }
 

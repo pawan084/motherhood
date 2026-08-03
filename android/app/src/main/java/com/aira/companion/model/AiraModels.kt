@@ -86,6 +86,28 @@ data class VideoItem(
 
 val moodOptions = listOf("great", "okay", "tired", "low", "unwell")
 
+/** Display metadata for the mood picker + history (emoji render via the
+ * system emoji font). */
+val moodEmoji = mapOf(
+    "great" to "😊", "okay" to "🙂", "tired" to "😴",
+    "low" to "😔", "unwell" to "🤒",
+)
+
+/** Week-banded editorial content from GET /journey. */
+data class JourneyContent(
+    val currentWeek: Int?,
+    val shownWeek: Int?,
+    val title: String,
+    val yourself: String,
+    val baby: String,
+    val prepare: String,
+    val disclaimer: String,
+)
+
+/** Full-screen detail overlays reachable from the Me tab (same overlay
+ * mechanism as Settings — deliberately not MainDestinations). */
+enum class DetailPage { Journey, Moods, Care }
+
 /** Pure optimistic-update reducers — top-level so unit tests hit them without
  * a ViewModel or coroutines (the networked paths are on-device-verified). */
 fun upsertMood(moods: List<MoodEntry>, day: String, mood: String): List<MoodEntry> =
@@ -136,6 +158,9 @@ data class AiraUiState(
     val videosLoading: Boolean = false,
     val videosLoaded: Boolean = false,
     val settingsOpen: Boolean = false,
+    val detail: DetailPage? = null,
+    val journeyContent: JourneyContent? = null,
+    val moodHistory: List<MoodEntry> = emptyList(),
 )
 
 data class OnboardingPrompt(

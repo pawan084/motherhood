@@ -3,6 +3,7 @@ package com.aira.companion
 import android.app.Application
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.DetailPage
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.MoodEntry
@@ -92,6 +93,17 @@ class AiraViewModelTest {
         assertEquals(MainDestination.Chat, viewModel.uiState.value.destination)
         // Guards the destinationIcons map's getValue contract.
         assertEquals(3, MainDestination.entries.size)
+    }
+
+    @Test
+    fun detailPagesOpenAndCloseAndCloseTray() {
+        val viewModel = vm()
+        viewModel.openTools()
+        viewModel.openDetail(DetailPage.Journey)
+        assertEquals(DetailPage.Journey, viewModel.uiState.value.detail)
+        assertFalse(viewModel.uiState.value.toolsOpen)
+        viewModel.closeDetail()
+        assertNull(viewModel.uiState.value.detail)
     }
 
     @Test

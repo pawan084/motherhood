@@ -1,5 +1,6 @@
 package com.aira.companion.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,9 +16,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Medication
-import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.Icon
@@ -28,20 +29,22 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
-import com.aira.companion.model.MoodEntry
+import com.aira.companion.model.DetailPage
 import com.aira.companion.model.Reminder
+import com.aira.companion.model.moodEmoji
 import com.aira.companion.model.moodOptions
 import com.aira.companion.ui.components.AiraCard
-import com.aira.companion.ui.components.ChoiceChips
 import com.aira.companion.ui.components.GradientHeroSurface
+import com.aira.companion.ui.components.RemoteImage
 import com.aira.companion.ui.components.SectionLabel
-import com.aira.companion.ui.components.ToolListRow
+import com.aira.companion.ui.components.youtubeThumbnailUrl
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
+import com.aira.companion.ui.theme.Lilac
 import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
@@ -57,15 +60,15 @@ private fun stageLabel(stage: String): String = when (stage) {
     else -> "Your journey"
 }
 
-/** The Me tab: real journey summary, mood check-in, today's reminders, and a
- * suggested video — all from the backend (loaded by MainExperience's
- * LaunchedEffect via refreshMe()). */
+/** The Me tab: journey hero (tap -> weekly timeline detail), emoji mood
+ * check-in (tap history -> mood detail), graphical Today's care (tap ->
+ * care detail), and the suggested video with thumbnail + week context. */
 @Composable
 fun MeScreen(
     state: AiraUiState,
     onSetMood: (String) -> Unit,
     onTick: (Reminder) -> Unit,
-    onOpenTool: (AiraTool) -> Unit,
+    onOpenDetail: (DetailPage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -79,8 +82,12 @@ fun MeScreen(
             .padding(horizontal = 20.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp),
     ) {
-        // ── Journey ────────────────────────────────────────────────────────
-        GradientHeroSurface(modifier = Modifier.fillMaxWidth()) {
+        // ── Journey hero -> weekly timeline detail ─────────────────────────
+        GradientHeroSurface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onOpenDetail(DetailPage.Journey) },
+        ) {
             Column {
                 val care = state.careSummary
                 if (care != null) {
@@ -95,11 +102,22 @@ fun MeScreen(
                         style = MaterialTheme.typography.headlineLarge,
                         color = Ink,
                     )
-                    if (care.week != null) {
+                    // This week's headline — the "relevant information" line.
+                    Text(
+                        text = state.journeyContent?.title ?: stageLabel(care.stage),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = InkMuted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = stageLabel(care.stage),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = InkMuted,
+                            "See your weekly guide",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Plum,
+                        )
+                        Icon(
+                            Icons.Filled.ChevronRight, null,
+                            tint = Plum, modifier = Modifier.size(16.dp),
                         )
                     }
                 } else {
@@ -119,30 +137,65 @@ fun MeScreen(
             }
         }
 
-        // ── Mood check-in ──────────────────────────────────────────────────
+        // ── Mood check-in (emoji picker) + history link ────────────────────
         AiraCard {
-            SectionLabel("How are you today?")
-            Spacer(Modifier.height(12.dp))
-            ChoiceChips(
-                options = moodOptions.map { it.replaceFirstChar(Char::uppercase) },
-                selected = todayMood?.replaceFirstChar(Char::uppercase) ?: "",
-                onSelect = { onSetMood(it.lowercase()) },
-            )
-            if (state.moods.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                RecentMoodsStrip(state.moods)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SectionLabel("How are you today?", modifier = Modifier.weight(1f))
+                TextButton(onClick = { onOpenDetail(DetailPage.Moods) }) {
+                    Text("History", style = MaterialTheme.typography.labelMedium, color = Plum)
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                moodOptions.forEach { mood ->
+                    val selected = mood == todayMood
+                    Surface(
+                        onClick = { onSetMood(mood) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) Plum else Paper,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, if (selected) Plum else OutlineSoft,
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                moodEmoji[mood] ?: "·",
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                            Text(
+                                mood.replaceFirstChar(Char::uppercase),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (selected) Paper else InkMuted,
+                            )
+                        }
+                    }
+                }
             }
         }
 
-        // ── Reminders ──────────────────────────────────────────────────────
+        // ── Today's care (graphical) -> care detail ────────────────────────
         AiraCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionLabel("Today's care", modifier = Modifier.weight(1f))
-                TextButton(onClick = { onOpenTool(AiraTool.Medicines) }) {
-                    Text("Manage", style = MaterialTheme.typography.labelMedium, color = Plum)
+                TextButton(onClick = { onOpenDetail(DetailPage.Care) }) {
+                    Text("Details", style = MaterialTheme.typography.labelMedium, color = Plum)
                 }
             }
-            if (state.reminders.isEmpty()) {
+            val done = state.reminders.count { it.doneToday }
+            if (state.reminders.isNotEmpty()) {
+                Text(
+                    text = "$done of ${state.reminders.size} done",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (done == state.reminders.size) Sage else InkMuted,
+                )
+                Spacer(Modifier.height(10.dp))
+            } else {
                 Text(
                     text = if (state.meLoading) "Syncing…" else "No reminders yet.",
                     style = MaterialTheme.typography.bodyMedium,
@@ -156,20 +209,43 @@ fun MeScreen(
             }
         }
 
-        // ── Suggested video ────────────────────────────────────────────────
+        // ── Suggested video (thumbnail + context) ──────────────────────────
         state.suggestedVideo?.let { video ->
             AiraCard(containerColor = LilacMist) {
                 SectionLabel("For you this week")
-                Spacer(Modifier.height(4.dp))
-                ToolListRow(
-                    icon = Icons.Outlined.PlayCircle,
-                    title = video.title,
-                    subtitle = listOfNotNull(
-                        video.topic.takeIf { it.isNotBlank() },
-                        video.durationMinutes?.let { "$it min" },
-                    ).joinToString(" · "),
-                    onClick = { openYouTube(context, video.youtubeId) },
-                )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { openYouTube(context, video.youtubeId) },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RemoteImage(
+                        url = youtubeThumbnailUrl(video.youtubeId),
+                        contentDescription = video.title,
+                        modifier = Modifier
+                            .width(124.dp)
+                            .height(70.dp)
+                            .clip(RoundedCornerShape(12.dp)),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            video.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                        Text(
+                            text = listOfNotNull(
+                                video.topic.takeIf { it.isNotBlank() },
+                                video.weekBand?.let { "weeks $it" },
+                                video.durationMinutes?.let { "$it min" },
+                            ).joinToString(" · ") + " · YouTube",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
             }
         }
 
@@ -182,76 +258,53 @@ private fun ReminderRow(
     reminder: Reminder,
     onTick: (Reminder) -> Unit,
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = when (reminder.kind) {
-                "water" -> Icons.Outlined.WaterDrop
-                "exercise" -> Icons.Outlined.DirectionsWalk
-                "medicine" -> Icons.Outlined.Medication
-                else -> Icons.Outlined.TaskAlt
-            },
-            contentDescription = null,
-            tint = Plum,
-            modifier = Modifier.size(20.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(reminder.title, style = MaterialTheme.typography.titleSmall, color = Ink)
-            Text(
-                text = if (reminder.targetPerDay > 1) {
-                    "${reminder.ticksToday} of ${reminder.targetPerDay} today"
-                } else if (reminder.doneToday) "Done today" else "Not yet today",
-                style = MaterialTheme.typography.bodySmall,
-                color = InkMuted,
-            )
-        }
-        Surface(
-            onClick = { onTick(reminder) },
-            enabled = !reminder.doneToday,
-            shape = RoundedCornerShape(12.dp),
-            color = if (reminder.doneToday) SageMist else Paper,
-            contentColor = if (reminder.doneToday) Sage else Plum,
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp, if (reminder.doneToday) SageMist else OutlineSoft,
-            ),
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = if (reminder.doneToday) "${reminder.title} done" else "Tick ${reminder.title}",
-                modifier = Modifier.padding(8.dp).size(18.dp),
+                imageVector = when (reminder.kind) {
+                    "water" -> Icons.Outlined.WaterDrop
+                    "exercise" -> Icons.Outlined.DirectionsWalk
+                    "medicine" -> Icons.Outlined.Medication
+                    else -> Icons.Outlined.TaskAlt
+                },
+                contentDescription = null,
+                tint = Plum,
+                modifier = Modifier.size(20.dp),
             )
-        }
-    }
-}
-
-@Composable
-private fun RecentMoodsStrip(moods: List<MoodEntry>) {
-    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        moods.takeLast(7).forEach { entry ->
-            Surface(shape = RoundedCornerShape(10.dp), color = LilacMist) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        // "Mon" from the ISO date; parse failures just show the day number.
-                        text = runCatching {
-                            LocalDate.parse(entry.day).dayOfWeek.name.take(3).lowercase()
-                                .replaceFirstChar(Char::uppercase)
-                        }.getOrDefault(entry.day.takeLast(2)),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = InkMuted,
-                    )
-                    Text(
-                        text = entry.mood.replaceFirstChar(Char::uppercase),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Ink,
-                    )
-                }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(reminder.title, style = MaterialTheme.typography.titleSmall, color = Ink)
+                Text(
+                    text = if (reminder.targetPerDay > 1) {
+                        "${reminder.ticksToday} of ${reminder.targetPerDay} today"
+                    } else if (reminder.doneToday) "Done today" else "Not yet today",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
             }
+            Surface(
+                onClick = { onTick(reminder) },
+                enabled = !reminder.doneToday,
+                shape = RoundedCornerShape(12.dp),
+                color = if (reminder.doneToday) SageMist else Paper,
+                contentColor = if (reminder.doneToday) Sage else Plum,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp, if (reminder.doneToday) SageMist else OutlineSoft,
+                ),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = if (reminder.doneToday) "${reminder.title} done" else "Tick ${reminder.title}",
+                    modifier = Modifier.padding(8.dp).size(18.dp),
+                )
+            }
+        }
+        if (reminder.kind == "water" && reminder.targetPerDay > 1) {
+            Spacer(Modifier.height(8.dp))
+            WaterDroplets(reminder.ticksToday, reminder.targetPerDay)
         }
     }
 }
