@@ -181,58 +181,6 @@ fun MeScreen(
             }
         }
 
-        // ── Daily for you: the tip + the day's video in ONE card — both
-        // rotate at midnight, so they share the "changes every day" slot. ──
-        if (state.todayFeed?.tipText != null || state.suggestedVideo != null) {
-            AiraCard(containerColor = SageMist) {
-                SectionLabel("Daily for you")
-                state.todayFeed?.tipText?.let { tip ->
-                    Spacer(Modifier.height(6.dp))
-                    Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
-                }
-                state.suggestedVideo?.let { video ->
-                    Spacer(Modifier.height(10.dp))
-                    HorizontalDivider(color = OutlineSoft)
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { playVideo(context, video) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RemoteImage(
-                            url = videoThumbUrl(video) ?: "",
-                            contentDescription = video.title,
-                            modifier = Modifier
-                                .width(108.dp)
-                                .height(61.dp)
-                                .clip(RoundedCornerShape(12.dp)),
-                        )
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                video.title,
-                                style = MaterialTheme.typography.titleSmall,
-                                color = Ink,
-                            )
-                            Text(
-                                text = listOfNotNull(
-                                    video.durationMinutes?.let { "$it min" },
-                                    "Aira video",
-                                ).joinToString(" · "),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = InkMuted,
-                            )
-                        }
-                        Icon(
-                            Icons.Filled.ChevronRight, null,
-                            tint = Plum, modifier = Modifier.size(18.dp),
-                        )
-                    }
-                }
-            }
-        }
-
         // ── Mood check-in (emoji picker) + history link ────────────────────
         AiraCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -303,6 +251,60 @@ fun MeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.reminders.forEach { reminder ->
                     ReminderRow(reminder, onTick)
+                }
+            }
+        }
+
+        // ── Daily for you: the tip + the day's video in ONE card — both
+        // rotate at midnight, so they share the "changes every day" slot.
+        // Deliberately BELOW mood/care: act before browse — the surfaces a
+        // user touches several times a day outrank read-only content. ─────
+        if (state.todayFeed?.tipText != null || state.suggestedVideo != null) {
+            AiraCard(containerColor = SageMist) {
+                SectionLabel("Daily for you")
+                state.todayFeed?.tipText?.let { tip ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                }
+                state.suggestedVideo?.let { video ->
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = OutlineSoft)
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { playVideo(context, video) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RemoteImage(
+                            url = videoThumbUrl(video) ?: "",
+                            contentDescription = video.title,
+                            modifier = Modifier
+                                .width(108.dp)
+                                .height(61.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                video.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Ink,
+                            )
+                            Text(
+                                text = listOfNotNull(
+                                    video.durationMinutes?.let { "$it min" },
+                                    "Aira video",
+                                ).joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.ChevronRight, null,
+                            tint = Plum, modifier = Modifier.size(18.dp),
+                        )
+                    }
                 }
             }
         }
