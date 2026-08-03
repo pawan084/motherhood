@@ -79,6 +79,12 @@ app.include_router(journey.router)
 app.include_router(memory.router)
 app.include_router(privacy.router)
 app.include_router(admin.router)
+# Demo personas exist ONLY where dev login is allowed — never in production
+# (accounts.ALLOW_DEV_LOGIN is env-driven and dev_login itself re-checks).
+if accounts.ALLOW_DEV_LOGIN and not config.IS_PRODUCTION:
+    import demo  # noqa: E402
+
+    app.include_router(demo.router)
 
 
 @app.get("/health")

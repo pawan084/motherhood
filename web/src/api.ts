@@ -46,6 +46,20 @@ export type StreamHandlers = {
 
 let deviceToken: string | null = localStorage.getItem(TOKEN_KEY);
 
+export function hasDeviceToken(): boolean {
+  return deviceToken !== null;
+}
+
+/** Dev/demo only: swap this browser onto a freshly-seeded demo persona.
+ * The endpoint exists only when the backend allows dev login. */
+export async function setupDemoPersona(persona: string): Promise<void> {
+  const r = await fetch(`${API}/demo/${persona}`, { method: "POST" });
+  if (!r.ok) throw new Error(`demo setup failed: ${r.status}`);
+  const body = (await r.json()) as { device_token: string };
+  deviceToken = body.device_token;
+  localStorage.setItem(TOKEN_KEY, deviceToken);
+}
+
 export async function ensureDeviceToken(): Promise<string> {
   if (deviceToken) return deviceToken;
   const r = await fetch(`${API}/device/register`, { method: "POST" });

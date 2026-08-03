@@ -6,7 +6,14 @@
  */
 import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 
-import { AppConfig, CareContext, ensureDeviceToken, getCareContext, getConfig } from "./api";
+import {
+  AppConfig,
+  CareContext,
+  ensureDeviceToken,
+  getCareContext,
+  getConfig,
+  setupDemoPersona,
+} from "./api";
 
 type AppState = {
   ready: boolean;
@@ -27,6 +34,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refresh = useCallback(async () => {
     try {
+      // Demo boot hook (?demo=pregnant|postpartum|trying_to_conceive): swap
+      // onto a seeded persona, then clean the URL so reloads stay put.
+      const demo = new URLSearchParams(location.search).get("demo");
+      if (demo) {
+        await setupDemoPersona(demo).catch(() => undefined); // 404 in prod -> ignore
+        history.replaceState(null, "", location.pathname);
+      }
       await ensureDeviceToken();
       const [cfg, ctx] = await Promise.all([getConfig(), getCareContext()]);
       setConfig(cfg);

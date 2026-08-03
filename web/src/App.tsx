@@ -7,10 +7,11 @@
 import { useState } from "react";
 import { Bell, BookOpen, BriefcaseMedical, House, Siren, Sparkles, UserRound } from "lucide-react";
 
-import { UrgentHelpPayload } from "./api";
+import { hasDeviceToken, setupDemoPersona, UrgentHelpPayload } from "./api";
 import CareScreen from "./screens/CareScreen";
 import ChatScreen from "./screens/ChatScreen";
 import JourneyScreen from "./screens/JourneyScreen";
+import Landing from "./screens/Landing";
 import TodayScreen from "./screens/TodayScreen";
 import UrgentHelp from "./screens/UrgentHelp";
 import YouScreen from "./screens/YouScreen";
@@ -30,7 +31,27 @@ export default function App() {
   const { ready, offline, context, refresh } = useApp();
   const [screen, setScreen] = useState<Screen>("Aira");
   const [urgent, setUrgent] = useState<{ open: boolean; payload?: UrgentHelpPayload }>({ open: false });
+  // First visit (no device credential yet): the landing page. "Start" or a
+  // demo persona mints the credential and enters the app.
+  const [entered, setEntered] = useState(hasDeviceToken());
   const locked = !context;
+
+  if (ready && !offline && !entered)
+    return (
+      <div className="app-frame">
+        <Landing
+          onStart={() => {
+            setEntered(true);
+            void refresh();
+          }}
+          onDemo={(persona) => {
+            void setupDemoPersona(persona)
+              .then(() => refresh())
+              .then(() => setEntered(true));
+          }}
+        />
+      </div>
+    );
 
   if (!ready)
     return (
