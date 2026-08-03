@@ -108,6 +108,23 @@ data class JourneyContent(
  * mechanism as Settings — deliberately not MainDestinations). */
 enum class DetailPage { Journey, Moods, Care }
 
+/** Per-day history for one reminder (GET /report). */
+data class ReportDay(val day: String, val ticks: Int, val done: Boolean)
+
+data class ReminderReport(
+    val id: String,
+    val title: String,
+    val kind: String,
+    val targetPerDay: Int,
+    val days: List<ReportDay>,
+)
+
+data class WellnessReport(
+    val days: Int,
+    val moods: List<MoodEntry>,
+    val reminders: List<ReminderReport>,
+)
+
 /** Pure optimistic-update reducers — top-level so unit tests hit them without
  * a ViewModel or coroutines (the networked paths are on-device-verified). */
 fun upsertMood(moods: List<MoodEntry>, day: String, mood: String): List<MoodEntry> =
@@ -161,6 +178,7 @@ data class AiraUiState(
     val detail: DetailPage? = null,
     val journeyContent: JourneyContent? = null,
     val moodHistory: List<MoodEntry> = emptyList(),
+    val report: WellnessReport? = null,
 )
 
 data class OnboardingPrompt(

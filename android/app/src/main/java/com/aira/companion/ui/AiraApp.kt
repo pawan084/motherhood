@@ -178,6 +178,7 @@ private fun MainExperience(
                     DetailPage.Care ->
                         CareDetailScreen(
                             reminders = state.reminders,
+                            report = state.report,
                             onTick = viewModel::tickReminder,
                             onAdd = viewModel::addReminder,
                             onDelete = viewModel::deleteReminder,

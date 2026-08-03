@@ -268,6 +268,54 @@ def delete_reminder(reminder_id: str, learner_id: str = Depends(resolve_learner)
     return {"ok": True}
 
 
+# ── Reports ──────────────────────────────────────────────────────────────────
+
+@router.get("/report")
+def wellness_report(days: int = Query(default=30, ge=7, le=90),
+                    learner_id: str = Depends(resolve_learner)):
+    """One fetch powering the weekly/monthly report views: the mood series
+    plus each reminder's per-day tick history over the window. Medicines are
+    included (their taken-log is a day series too) so the care report covers
+    the whole "Today's care" list."""
+    _seed_reminders(learner_id)
+    since = (date.today() - timedelta(days=days - 1)).isoformat()
+
+    moods = _conn.execute(
+        "SELECT day, mood FROM moods WHERE learner_id=? AND day>=? ORDER BY day",
+        (learner_id, since)).fetchall()
+
+    reminders_out = []
+    for rid, title, kind, target in _conn.execute(
+            "SELECT id, title, kind, target_per_day FROM reminders"
+            " WHERE learner_id=? ORDER BY created", (learner_id,)).fetchall():
+        rows = _conn.execute(
+            "SELECT day, ticks FROM reminder_ticks WHERE reminder_id=? AND day>=?"
+            " ORDER BY day", (rid, since)).fetchall()
+        reminders_out.append({
+            "id": rid, "title": title, "kind": kind, "target_per_day": target,
+            "days": [{"day": r[0], "ticks": r[1], "done": r[1] >= target}
+                     for r in rows],
+        })
+    import care  # local import: avoids a cycle at module load
+    for mid, name, target_days in care._conn.execute(
+            "SELECT id, name, 1 FROM medicines WHERE learner_id=?"
+            " ORDER BY time_of_day, created", (learner_id,)).fetchall():
+        rows = care._conn.execute(
+            "SELECT day FROM medicine_taken WHERE medicine_id=? AND day>=?"
+            " ORDER BY day", (mid, since)).fetchall()
+        reminders_out.append({
+            "id": mid, "title": name, "kind": "medicine", "target_per_day": 1,
+            "days": [{"day": r[0], "ticks": 1, "done": True} for r in rows],
+        })
+
+    return {
+        "days": days,
+        "since": since,
+        "moods": [{"day": m[0], "mood": m[1]} for m in moods],
+        "reminders": reminders_out,
+    }
+
+
 # ── Videos ───────────────────────────────────────────────────────────────────
 
 def _video_dict(row) -> dict:

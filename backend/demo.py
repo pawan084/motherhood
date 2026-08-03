@@ -108,10 +108,12 @@ def create_demo(persona: str):
             " VALUES (?,?,?,?,?)",
             (f"plan_demo_{did[-8:]}_{i}", did, item, 1 if i == 0 else 0, now))
     conn.commit()
-    # A lived-in Me tab: recent moods + the seeded habit reminders with a
-    # couple of water ticks (all through the real module).
+    # A lived-in Me tab AND report pages: two weeks of moods + tick history
+    # for the seeded reminders (all through the real module's tables).
     wconn = wellness._conn
-    for offset, mood in enumerate(("okay", "tired", "great")):
+    mood_cycle = ("okay", "tired", "great", "okay", "low", "okay", "great",
+                  "tired", "okay", "great", "okay", "tired", "great", "okay")
+    for offset, mood in enumerate(mood_cycle):
         wconn.execute(
             "INSERT INTO moods (learner_id, day, mood, ts) VALUES (?,?,?,?)"
             " ON CONFLICT (learner_id, day) DO NOTHING",
@@ -120,11 +122,23 @@ def create_demo(persona: str):
     water = wconn.execute(
         "SELECT id FROM reminders WHERE learner_id=? AND kind='water'",
         (did,)).fetchone()
+    exercise = wconn.execute(
+        "SELECT id FROM reminders WHERE learner_id=? AND kind='exercise'",
+        (did,)).fetchone()
+    # Water: believable variation (today partial, most past days at/near 8).
+    water_ticks = (3, 8, 6, 8, 8, 4, 7, 8, 5, 8, 8, 6, 8, 7)
     if water:
-        wconn.execute(
-            "INSERT INTO reminder_ticks (reminder_id, day, ticks, ts) VALUES (?,?,3,?)"
-            " ON CONFLICT (reminder_id, day) DO NOTHING",
-            (water[0], _iso(0), now))
+        for offset, ticks in enumerate(water_ticks):
+            wconn.execute(
+                "INSERT INTO reminder_ticks (reminder_id, day, ticks, ts)"
+                " VALUES (?,?,?,?) ON CONFLICT (reminder_id, day) DO NOTHING",
+                (water[0], _iso(-offset), ticks, now))
+    if exercise:
+        for offset in (1, 2, 4, 5, 7, 9, 10, 12, 13):  # done most days, not today
+            wconn.execute(
+                "INSERT INTO reminder_ticks (reminder_id, day, ticks, ts)"
+                " VALUES (?,?,1,?) ON CONFLICT (reminder_id, day) DO NOTHING",
+                (exercise[0], _iso(-offset), now))
     wconn.commit()
     return {"device_token": token, "persona": persona,
             "display_name": ctx.get("display_name")}

@@ -243,13 +243,21 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                         .onSuccess { c -> _uiState.update { it.copy(journeyContent = c) } }
                         .onFailure { notify("Couldn't load this week's guide right now.") }
                 DetailPage.Moods ->
-                    runCatching { AiraApi.getMoods(appContext, days = 30) }
-                        .onSuccess { m -> _uiState.update { it.copy(moodHistory = m) } }
+                    runCatching { AiraApi.getReport(appContext, days = 30) }
+                        .onSuccess { rep ->
+                            _uiState.update {
+                                it.copy(report = rep, moodHistory = rep.moods)
+                            }
+                        }
                         .onFailure { notify("Couldn't load your mood history right now.") }
-                DetailPage.Care ->
+                DetailPage.Care -> {
                     runCatching { AiraApi.getReminders(appContext) }
                         .onSuccess { r -> _uiState.update { it.copy(reminders = r) } }
                         .onFailure { notify("Couldn't sync reminders right now.") }
+                    runCatching { AiraApi.getReport(appContext, days = 30) }
+                        .onSuccess { rep -> _uiState.update { it.copy(report = rep) } }
+                        .onFailure { /* report is enrichment for the page */ }
+                }
             }
         }
     }

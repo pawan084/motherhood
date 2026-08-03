@@ -32,16 +32,19 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
+import com.aira.companion.model.WellnessReport
 import com.aira.companion.model.moodEmoji
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
@@ -153,8 +156,17 @@ private fun WeekTimeline(
     currentWeek: Int?,
     onSelect: (Int) -> Unit,
 ) {
+    val scroll = rememberScrollState()
+    val density = LocalDensity.current
+    // Bring the shown week into view (chips are ~50dp incl. spacing); without
+    // this the row always opened at week 1 and the current week sat off-screen
+    // — which read as "no timeline" at week 8+.
+    LaunchedEffect(shownWeek) {
+        val chipPx = with(density) { 50.dp.toPx() }
+        scroll.animateScrollTo(((shownWeek - 3).coerceAtLeast(0) * chipPx).toInt())
+    }
     Row(
-        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        modifier = Modifier.horizontalScroll(scroll),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         (1..42).forEach { week ->
@@ -185,7 +197,8 @@ private fun WeekTimeline(
 
 // ── Moods ────────────────────────────────────────────────────────────────────
 
-/** 30-day mood history: a count summary + one row per day, newest first. */
+/** Mood reports: this week day-by-day, the month's distribution, and the
+ * full day list. */
 @Composable
 fun MoodDetailScreen(
     history: List<MoodEntry>,
@@ -200,31 +213,88 @@ fun MoodDetailScreen(
             )
             return@DetailScaffold
         }
-        SectionLabel("Last 30 days")
+        val byDay = history.associateBy { it.day }
+
+        SectionLabel("This week")
         Spacer(Modifier.height(8.dp))
         AiraCard {
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                history.groupingBy { it.mood }.eachCount()
-                    .entries.sortedByDescending { it.value }
-                    .forEach { (mood, count) ->
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                (6 downTo 0).forEach { back ->
+                    val date = LocalDate.now().minusDays(back.toLong())
+                    val entry = byDay[date.toString()]
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            date.dayOfWeek.name.take(1),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = InkMuted,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Surface(
+                            shape = CircleShape,
+                            color = if (entry != null) LilacMist else Paper,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, if (back == 0) Plum else OutlineSoft,
+                            ),
+                        ) {
                             Text(
-                                moodEmoji[mood] ?: "·",
-                                style = MaterialTheme.typography.headlineSmall,
-                            )
-                            Text(
-                                "$count",
-                                style = MaterialTheme.typography.titleSmall, color = Ink,
-                            )
-                            Text(
-                                mood.replaceFirstChar(Char::uppercase),
-                                style = MaterialTheme.typography.labelSmall, color = InkMuted,
+                                text = entry?.let { moodEmoji[it.mood] } ?: " · ",
+                                modifier = Modifier.padding(7.dp),
+                                style = MaterialTheme.typography.titleMedium,
                             )
                         }
                     }
+                }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(14.dp))
+
+        SectionLabel("This month")
+        Spacer(Modifier.height(8.dp))
+        AiraCard {
+            val counts = history.groupingBy { it.mood }.eachCount()
+            val max = (counts.values.maxOrNull() ?: 1).coerceAtLeast(1)
+            counts.entries.sortedByDescending { it.value }.forEach { (mood, count) ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 5.dp),
+                ) {
+                    Text(
+                        moodEmoji[mood] ?: "·",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        mood.replaceFirstChar(Char::uppercase),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Ink,
+                        modifier = Modifier.width(64.dp),
+                    )
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Lilac,
+                        modifier = Modifier
+                            .weight(count.toFloat() / max)
+                            .height(14.dp),
+                    ) {}
+                    if (count < max) Spacer(Modifier.weight((max - count).toFloat() / max))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "$count", style = MaterialTheme.typography.titleSmall, color = Ink,
+                    )
+                }
+            }
+            Text(
+                "${history.size} check-ins in the last 30 days",
+                style = MaterialTheme.typography.bodySmall, color = InkMuted,
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+
+        SectionLabel("Day by day")
+        Spacer(Modifier.height(8.dp))
         history.sortedByDescending { it.day }.forEach { entry ->
             Row(
                 modifier = Modifier
@@ -267,6 +337,7 @@ private fun formatDay(iso: String): String = runCatching {
 @Composable
 fun CareDetailScreen(
     reminders: List<Reminder>,
+    report: WellnessReport?,
     onTick: (Reminder) -> Unit,
     onAdd: (String, String, Int) -> Unit,
     onDelete: (Reminder) -> Unit,
@@ -339,6 +410,39 @@ fun CareDetailScreen(
                 if (reminder.kind == "water") {
                     Spacer(Modifier.height(10.dp))
                     WaterDroplets(reminder.ticksToday, reminder.targetPerDay)
+                }
+                val series = report?.reminders?.firstOrNull { it.id == reminder.id }
+                if (series != null) {
+                    val doneDays = series.days.associate { it.day to it.done }
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Text(
+                            "This week",
+                            style = MaterialTheme.typography.labelSmall, color = InkMuted,
+                        )
+                        Spacer(Modifier.width(3.dp))
+                        (6 downTo 0).forEach { back ->
+                            val date = LocalDate.now().minusDays(back.toLong()).toString()
+                            Surface(
+                                shape = CircleShape,
+                                color = if (doneDays[date] == true) Sage else Paper,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp,
+                                    if (doneDays[date] == true) Sage else OutlineSoft,
+                                ),
+                                modifier = Modifier.size(13.dp),
+                            ) {}
+                        }
+                    }
+                    val monthDone = series.days.count { it.done }
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "$monthDone of ${report.days} days this month",
+                        style = MaterialTheme.typography.bodySmall, color = InkMuted,
+                    )
                 }
             }
             Spacer(Modifier.height(10.dp))

@@ -6,7 +6,10 @@ import com.aira.companion.model.CareSummary
 import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
+import com.aira.companion.model.ReminderReport
+import com.aira.companion.model.ReportDay
 import com.aira.companion.model.VideoItem
+import com.aira.companion.model.WellnessReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -167,6 +170,39 @@ object AiraApi {
     suspend fun deleteReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
         request("DELETE", "/reminders/$id", ensureDeviceToken(context), null)
     }
+
+    /** The weekly/monthly report source: mood series + each reminder's
+     * per-day tick history (medicines included). */
+    suspend fun getReport(context: Context, days: Int = 30): WellnessReport =
+        withContext(Dispatchers.IO) {
+            val token = ensureDeviceToken(context)
+            val json = request("GET", "/report?days=$days", token, null)
+            val moodsArr = json.optJSONArray("moods") ?: JSONArray()
+            val moods = (0 until moodsArr.length()).mapNotNull { i ->
+                moodsArr.optJSONObject(i)?.let {
+                    MoodEntry(it.getString("day"), it.getString("mood"))
+                }
+            }
+            val remArr = json.optJSONArray("reminders") ?: JSONArray()
+            val reminders = (0 until remArr.length()).mapNotNull { i ->
+                remArr.optJSONObject(i)?.let { r ->
+                    val daysArr = r.optJSONArray("days") ?: JSONArray()
+                    ReminderReport(
+                        id = r.getString("id"),
+                        title = r.getString("title"),
+                        kind = r.getString("kind"),
+                        targetPerDay = r.optInt("target_per_day", 1),
+                        days = (0 until daysArr.length()).mapNotNull { j ->
+                            daysArr.optJSONObject(j)?.let { d ->
+                                ReportDay(d.getString("day"), d.optInt("ticks", 0),
+                                          d.optBoolean("done", false))
+                            }
+                        },
+                    )
+                }
+            }
+            WellnessReport(json.optInt("days", days), moods, reminders)
+        }
 
     /** Week-banded journey content; `week` pages within the caller's own
      * stage without touching the stored context. */

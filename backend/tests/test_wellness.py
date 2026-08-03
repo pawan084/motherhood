@@ -200,3 +200,37 @@ def test_erase_and_export_cover_wellness(client):
     assert client.get("/moods", headers=h).json()["moods"] == []
     # Seed marker erased too -> a fresh start re-seeds defaults.
     assert len(client.get("/reminders", headers=h).json()["reminders"]) == 2
+
+
+# ── report ───────────────────────────────────────────────────────────────────
+
+def test_report_shape_and_history(client):
+    h = _register(client)
+    mid = client.post("/medicines", json={"name": "Iron"}, headers=h).json()["id"]
+    client.post("/moods", json={"mood": "great"}, headers=h)
+    water = next(r for r in client.get("/reminders", headers=h).json()["reminders"]
+                 if r["kind"] == "water")
+    client.post(f"/reminders/{water['id']}/tick", headers=h)
+    client.post(f"/reminders/{water['id']}/tick", headers=h)
+    client.post(f"/medicines/{mid}/taken", headers=h)
+
+    report = client.get("/report?days=7", headers=h).json()
+    assert report["days"] == 7
+    assert report["moods"][-1]["mood"] == "great"
+
+    by_kind = {r["kind"]: r for r in report["reminders"]}
+    assert set(by_kind) == {"water", "exercise", "medicine"}
+    today = date.today().isoformat()
+    water_today = next(d for d in by_kind["water"]["days"] if d["day"] == today)
+    assert water_today["ticks"] == 2 and water_today["done"] is False
+    med_today = next(d for d in by_kind["medicine"]["days"] if d["day"] == today)
+    assert med_today["done"] is True
+    assert by_kind["exercise"]["days"] == []  # never ticked -> empty series
+
+
+def test_report_owner_scoped_and_windowed(client):
+    a, b = _register(client), _register(client)
+    client.post("/moods", json={"mood": "low"}, headers=a)
+    report_b = client.get("/report", headers=b).json()
+    assert report_b["moods"] == []
+    assert client.get("/report?days=3", headers=a).status_code == 422  # ge=7
