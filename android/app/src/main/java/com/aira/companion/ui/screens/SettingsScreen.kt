@@ -3,6 +3,8 @@ package com.aira.companion.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -31,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,6 +50,7 @@ import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
+import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Lilac
 import com.aira.companion.ui.theme.Paper
@@ -227,6 +231,51 @@ fun SettingsScreen(
                     checked = personalisationEnabled,
                     onCheckedChange = { personalisationEnabled = it },
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        // ── Appearance (review #46): system-follow, light, or dark ─────────
+        AiraCard {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            Text(
+                text = "Appearance",
+                style = MaterialTheme.typography.titleSmall,
+                color = Ink,
+            )
+            Text(
+                text = "Dark mode is easier on 3 AM eyes",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    com.aira.companion.ui.theme.ThemeMode.SYSTEM to "System",
+                    com.aira.companion.ui.theme.ThemeMode.LIGHT to "Light",
+                    com.aira.companion.ui.theme.ThemeMode.DARK to "Dark",
+                ).forEach { (value, label) ->
+                    val selected = com.aira.companion.ui.theme.ThemeMode.mode == value
+                    Surface(
+                        onClick = {
+                            com.aira.companion.ui.theme.ThemeMode.save(context, value)
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (selected) Plum else Paper,
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (selected) Plum else OutlineSoft,
+                        ),
+                    ) {
+                        Text(
+                            text = label,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (selected) Paper else Ink,
+                        )
+                    }
+                }
             }
         }
 

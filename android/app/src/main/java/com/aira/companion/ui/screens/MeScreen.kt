@@ -109,6 +109,7 @@ private fun stageLabel(stage: String): String = when (stage) {
        androidx.compose.foundation.ExperimentalFoundationApi::class)
 fun MeScreen(
     state: AiraUiState,
+    onNudgeTapped: (String) -> Unit,
     onOpenPlayer: (com.aira.companion.model.VideoItem) -> Unit,
     onSetMood: (String) -> Unit,
     onSaveMoodNote: (String, String) -> Unit,
@@ -162,26 +163,21 @@ fun MeScreen(
                 .combinedClickable(
                     onClick = { onOpenDetail(DetailPage.Journey) },
                     onLongClick = {
-                        // Share the week (review #36) — text only, via the
-                        // system sheet; the user picks the destination.
+                        // Share the week (review #36) as a drawn image card —
+                        // the system sheet lets the user pick the destination.
                         val care = state.careSummary ?: return@combinedClickable
-                        val text = listOfNotNull(
-                            care.week?.let { w ->
-                                state.todayFeed?.dayInWeek?.let { d -> "Week $w · Day $d" }
-                                    ?: "Week $w"
-                            },
-                            state.journeyContent?.sizeEmoji,
-                            state.todayFeed?.daysToGo?.let { "$it days to go" },
-                        ).joinToString(" ") + " — tracked with Aira"
                         runCatching {
-                            context.startActivity(
-                                android.content.Intent.createChooser(
-                                    android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(android.content.Intent.EXTRA_TEXT, text)
-                                    },
-                                    "Share your week",
-                                ),
+                            com.aira.companion.util.ShareCard.shareWeek(
+                                context,
+                                headline = care.week?.let { w ->
+                                    state.todayFeed?.dayInWeek?.let { d ->
+                                        "Week $w · Day $d"
+                                    } ?: "Week $w"
+                                } ?: "My journey",
+                                emoji = state.journeyContent?.sizeEmoji,
+                                subline = state.todayFeed?.daysToGo?.let {
+                                    "$it days to go"
+                                },
                             )
                         }
                     },
@@ -194,6 +190,7 @@ fun MeScreen(
                     // a home resumed at 18:00 must not greet the morning.
                     val hour = java.time.LocalTime.now().hour
                     val greeting = when {
+                        hour < 5 -> "Good night"    // the 3 AM feeds
                         hour < 12 -> "Good morning"
                         hour < 17 -> "Good afternoon"
                         hour < 22 -> "Good evening"
@@ -229,6 +226,7 @@ fun MeScreen(
                     Text(
                         text = listOfNotNull(
                             state.journeyContent?.title,
+                            state.todayFeed?.lengthCm?.let { "~$it cm" },
                             state.todayFeed?.daysToGo?.let { days ->
                                 // Days feel abstract until the third trimester;
                                 // weeks read as progress, days as a countdown.
@@ -246,7 +244,7 @@ fun MeScreen(
                     val next = journeyNext(state)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = next ?: "See your weekly guide",
+                            text = next ?: androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_weekly_guide),
                             style = MaterialTheme.typography.labelMedium,
                             color = Plum,
                         )
@@ -342,7 +340,7 @@ fun MeScreen(
             AiraCard(containerColor = LilacMist) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        SectionLabel("Your week")
+                        SectionLabel(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_week_header))
                         Spacer(Modifier.height(4.dp))
                         Text(
                             text = listOfNotNull(
@@ -365,9 +363,16 @@ fun MeScreen(
         // ── Today: mood + nudges + care in one interactive card ────────────
         AiraCard {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("How are you today?", modifier = Modifier.weight(1f))
+                SectionLabel(
+                    text = if (state.careSummary?.stage == "postpartum") {
+                        if (java.time.LocalTime.now().hour < 15) {
+                            androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_mood_morning)
+                        } else androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_mood_evening)
+                    } else androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_mood_header),
+                    modifier = Modifier.weight(1f),
+                )
                 TextButton(onClick = { onOpenDetail(DetailPage.Moods) }) {
-                    Text("History", style = MaterialTheme.typography.labelMedium, color = Plum)
+                    Text(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_history), style = MaterialTheme.typography.labelMedium, color = Plum)
                 }
             }
             Spacer(Modifier.height(6.dp))
@@ -409,7 +414,7 @@ fun MeScreen(
                 var noteText by remember { mutableStateOf("") }
                 if (!noteOpen) {
                     TextButton(onClick = { noteOpen = true }) {
-                        Text("Add a note", style = MaterialTheme.typography.labelMedium, color = Plum)
+                        Text(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_add_note), style = MaterialTheme.typography.labelMedium, color = Plum)
                     }
                 } else {
                     Spacer(Modifier.height(6.dp))
@@ -453,9 +458,9 @@ fun MeScreen(
             HorizontalDivider(color = OutlineSoft)
             Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                SectionLabel("Today's care", modifier = Modifier.weight(1f))
+                SectionLabel(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_care_header), modifier = Modifier.weight(1f))
                 TextButton(onClick = { onOpenDetail(DetailPage.Care) }) {
-                    Text("Details", style = MaterialTheme.typography.labelMedium, color = Plum)
+                    Text(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_details), style = MaterialTheme.typography.labelMedium, color = Plum)
                 }
             }
             val done = state.reminders.count { it.doneToday }
@@ -498,6 +503,7 @@ fun MeScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     focusItems.forEach { focus ->
                         FocusNudge(focus) {
+                            onNudgeTapped(focus.kind)
                             when (focus.kind) {
                                 "milestone_week" -> onOpenDetail(DetailPage.Journey)
                                 // The Visit copilot holds the real appointment
@@ -524,7 +530,7 @@ fun MeScreen(
         // user touches several times a day outrank read-only content. ─────
         if (state.todayFeed?.tipText != null || state.suggestedVideo != null) {
             AiraCard(containerColor = SageMist) {
-                SectionLabel("Daily for you")
+                SectionLabel(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_daily_header))
                 state.todayFeed?.tipText?.let { tip ->
                     Spacer(Modifier.height(6.dp))
                     Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
@@ -621,7 +627,7 @@ fun MeScreen(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(
-                "What Aira remembers ›",
+                androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_memory_link),
                 style = MaterialTheme.typography.labelMedium,
                 color = InkMuted,
             )

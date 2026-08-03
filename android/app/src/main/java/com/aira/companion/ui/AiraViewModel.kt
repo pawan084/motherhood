@@ -244,9 +244,13 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setMood(mood: String, note: String? = null) {
         val day = LocalDate.now().toString()
+        // Postpartum logs twice daily (am/pm slot by clock); others once.
+        val slot = if (_uiState.value.careSummary?.stage == "postpartum") {
+            if (java.time.LocalTime.now().hour < 15) "am" else "pm"
+        } else null
         _uiState.update { it.copy(moods = upsertMood(it.moods, day, mood)) } // optimistic
         viewModelScope.launch {
-            runCatching { AiraApi.postMood(appContext, mood, note) }
+            runCatching { AiraApi.postMood(appContext, mood, note, slot) }
                 .onSuccess { if (note != null) notify("Noted — thanks for sharing.") }
                 .onFailure {
                     runCatching { AiraApi.getMoods(appContext) } // re-sync to server truth
@@ -254,6 +258,22 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     notify("Couldn't save your check-in — try again in a moment.")
                 }
         }
+    }
+
+    fun nudgeActedOn(kind: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.postFocusTap(appContext, kind) }
+            runCatching { AiraApi.postMetric(appContext, "nudge_tap") }
+        }
+    }
+
+    fun trackOpen(destination: MainDestination) {
+        val event = when (destination) {
+            MainDestination.Me -> "me_open"
+            MainDestination.Chat -> "chat_open"
+            MainDestination.Videos -> "videos_open"
+        }
+        viewModelScope.launch { runCatching { AiraApi.postMetric(appContext, event) } }
     }
 
     fun sendTipFeedback(tipId: String, helpful: Boolean) {
@@ -517,6 +537,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
 
     fun openPlayer(video: VideoItem) {
         _uiState.update { it.copy(playerVideo = video) }
+        viewModelScope.launch { runCatching { AiraApi.postMetric(appContext, "video_play") } }
     }
 
     fun closePlayer() {

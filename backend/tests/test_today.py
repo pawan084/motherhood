@@ -161,3 +161,30 @@ def test_sunday_recap_present_only_on_sunday(client):
     assert "recap" in sunday and "water_avg" in sunday["recap"]
     weekday = client.get("/today?hour=10&date=2026-08-05", headers=h).json()
     assert "recap" not in weekday
+
+
+# ── deferred batch: learning, language, cm ───────────────────────────────────
+
+def test_size_includes_length_cm_and_hi_falls_back(client):
+    h = _register(client)
+    days_to_due = (40 - 8) * 7
+    due = date.fromordinal(date.today().toordinal() + days_to_due).isoformat()
+    client.put("/care-context", json={"stage": "pregnant", "due_date": due,
+                                      "language": "hi"}, headers=h)
+    body = client.get("/today?hour=10", headers=h).json()
+    assert body["context"]["size"]["length_cm"] == 1.6  # week 8
+    assert body["tip"]["text"]  # hi pool empty -> English fallback
+
+
+def test_focus_taps_boost_acted_on_kinds(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 12)  # milestone week: mood + milestone both p2
+    kinds = [f["kind"] for f in client.get("/today?hour=10", headers=h).json()["focus"]]
+    assert kinds[0] == "mood_checkin"  # insertion order within equal priority
+    # Acting on milestones teaches the ranker to lead with them.
+    for _ in range(3):
+        client.post("/today/focus-tap", json={"kind": "milestone_week"}, headers=h)
+    kinds = [f["kind"] for f in client.get("/today?hour=10", headers=h).json()["focus"]]
+    assert kinds[0] == "milestone_week"
+    assert client.post("/today/focus-tap", json={"kind": "nope"},
+                       headers=h).status_code == 422

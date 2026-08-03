@@ -10,6 +10,7 @@ import com.aira.companion.ui.theme.AiraTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.aira.companion.ui.theme.ThemeMode.load(this)
         enableEdgeToEdge()
         setContent {
             AiraTheme {

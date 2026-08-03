@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- UI chrome only — app/product terms, not clinical guidance. Clinical
+         copy (tips, journey content) is served by the backend and remains
+         English until clinician-reviewed Hindi pools land there. -->
+    <string name="me_mood_header">आज आप कैसी हैं?</string>
+    <string name="me_mood_morning">सुबह की जांच</string>
+    <string name="me_mood_evening">शाम की जांच</string>
+    <string name="me_history">इतिहास</string>
+    <string name="me_care_header">आज की देखभाल</string>
+    <string name="me_details">विवरण</string>
+    <string name="me_daily_header">आज आपके लिए</string>
+    <string name="me_week_header">आपका सप्ताह</string>
+    <string name="me_add_note">एक नोट जोड़ें</string>
+    <string name="me_memory_link">आइरा को क्या याद है ›</string>
+    <string name="me_weekly_guide">अपनी साप्ताहिक गाइड देखें</string>
+</resources>

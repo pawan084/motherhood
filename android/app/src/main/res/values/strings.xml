@@ -1,3 +1,17 @@
 <resources>
     <string name="app_name">Aira</string>
+
+    <!-- Me tab chrome (l10n pipeline: UI strings only; clinical content is
+         served by the backend and stays HUMAN-GATED for translation). -->
+    <string name="me_mood_header">How are you today?</string>
+    <string name="me_mood_morning">Morning check-in</string>
+    <string name="me_mood_evening">Evening check-in</string>
+    <string name="me_history">History</string>
+    <string name="me_care_header">Today\'s care</string>
+    <string name="me_details">Details</string>
+    <string name="me_daily_header">Daily for you</string>
+    <string name="me_week_header">Your week</string>
+    <string name="me_add_note">Add a note</string>
+    <string name="me_memory_link">What Aira remembers ›</string>
+    <string name="me_weekly_guide">See your weekly guide</string>
 </resources>

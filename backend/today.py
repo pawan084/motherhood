@@ -42,12 +42,16 @@ from device_auth import resolve_learner
 router = APIRouter(tags=["today"])
 
 
-def _tip_for(stage: str, week: int | None, today: date) -> dict | None:
+def _tip_for(stage: str, week: int | None, today: date,
+             lang: str = "en") -> dict | None:
+    # Language pools fall back to English until reviewed copy exists.
+    tips = seed_tips.TIPS_BY_LANG.get(lang) or seed_tips.TIPS
     if stage == "pregnant":
         trimester = 1 if (week or 1) <= 13 else 2 if (week or 1) <= 27 else 3
-        pool = seed_tips.TIPS.get(f"pregnant_t{trimester}", [])
+        pool = tips.get(f"pregnant_t{trimester}") or seed_tips.TIPS.get(
+            f"pregnant_t{trimester}", [])
     else:
-        pool = seed_tips.TIPS.get(stage, [])
+        pool = tips.get(stage) or seed_tips.TIPS.get(stage, [])
     if not pool:
         return None
     # Adjacent days can never repeat for pools of 3+: same week -> index
@@ -97,11 +101,13 @@ def get_today(hour: int | None = Query(default=None, ge=0, le=23),
     out["context"] = {
         "stage": stage, "week": week, "total_weeks": total,
         "day_in_week": day_in_week, "days_to_go": days_to_go,
-        "size": ({"emoji": size[0], "label": size[1]} if size else None),
+        "size": ({"emoji": size[0], "label": size[1],
+                  "length_cm": seed_journey.WEEK_LENGTHS_CM.get(week)}
+                 if size else None),
         "display_name": ctx.get("display_name") or "",
         "streak": _streak(learner_id, today),
     }
-    out["tip"] = _tip_for(stage, week, today)
+    out["tip"] = _tip_for(stage, week, today, ctx.get("language") or "en")
 
     # ── Focus rules (each computed from the learner's own live state) ───────
     focus: list[dict] = []
@@ -186,7 +192,18 @@ def get_today(hour: int | None = Query(default=None, ge=0, le=23),
             })
 
     # Few actionable nudges beat many: rank by immediacy, cap at 2.
-    out["focus"] = sorted(focus, key=lambda f: f["priority"])[:2]
+    # Learning layer (review #11): kinds this learner has ACTED on get a
+    # small deterministic boost — enough to reorder within a band, never
+    # enough to outrank a more urgent class (appointment stays first).
+    month_ago = time.time() - 30 * 86400
+    taps = dict(wellness._conn.execute(
+        "SELECT kind, COUNT(*) FROM focus_taps"
+        " WHERE learner_id=? AND ts>=? GROUP BY kind",
+        (learner_id, month_ago)).fetchall())
+    out["focus"] = sorted(
+        focus,
+        key=lambda f: f["priority"] - min(taps.get(f["kind"], 0), 4) * 0.1,
+    )[:2]
 
     # ── Sunday recap: the weekly digest that makes the reports visible ──────
     if today.weekday() == 6:
@@ -234,6 +251,23 @@ def _streak(learner_id: str, today: date) -> int:
         else:
             break
     return streak
+
+
+class FocusTapIn(BaseModel):
+    kind: str
+
+
+@router.post("/today/focus-tap")
+def focus_tap(body: FocusTapIn, learner_id: str = Depends(resolve_learner)):
+    """The learner acted on a nudge — the ranking's only training signal."""
+    if body.kind not in {"mood_checkin", "water_pace", "appointment_soon",
+                         "milestone_week", "evening_wrapup"}:
+        raise HTTPException(status_code=422, detail="unknown focus kind")
+    wellness._conn.execute(
+        "INSERT INTO focus_taps (learner_id, kind, ts) VALUES (?,?,?)",
+        (learner_id, body.kind, time.time()))
+    wellness._conn.commit()
+    return {"ok": True}
 
 
 class TipFeedbackIn(BaseModel):

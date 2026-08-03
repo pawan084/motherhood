@@ -73,3 +73,14 @@ TIPS = {
         "Regular, unprotected sex every 2-3 days across the cycle beats perfect timing math.",
     ],
 }
+
+
+# Language-keyed pools (review: Hindi tips). "en" is the reviewed source of
+# truth; "hi" ships EMPTY on purpose — clinical copy is HUMAN-GATED and
+# machine translation of health guidance is not acceptable. The lookup
+# falls back to English until reviewed pools land here.
+TIPS_BY_LANG: dict[str, dict[str, list[str]]] = {
+    "en": TIPS,
+    "hi": {},
+    "hi-Latn": {},
+}

@@ -220,3 +220,16 @@ MILESTONES = {
         {"week": 12, "label": "Three months", "emoji": "🌟"},
     ],
 }
+
+
+# Approximate crown-rump (to wk 20) then crown-heel length in cm — the
+# standard published approximations every pregnancy app uses. HUMAN-GATED
+# like all seeded content.
+WEEK_LENGTHS_CM = {
+    4: 0.4, 5: 0.9, 6: 1.2, 7: 1.5, 8: 1.6, 9: 2.3, 10: 3.1, 11: 4.1,
+    12: 5.4, 13: 7.4, 14: 8.7, 15: 10.1, 16: 11.6, 17: 13.0, 18: 14.2,
+    19: 15.3, 20: 25.6, 21: 26.7, 22: 27.8, 23: 28.9, 24: 30.0, 25: 34.6,
+    26: 35.6, 27: 36.6, 28: 37.6, 29: 38.6, 30: 39.9, 31: 41.1, 32: 42.4,
+    33: 43.7, 34: 45.0, 35: 46.2, 36: 47.4, 37: 48.6, 38: 49.8, 39: 50.7,
+    40: 51.2, 41: 51.5, 42: 51.7,
+}

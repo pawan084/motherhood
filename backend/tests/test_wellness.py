@@ -385,3 +385,32 @@ def test_likes_ratings_export_and_erase(client):
     client.delete("/learner-data", headers=h)
     export = client.get("/export", headers=h).json()
     assert export.get("video_likes") == [] and export.get("video_ratings") == []
+
+
+def test_metrics_aggregate_without_identity(client):
+    h = _register(client)
+    for _ in range(2):
+        assert client.post("/metrics", json={"event": "me_open"},
+                           headers=h).status_code == 200
+    assert client.post("/metrics", json={"event": "evil"},
+                       headers=h).status_code == 422
+    wellness = sys.modules["wellness"]
+    row = wellness._conn.execute(
+        "SELECT count FROM metrics WHERE event='me_open'").fetchone()
+    assert row[0] == 2
+    cols = [c[1] for c in wellness._conn.execute(
+        "PRAGMA table_info(metrics)").fetchall()]
+    assert "learner_id" not in cols  # aggregate-only by construction
+
+
+def test_postpartum_mood_slots_are_additive(client):
+    h = _register(client)
+    client.post("/moods", json={"mood": "tired", "slot": "am"}, headers=h)
+    client.post("/moods", json={"mood": "okay", "slot": "pm"}, headers=h)
+    # The day's main row is the latest (history/reports unchanged)...
+    assert client.get("/moods", headers=h).json()["moods"][-1]["mood"] == "okay"
+    # ...while both slots persisted underneath.
+    wellness = sys.modules["wellness"]
+    slots = wellness._conn.execute(
+        "SELECT slot, mood FROM mood_slots ORDER BY slot").fetchall()
+    assert slots == [("am", "tired"), ("pm", "okay")]

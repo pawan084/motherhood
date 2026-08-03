@@ -136,13 +136,28 @@ object AiraApi {
         )
     }
 
-    suspend fun postMood(context: Context, mood: String, note: String? = null) =
-        withContext(Dispatchers.IO) {
-            val token = ensureDeviceToken(context)
-            val body = JSONObject().put("mood", mood)
-            note?.let { body.put("note", it) }
-            request("POST", "/moods", token, body)
-        }
+    suspend fun postMood(
+        context: Context,
+        mood: String,
+        note: String? = null,
+        slot: String? = null,
+    ) = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        val body = JSONObject().put("mood", mood)
+        note?.let { body.put("note", it) }
+        slot?.let { body.put("slot", it) }
+        request("POST", "/moods", token, body)
+    }
+
+    suspend fun postFocusTap(context: Context, kind: String) = withContext(Dispatchers.IO) {
+        request("POST", "/today/focus-tap", ensureDeviceToken(context),
+                JSONObject().put("kind", kind))
+    }
+
+    suspend fun postMetric(context: Context, event: String) = withContext(Dispatchers.IO) {
+        request("POST", "/metrics", ensureDeviceToken(context),
+                JSONObject().put("event", event))
+    }
 
     suspend fun getMoods(context: Context, days: Int = 7): List<MoodEntry> =
         withContext(Dispatchers.IO) {
@@ -266,6 +281,9 @@ object AiraApi {
                     }
                 },
                 streak = ctx?.optInt("streak", 0) ?: 0,
+                lengthCm = ctx?.optJSONObject("size")?.let {
+                    if (it.isNull("length_cm")) null else it.getDouble("length_cm")
+                },
                 recapMoods = recap?.optInt("moods_logged"),
                 recapWaterAvg = recap?.optDouble("water_avg"),
             )
@@ -441,6 +459,7 @@ object AiraApi {
         avgStars = if (json.isNull("avg_stars")) null else json.getDouble("avg_stars"),
         ratingCount = json.optInt("rating_count", 0),
         myStars = if (json.isNull("my_stars")) null else json.getInt("my_stars"),
+        transcript = json.optString("transcript").takeIf { it.isNotBlank() && it != "null" },
     )
 
     suspend fun toggleVideoLike(context: Context, id: String): Pair<Boolean, Int> =

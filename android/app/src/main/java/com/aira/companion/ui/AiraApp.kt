@@ -100,6 +100,7 @@ private fun MainExperience(
     // Data loads fire here, not in selectDestination — ViewModel transitions
     // stay pure/synchronous for the JVM unit tests.
     LaunchedEffect(state.destination) {
+        viewModel.trackOpen(state.destination)
         when (state.destination) {
             MainDestination.Me -> viewModel.refreshMe()
             MainDestination.Videos -> viewModel.ensureVideos()
@@ -154,6 +155,7 @@ private fun MainExperience(
                 MainDestination.Me ->
                     MeScreen(
                         state = state,
+                        onNudgeTapped = viewModel::nudgeActedOn,
                         onOpenPlayer = viewModel::openPlayer,
                         onSetMood = viewModel::setMood,
                         onSaveMoodNote = { mood, note -> viewModel.setMood(mood, note) },

@@ -85,7 +85,7 @@ def init() -> None:
               " stream_path TEXT DEFAULT '', thumb_path TEXT DEFAULT '',"
               " duration_min INTEGER, updated REAL)")
     # Guarded ALTERs for databases created before hosted videos existed.
-    for col in ("stream_path", "thumb_path"):
+    for col in ("stream_path", "thumb_path", "transcript"):
         try:
             c.execute(f"ALTER TABLE videos ADD COLUMN {col} TEXT DEFAULT ''")
         except Exception as e:  # pragma: no cover
@@ -102,6 +102,23 @@ def init() -> None:
               " learner_id TEXT NOT NULL, video_id TEXT NOT NULL,"
               " stars INTEGER NOT NULL, ts REAL,"
               " PRIMARY KEY (learner_id, video_id))")
+    # Postpartum AM/PM check-ins (review #22): additive slots table; the
+    # main moods row stays "the day's latest" so reports/history are
+    # untouched. HUMAN-GATED: screening cadence needs clinician sign-off
+    # before any clinical claim is attached to it.
+    c.execute("CREATE TABLE IF NOT EXISTS mood_slots ("
+              " learner_id TEXT NOT NULL, day TEXT NOT NULL,"
+              " slot TEXT NOT NULL, mood TEXT NOT NULL, ts REAL,"
+              " PRIMARY KEY (learner_id, day, slot))")
+    c.execute("CREATE TABLE IF NOT EXISTS focus_taps ("
+              " learner_id TEXT NOT NULL, kind TEXT NOT NULL, ts REAL)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_focus_taps_learner"
+              " ON focus_taps (learner_id)")
+    # Aggregate-only metrics (review #51): day + event + count. NO learner
+    # column by design — honest measurement without health-adjacent tracking.
+    c.execute("CREATE TABLE IF NOT EXISTS metrics ("
+              " day TEXT NOT NULL, event TEXT NOT NULL,"
+              " count INTEGER DEFAULT 0, PRIMARY KEY (day, event))")
     c.execute("CREATE TABLE IF NOT EXISTS tip_feedback ("
               " learner_id TEXT NOT NULL, tip_id TEXT NOT NULL,"
               " helpful INTEGER NOT NULL, ts REAL,"
@@ -153,6 +170,8 @@ def merge(did: str, uid: str) -> None:
             f" SELECT ?, {cols} FROM {table} WHERE learner_id=?"
             f" ON CONFLICT (learner_id, {key}) DO NOTHING", (uid, did))
         _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (did,))
+    _conn.execute("UPDATE focus_taps SET learner_id=? WHERE learner_id=?",
+                  (uid, did))
     _conn.commit()
 
 
@@ -161,7 +180,8 @@ def erase(learner_id: str) -> None:
     _conn.execute("DELETE FROM reminder_ticks WHERE reminder_id IN"
                   " (SELECT id FROM reminders WHERE learner_id=?)", (learner_id,))
     for table in ("moods", "reminders", "reminder_seeded", "video_watched",
-                  "video_likes", "video_ratings", "tip_feedback"):
+                  "video_likes", "video_ratings", "tip_feedback", "focus_taps",
+                  "mood_slots"):
         _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner_id,))
 
 
@@ -200,18 +220,25 @@ def export(learner_id: str) -> dict:
 class MoodIn(BaseModel):
     mood: str
     note: str = ""
+    slot: str = ""     # "am"/"pm" — postpartum twice-daily check-ins
 
 
 @router.post("/moods")
 def set_mood(body: MoodIn, learner_id: str = Depends(resolve_learner)):
     if body.mood not in MOODS:
         raise HTTPException(status_code=422, detail=f"mood must be one of {MOODS}")
+    today = date.today().isoformat()
     _conn.execute(
         "INSERT INTO moods (learner_id, day, mood, note, ts) VALUES (?,?,?,?,?)"
         " ON CONFLICT (learner_id, day) DO UPDATE SET mood=excluded.mood,"
         " note=excluded.note, ts=excluded.ts",
-        (learner_id, date.today().isoformat(), body.mood,
-         body.note.strip()[:300], time.time()))
+        (learner_id, today, body.mood, body.note.strip()[:300], time.time()))
+    if body.slot in ("am", "pm"):
+        _conn.execute(
+            "INSERT INTO mood_slots (learner_id, day, slot, mood, ts)"
+            " VALUES (?,?,?,?,?) ON CONFLICT (learner_id, day, slot)"
+            " DO UPDATE SET mood=excluded.mood, ts=excluded.ts",
+            (learner_id, today, body.slot, body.mood, time.time()))
     _conn.commit()
     return {"ok": True}
 
@@ -429,6 +456,7 @@ def _video_dict(row, learner_id: str | None = None) -> dict:
            "youtube_id": row[6] or None,
            "stream_path": row[7] or None,
            "thumb_path": row[8] or None,
+           "transcript": row[10] or None,
            "duration_minutes": row[9]}
     # Social layer (all REAL aggregates — nothing invented): total likes,
     # true star average, and the caller's own state.
@@ -452,7 +480,7 @@ def _video_dict(row, learner_id: str | None = None) -> dict:
 
 
 _VIDEO_COLS = ("id, title, topic, stage, week_start, week_end, youtube_id,"
-               " stream_path, thumb_path, duration_min")
+               " stream_path, thumb_path, duration_min, transcript")
 
 
 @router.get("/videos")
@@ -506,6 +534,25 @@ def mark_watched(video_id: str, learner_id: str = Depends(resolve_learner)):
         "INSERT INTO video_watched (learner_id, video_id, ts) VALUES (?,?,?)"
         " ON CONFLICT (learner_id, video_id) DO UPDATE SET ts=excluded.ts",
         (learner_id, video_id, time.time()))
+    _conn.commit()
+    return {"ok": True}
+
+
+_METRIC_EVENTS = {"me_open", "chat_open", "videos_open", "video_play",
+                  "nudge_tap", "widget_tap"}
+
+
+@router.post("/metrics")
+def count_metric(body: dict, learner_id: str = Depends(resolve_learner)):
+    """Aggregate counters only: auth proves a real client, but nothing about
+    WHO is stored — just event-per-day totals for tuning the home page."""
+    event = str(body.get("event", ""))
+    if event not in _METRIC_EVENTS:
+        raise HTTPException(status_code=422, detail="unknown event")
+    _conn.execute(
+        "INSERT INTO metrics (day, event, count) VALUES (?,?,1)"
+        " ON CONFLICT (day, event) DO UPDATE SET count = count + 1",
+        (date.today().isoformat(), event))
     _conn.commit()
     return {"ok": True}
 

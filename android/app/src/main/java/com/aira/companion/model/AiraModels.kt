@@ -109,6 +109,7 @@ data class VideoItem(
     val avgStars: Double? = null,
     val ratingCount: Int = 0,
     val myStars: Int? = null,
+    val transcript: String? = null,    // a11y/sound-off reading, when provided
 )
 
 val moodOptions = listOf("great", "okay", "tired", "low", "unwell")
@@ -169,6 +170,7 @@ data class TodayFeed(
     val tipId: String?,
     val focus: List<TodayFocus>,
     val streak: Int = 0,               // consecutive all-done days
+    val lengthCm: Double? = null,      // ~size in cm (pregnant weeks)
     val recapMoods: Int? = null,       // Sunday only
     val recapWaterAvg: Double? = null,
 )
