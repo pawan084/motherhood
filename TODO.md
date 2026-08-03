@@ -101,13 +101,25 @@ the code.
       IPv4 loopback (Chrome resolves 127.0.0.1 first).
 - [ ] CORS allowlist for the production origin before deploy (`CORS_ORIGINS`).
 
-### P9 — Voice (built, pending live verification — needs both API keys)
-- [ ] Verify Gemini accepts MediaRecorder's webm/opus container; if not, add a
-      server-side transcode (ffmpeg) step.
-- [ ] STT accuracy pass for Hindi/Hinglish speech.
-- [ ] Choose Aira's ElevenLabs voice (`ELEVENLABS_VOICE_ID` currently the
-      library default) + TTS quality pass.
-- [ ] Safari records mp4/aac, not webm — verify the mime passthrough there.
+### P9 — Voice (live-verified 2026-08-03 with real keys)
+- [x] **TTS live**: real MP3 (128kbps/44.1kHz), ~2.7s cold, 15ms cached.
+- [x] **Full voice loop live** (TTS audio fed back through STT): English
+      verbatim transcript -> caution -> reply; **spoken Hinglish danger sign
+      ("baby bilkul hil nahi raha") -> Devanagari transcript -> URGENT with
+      the learner's-language Urgent Help copy**. mp3 and wav containers
+      confirmed with Gemini.
+- [x] **Silence bug found and fixed, live**: pure silence made Gemini ignore
+      the NONE instruction and hallucinate a looping timestamped transcript
+      (which would have billed a reply on garbage), and on a second run spin
+      for 3+ minutes. Fixes: deterministic transcript filter (timestamp
+      lines, line/word-loop detection, 2000-char bound) + a hard
+      TRANSCRIBE_TIMEOUT_MS budget (20s) + max_output_tokens=800. Both
+      re-verified live: silence -> "empty" in ~6s; real speech unaffected.
+- [ ] Verify MediaRecorder's webm/opus container against Gemini from a real
+      browser session (mp3/wav confirmed; no ffmpeg on this machine to
+      synthesize webm). Safari records mp4/aac — same check there.
+- [ ] Choose Aira's production ElevenLabs voice (`ELEVENLABS_VOICE_ID`
+      currently the library default) — a product/brand call.
 
 ### Carried from sayli's TODO (do not repeat these)
 - [ ] Single-source shared catalogs (stages, languages, red-flag taxonomy) from one

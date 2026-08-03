@@ -168,3 +168,79 @@ def test_tts_cache_hits_do_not_rebill(client, monkeypatch):
     assert services.tts_cached("same line") == b"MP3"
     assert services.tts_cached("same line") == b"MP3"
     assert calls["n"] == 1
+
+
+# --- the transcript hallucination filter (found live: silence -> looping
+# timestamped garbage that would have billed a reply) -------------------------
+
+def _transcribe_with(monkeypatch, model_text):
+    import services  # direct import: these tests don't need the app fixture
+
+    class _Resp:
+        text = model_text
+
+    class _Models:
+        def generate_content(self, **kw):
+            return _Resp()
+
+    class _Client:
+        models = _Models()
+
+    monkeypatch.setattr(services, "_client", lambda: _Client())
+    return services.transcribe(b"audio", "audio/wav")
+
+
+def test_timestamped_hallucination_loop_is_silenced(monkeypatch):
+    garbage = "\n".join(
+        f"00:{i:02}\nkya bolte hain usko" if i % 2 else f"00:{i:02}\nek tarah ka"
+        for i in range(40))
+    assert _transcribe_with(monkeypatch, garbage) == ""
+
+
+def test_single_line_word_loop_is_silenced(monkeypatch):
+    assert _transcribe_with(monkeypatch, "ek tarah ka " * 30) == ""
+
+
+def test_real_speech_passes_the_filter(monkeypatch):
+    text = "I have been feeling quite tired lately and my lower back hurts at night."
+    assert _transcribe_with(monkeypatch, text) == text
+
+
+def test_real_hindi_speech_passes(monkeypatch):
+    text = "आज सुबह से बेबी बिल्कुल हिल नहीं रहा है मुझे बहुत डर लग रहा है"
+    assert _transcribe_with(monkeypatch, text) == text
+
+
+def test_none_sentinel_is_empty(monkeypatch):
+    assert _transcribe_with(monkeypatch, "NONE") == ""
+
+
+def test_overlong_transcript_is_bounded(monkeypatch):
+    import services
+    long_real = " ".join(f"word{i}" for i in range(2000))  # unique words, no loop
+    out = _transcribe_with(monkeypatch, long_real)
+    assert 0 < len(out) <= services._MAX_TRANSCRIPT_CHARS
+
+
+def test_transcribe_timeout_raises(monkeypatch):
+    """The hard budget, pinned: a spinning model surfaces as an error the
+    route converts to the honest posture — never an indefinite hang."""
+    import time as _time
+
+    import config
+    import services
+
+    class _Models:
+        def generate_content(self, **kw):
+            _time.sleep(1.0)
+
+    class _Client:
+        models = _Models()
+
+    monkeypatch.setattr(services, "_client", lambda: _Client())
+    monkeypatch.setattr(config, "TRANSCRIBE_TIMEOUT_MS", 200)
+    try:
+        services.transcribe(b"audio", "audio/wav")
+        assert False, "expected TimeoutError"
+    except TimeoutError:
+        pass

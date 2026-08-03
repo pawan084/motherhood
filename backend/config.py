@@ -40,6 +40,11 @@ UPLOAD_DIR = os.environ.get("UPLOAD_DIR") or os.path.join(os.path.dirname(__file
 # message through to chat.
 SAFETY_LLM_TIMEOUT_MS = int(os.environ.get("SAFETY_LLM_TIMEOUT_MS", "4000"))
 
+# Milliseconds a voice transcription gets. Found live: on silence Gemini can
+# spin for minutes generating a hallucination loop — the request must be
+# bounded, and a timeout surfaces as the honest transcription error.
+TRANSCRIBE_TIMEOUT_MS = int(os.environ.get("TRANSCRIBE_TIMEOUT_MS", "20000"))
+
 # ── Observability ────────────────────────────────────────────────────────────
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 

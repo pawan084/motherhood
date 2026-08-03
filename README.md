@@ -96,7 +96,12 @@ health data** — it is excluded from git deliberately, along with
   reply → typed cards → memory extraction; SSE streaming in Hinglish with
   Hinglish cards. One threading bug found only live (per-call genai clients
   dying) — fixed with a shared client.
-- Still keyless: ElevenLabs (voice quality checks in TODO.md).
+- **Voice loop live-verified** (ElevenLabs + Gemini STT): spoken Hinglish
+  danger sign → urgent with learner's-language copy; TTS 15ms cached. A
+  silence-hallucination bug (Gemini inventing looping transcripts on silent
+  audio, once spinning 3+ minutes) was found live and fixed with a
+  deterministic transcript filter + a hard transcription timeout.
+  Remaining: webm/Safari container checks from a real browser (TODO.md).
 
 **P9 complete** — the voice loop, built and wired, live verification pending
 API keys:

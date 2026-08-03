@@ -11,8 +11,10 @@ failure returns [] and the reply stands alone.
 import json
 import logging
 import os
+import re
 import threading
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 
 import httpx
 
@@ -89,15 +91,14 @@ def stream_reply(system: str, history: list[dict], text: str):
             yield chunk.text
 
 
-def transcribe(audio: bytes, mime: str) -> str:
-    """Gemini STT: one multimodal call, transcript only. Raises on provider
-    failure (the route owns the honest-error posture); an empty transcript
-    returns "" — silence is not an error.
+# Transcription runs in a worker thread so a hard timeout can be enforced —
+# found live: silence made Gemini spin for minutes generating a hallucination
+# loop. max_output_tokens bounds the same failure from the other side (a real
+# push-to-talk utterance is short; a loop hits the cap instead of running on).
+_voice_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="transcribe")
 
-    Deliberately a SEPARATE call from reply generation, unlike sayli's
-    one-call audio->reply turn: Aira's gate must screen the transcript BEFORE
-    any reply exists, so transcription cannot be fused with generation.
-    """
+
+def _transcribe_once(audio: bytes, mime: str) -> str:
     from google.genai import types
     resp = _client().models.generate_content(
         model=config.GEMINI_SAFETY_MODEL,
@@ -105,11 +106,60 @@ def transcribe(audio: bytes, mime: str) -> str:
             types.Part.from_bytes(data=audio, mime_type=mime),
             types.Part.from_text(text=prompts.TRANSCRIBE_PROMPT),
         ])],
-        config=types.GenerateContentConfig(temperature=0.0),
+        config=types.GenerateContentConfig(temperature=0.0, max_output_tokens=800),
     )
     text = (resp.text or "").strip()
     # The model is told to answer NONE for silence/noise; normalize to "".
-    return "" if text == "NONE" else text
+    if text == "NONE":
+        return ""
+    return _filter_transcript(text)
+
+
+def transcribe(audio: bytes, mime: str) -> str:
+    """Gemini STT: one multimodal call, transcript only, hard time budget.
+    Raises on provider failure or timeout (the route owns the honest-error
+    posture); an empty transcript returns "" — silence is not an error.
+
+    Deliberately a SEPARATE call from reply generation, unlike sayli's
+    one-call audio->reply turn: Aira's gate must screen the transcript BEFORE
+    any reply exists, so transcription cannot be fused with generation.
+    """
+    future = _voice_executor.submit(_transcribe_once, audio, mime)
+    try:
+        return future.result(timeout=config.TRANSCRIBE_TIMEOUT_MS / 1000)
+    except FutureTimeout:
+        future.cancel()
+        raise TimeoutError(f"transcription exceeded {config.TRANSCRIBE_TIMEOUT_MS}ms")
+
+
+# Found live, not in tests: on PURE SILENCE Gemini ignored the NONE
+# instruction and hallucinated a looping, timestamped transcript ("kya bolte
+# hain usko" x60) — which would have passed the gate as ok and billed a reply
+# on garbage. The prompt cannot be trusted alone; this deterministic
+# post-filter is the same philosophy as the gate itself.
+_TIMESTAMP_LINE = re.compile(r"^[\[\(]?\d{1,2}[:.]\d{2}([:.]\d{2})?[\]\)]?$")
+_MAX_TRANSCRIPT_CHARS = 2000
+
+
+def _filter_transcript(text: str) -> str:
+    """Strip timestamp lines, detect hallucination loops, bound the length.
+    Returns "" when the transcript looks fabricated — silence handling
+    (decision "empty") is the safe fallback, and a real utterance the filter
+    wrongly eats costs one "could you try again?", not a missed danger sign."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    lines = [line for line in lines if not _TIMESTAMP_LINE.match(line)]
+    if not lines:
+        return ""
+    # A hallucination loop repeats a few phrases many times; real speech in a
+    # push-to-talk turn doesn't produce dozens of near-identical lines.
+    if len(lines) >= 6 and len(set(lines)) / len(lines) < 0.34:
+        return ""
+    joined = " ".join(lines)
+    # Same loop detection at the word level (single-line loops).
+    words = joined.split()
+    if len(words) >= 30 and len(set(words)) / len(words) < 0.15:
+        return ""
+    return joined[:_MAX_TRANSCRIPT_CHARS]
 
 
 # --- TTS (ElevenLabs) with a small LRU cache ---------------------------------
