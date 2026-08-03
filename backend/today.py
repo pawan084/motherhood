@@ -20,6 +20,11 @@ several times a day, server-side so web and Android share the logic:
 
 The client hour comes from `?hour=` (0-23, the DEVICE's local hour) because
 the server's clock is not the learner's timezone. Falls back to server time.
+
+Known limit: "today" (tip rotation, mood/tick day checks) still uses the
+SERVER's date, matching how /moods and /reminders stamp their `day` rows.
+Fine while server and learners share a timezone (dev, single-region);
+multi-region prod needs a device-date param threaded through all four.
 """
 from datetime import date, datetime, timedelta
 

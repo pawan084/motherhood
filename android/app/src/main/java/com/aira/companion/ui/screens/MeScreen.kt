@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,10 +92,11 @@ fun MeScreen(
             Column {
                 val care = state.careSummary
                 if (care != null) {
-                    val greeting = when (state.todayFeed?.slot) {
-                        "afternoon" -> "Good afternoon"
-                        "evening" -> "Good evening"
-                        else -> "Good morning"
+                    val hour = remember { java.time.LocalTime.now().hour }
+                    val greeting = when {
+                        hour < 12 -> "Good morning"
+                        hour < 17 -> "Good afternoon"
+                        else -> "Good evening"
                     }
                     Text(
                         text = if (care.displayName.isNotBlank()) "$greeting, ${care.displayName}" else greeting,
@@ -336,10 +338,12 @@ private fun FocusCard(focus: TodayFocus, onTap: () -> Unit) {
                     )
                 }
             }
-            Icon(
-                Icons.Filled.ChevronRight, null,
-                tint = Plum, modifier = Modifier.size(18.dp),
-            )
+            if (focus.kind != "mood_checkin") {
+                Icon(
+                    Icons.Filled.ChevronRight, null,
+                    tint = Plum, modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
