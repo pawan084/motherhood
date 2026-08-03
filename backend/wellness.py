@@ -95,6 +95,13 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS video_watched ("
               " learner_id TEXT NOT NULL, video_id TEXT NOT NULL, ts REAL,"
               " PRIMARY KEY (learner_id, video_id))")
+    c.execute("CREATE TABLE IF NOT EXISTS video_likes ("
+              " learner_id TEXT NOT NULL, video_id TEXT NOT NULL, ts REAL,"
+              " PRIMARY KEY (learner_id, video_id))")
+    c.execute("CREATE TABLE IF NOT EXISTS video_ratings ("
+              " learner_id TEXT NOT NULL, video_id TEXT NOT NULL,"
+              " stars INTEGER NOT NULL, ts REAL,"
+              " PRIMARY KEY (learner_id, video_id))")
     c.execute("CREATE TABLE IF NOT EXISTS tip_feedback ("
               " learner_id TEXT NOT NULL, tip_id TEXT NOT NULL,"
               " helpful INTEGER NOT NULL, ts REAL,"
@@ -133,8 +140,14 @@ def merge(did: str, uid: str) -> None:
         " SELECT ?, ts FROM reminder_seeded WHERE learner_id=?"
         " ON CONFLICT (learner_id) DO NOTHING", (uid, did))
     _conn.execute("DELETE FROM reminder_seeded WHERE learner_id=?", (did,))
-    for table, key in (("video_watched", "video_id"), ("tip_feedback", "tip_id")):
-        cols = "video_id, ts" if table == "video_watched" else "tip_id, helpful, ts"
+    for table, key in (("video_watched", "video_id"),
+                       ("video_likes", "video_id"),
+                       ("video_ratings", "video_id"),
+                       ("tip_feedback", "tip_id")):
+        cols = {"video_watched": "video_id, ts",
+                "video_likes": "video_id, ts",
+                "video_ratings": "video_id, stars, ts",
+                "tip_feedback": "tip_id, helpful, ts"}[table]
         _conn.execute(
             f"INSERT INTO {table} (learner_id, {cols})"
             f" SELECT ?, {cols} FROM {table} WHERE learner_id=?"
@@ -147,8 +160,8 @@ def erase(learner_id: str) -> None:
     """Deletion cascade hook (accounts + guest learner-data paths)."""
     _conn.execute("DELETE FROM reminder_ticks WHERE reminder_id IN"
                   " (SELECT id FROM reminders WHERE learner_id=?)", (learner_id,))
-    for table in ("moods", "reminders", "reminder_seeded",
-                  "video_watched", "tip_feedback"):
+    for table in ("moods", "reminders", "reminder_seeded", "video_watched",
+                  "video_likes", "video_ratings", "tip_feedback"):
         _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner_id,))
 
 
@@ -171,6 +184,12 @@ def export(learner_id: str) -> dict:
         "reminders": [dict(zip(("title", "kind", "target_per_day", "created"), r))
                       for r in reminders],
         "videos_watched": [dict(zip(("video_id", "ts"), w)) for w in watched],
+        "video_likes": [dict(zip(("video_id", "ts"), r)) for r in _conn.execute(
+            "SELECT video_id, ts FROM video_likes WHERE learner_id=?",
+            (learner_id,)).fetchall()],
+        "video_ratings": [dict(zip(("video_id", "stars"), r)) for r in _conn.execute(
+            "SELECT video_id, stars FROM video_ratings WHERE learner_id=?",
+            (learner_id,)).fetchall()],
         "tip_feedback": [dict(zip(("tip_id", "helpful", "ts"), f))
                          for f in feedback],
     }
@@ -404,13 +423,32 @@ def wellness_report(days: int = Query(default=30, ge=7, le=90),
 
 # ── Videos ───────────────────────────────────────────────────────────────────
 
-def _video_dict(row) -> dict:
-    return {"id": row[0], "title": row[1], "topic": row[2], "stage": row[3],
-            "week_band": (f"{row[4]}-{row[5]}" if row[5] > 0 else None),
-            "youtube_id": row[6] or None,
-            "stream_path": row[7] or None,
-            "thumb_path": row[8] or None,
-            "duration_minutes": row[9]}
+def _video_dict(row, learner_id: str | None = None) -> dict:
+    out = {"id": row[0], "title": row[1], "topic": row[2], "stage": row[3],
+           "week_band": (f"{row[4]}-{row[5]}" if row[5] > 0 else None),
+           "youtube_id": row[6] or None,
+           "stream_path": row[7] or None,
+           "thumb_path": row[8] or None,
+           "duration_minutes": row[9]}
+    # Social layer (all REAL aggregates — nothing invented): total likes,
+    # true star average, and the caller's own state.
+    vid = row[0]
+    out["like_count"] = _conn.execute(
+        "SELECT COUNT(*) FROM video_likes WHERE video_id=?", (vid,)).fetchone()[0]
+    avg = _conn.execute(
+        "SELECT AVG(stars), COUNT(*) FROM video_ratings WHERE video_id=?",
+        (vid,)).fetchone()
+    out["avg_stars"] = round(avg[0], 1) if avg[0] is not None else None
+    out["rating_count"] = avg[1]
+    if learner_id:
+        out["my_like"] = bool(_conn.execute(
+            "SELECT 1 FROM video_likes WHERE learner_id=? AND video_id=?",
+            (learner_id, vid)).fetchone())
+        my = _conn.execute(
+            "SELECT stars FROM video_ratings WHERE learner_id=? AND video_id=?",
+            (learner_id, vid)).fetchone()
+        out["my_stars"] = my[0] if my else None
+    return out
 
 
 _VIDEO_COLS = ("id, title, topic, stage, week_start, week_end, youtube_id,"
@@ -426,7 +464,7 @@ def list_videos(learner_id: str = Depends(resolve_learner)):
         f"SELECT {_VIDEO_COLS} FROM videos"
         " ORDER BY CASE WHEN stage=? THEN 0 ELSE 1 END, stage, week_start",
         (stage or "",)).fetchall()
-    return {"videos": [_video_dict(r) for r in rows]}
+    return {"videos": [_video_dict(r, learner_id) for r in rows]}
 
 
 @router.get("/videos/suggested")
@@ -455,7 +493,7 @@ def suggested_video(learner_id: str = Depends(resolve_learner)):
         (learner_id,)).fetchall()}
     pool = [r for r in rows if r[0] not in watched] or rows
     row = pool[date.today().toordinal() % len(pool)]
-    return {"video": _video_dict(row)}
+    return {"video": _video_dict(row, learner_id)}
 
 
 @router.post("/videos/{video_id}/watched")
@@ -470,3 +508,51 @@ def mark_watched(video_id: str, learner_id: str = Depends(resolve_learner)):
         (learner_id, video_id, time.time()))
     _conn.commit()
     return {"ok": True}
+
+
+@router.post("/videos/{video_id}/like")
+def toggle_like(video_id: str, learner_id: str = Depends(resolve_learner)):
+    """Toggle — a second tap unlikes. Returns the new truth for the card."""
+    if not _conn.execute("SELECT 1 FROM videos WHERE id=?",
+                         (video_id,)).fetchone():
+        raise HTTPException(status_code=404, detail="not found")
+    existing = _conn.execute(
+        "SELECT 1 FROM video_likes WHERE learner_id=? AND video_id=?",
+        (learner_id, video_id)).fetchone()
+    if existing:
+        _conn.execute("DELETE FROM video_likes WHERE learner_id=? AND video_id=?",
+                      (learner_id, video_id))
+    else:
+        _conn.execute("INSERT INTO video_likes (learner_id, video_id, ts)"
+                      " VALUES (?,?,?)", (learner_id, video_id, time.time()))
+    _conn.commit()
+    count = _conn.execute("SELECT COUNT(*) FROM video_likes WHERE video_id=?",
+                          (video_id,)).fetchone()[0]
+    return {"liked": not existing, "like_count": count}
+
+
+class RatingIn(BaseModel):
+    stars: int
+
+
+@router.post("/videos/{video_id}/rate")
+def rate_video(video_id: str, body: RatingIn,
+               learner_id: str = Depends(resolve_learner)):
+    """One rating per learner per video, upserted; the card shows the TRUE
+    average — never an invented number."""
+    if not 1 <= body.stars <= 5:
+        raise HTTPException(status_code=422, detail="stars must be 1-5")
+    if not _conn.execute("SELECT 1 FROM videos WHERE id=?",
+                         (video_id,)).fetchone():
+        raise HTTPException(status_code=404, detail="not found")
+    _conn.execute(
+        "INSERT INTO video_ratings (learner_id, video_id, stars, ts)"
+        " VALUES (?,?,?,?) ON CONFLICT (learner_id, video_id)"
+        " DO UPDATE SET stars=excluded.stars, ts=excluded.ts",
+        (learner_id, video_id, body.stars, time.time()))
+    _conn.commit()
+    avg = _conn.execute(
+        "SELECT AVG(stars), COUNT(*) FROM video_ratings WHERE video_id=?",
+        (video_id,)).fetchone()
+    return {"my_stars": body.stars, "avg_stars": round(avg[0], 1),
+            "rating_count": avg[1]}

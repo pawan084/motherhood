@@ -98,6 +98,7 @@ private fun stageLabel(stage: String): String = when (stage) {
 @Composable
 fun MeScreen(
     state: AiraUiState,
+    onOpenPlayer: (com.aira.companion.model.VideoItem) -> Unit,
     onSetMood: (String) -> Unit,
     onSaveMoodNote: (String, String) -> Unit,
     onTick: (Reminder) -> Unit,
@@ -402,7 +403,7 @@ fun MeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { playVideo(context, video) },
+                            .clickable { playVideo(context, video, onOpenPlayer) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         RemoteImage(

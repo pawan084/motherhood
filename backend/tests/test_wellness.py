@@ -338,3 +338,50 @@ def test_watched_and_feedback_survive_merge_and_export(client):
     export = client.get("/export", headers=h).json()
     assert export["videos_watched"][0]["video_id"] == suggested["id"]
     assert export["tip_feedback"][0]["tip_id"] == "pregnant-1"
+
+
+# ── likes + star ratings (real aggregates only) ──────────────────────────────
+
+def test_like_toggles_and_counts_across_learners(client):
+    a, b = _register(client), _register(client)
+    for h in (a, b):
+        client.put("/care-context", json={"stage": "trying_to_conceive"}, headers=h)
+    out = client.post("/videos/own-stat/like", headers=a).json()
+    assert out == {"liked": True, "like_count": 1}
+    out = client.post("/videos/own-stat/like", headers=b).json()
+    assert out["like_count"] == 2
+    # Second tap unlikes; the other learner's like stays.
+    out = client.post("/videos/own-stat/like", headers=a).json()
+    assert out == {"liked": False, "like_count": 1}
+    video = client.get("/videos/suggested", headers=b).json()["video"]
+    assert video["like_count"] == 1 and video["my_like"] is True
+    assert client.post("/videos/nope/like", headers=a).status_code == 404
+
+
+def test_ratings_average_truthfully(client):
+    a, b = _register(client), _register(client)
+    for h in (a, b):
+        client.put("/care-context", json={"stage": "trying_to_conceive"}, headers=h)
+    assert client.post("/videos/own-stat/rate", json={"stars": 9},
+                       headers=a).status_code == 422
+    client.post("/videos/own-stat/rate", json={"stars": 5}, headers=a)
+    out = client.post("/videos/own-stat/rate", json={"stars": 4}, headers=b).json()
+    assert out["avg_stars"] == 4.5 and out["rating_count"] == 2
+    # Upsert: re-rating replaces, not appends.
+    out = client.post("/videos/own-stat/rate", json={"stars": 2}, headers=a).json()
+    assert out["avg_stars"] == 3.0 and out["rating_count"] == 2
+    video = client.get("/videos/suggested", headers=a).json()["video"]
+    assert video["my_stars"] == 2 and video["avg_stars"] == 3.0
+
+
+def test_likes_ratings_export_and_erase(client):
+    h = _register(client)
+    client.put("/care-context", json={"stage": "trying_to_conceive"}, headers=h)
+    client.post("/videos/own-stat/like", headers=h)
+    client.post("/videos/own-stat/rate", json={"stars": 4}, headers=h)
+    export = client.get("/export", headers=h).json()
+    assert export["video_likes"][0]["video_id"] == "own-stat"
+    assert export["video_ratings"][0]["stars"] == 4
+    client.delete("/learner-data", headers=h)
+    export = client.get("/export", headers=h).json()
+    assert export.get("video_likes") == [] and export.get("video_ratings") == []

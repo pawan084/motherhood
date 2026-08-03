@@ -15,8 +15,22 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,21 +46,21 @@ import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.youtubeThumbnailUrl
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
+import com.aira.companion.ui.theme.Plum
 
-/** Play a catalog entry. Own hosted videos stream from the API (ACTION_VIEW
- * with an explicit video/mp4 type — the system player handles HTTP range
- * streaming); legacy entries fall back to YouTube. Shared by MeScreen. */
-fun playVideo(context: Context, video: com.aira.companion.model.VideoItem) {
+/** Play a catalog entry: own hosted videos open the IN-APP player overlay
+ * (review #31); legacy YouTube entries stay external. Shared by MeScreen. */
+fun playVideo(
+    context: Context,
+    video: com.aira.companion.model.VideoItem,
+    onOpenPlayer: (com.aira.companion.model.VideoItem) -> Unit,
+) {
+    if (video.streamPath != null) {
+        onOpenPlayer(video)
+        return
+    }
     runCatching {
-        val stream = video.streamPath
-        if (stream != null) {
-            context.startActivity(
-                Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType((AiraApi.baseUrl + stream).toUri(), "video/mp4")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                },
-            )
-        } else if (video.youtubeId != null) {
+        if (video.youtubeId != null) {
             context.startActivity(
                 Intent(
                     Intent.ACTION_VIEW,
@@ -64,6 +78,8 @@ fun videoThumbUrl(video: com.aira.companion.model.VideoItem): String? = when {
     else -> null
 }
 
+private val LikeRose = Color(0xFFE57387)
+
 private fun stageLabel(stage: String): String = when (stage) {
     "pregnant" -> "Pregnancy"
     "postpartum" -> "Postpartum"
@@ -77,9 +93,19 @@ private fun stageLabel(stage: String): String = when (stage) {
 fun VideosScreen(
     videos: List<VideoItem>,
     loading: Boolean,
+    onOpenPlayer: (VideoItem) -> Unit,
+    onLike: (VideoItem) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var query by remember { mutableStateOf("") }
+    // Local filter: the catalog is small and already fetched — instant
+    // results beat a network search round-trip.
+    val shown = if (query.isBlank()) videos else videos.filter {
+        it.title.contains(query, ignoreCase = true) ||
+            it.topic.contains(query, ignoreCase = true) ||
+            it.stage.contains(query, ignoreCase = true)
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
@@ -87,23 +113,44 @@ fun VideosScreen(
     ) {
         item {
             SectionLabel("Guides for your stage")
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(
+                value = query,
+                onValueChange = { query = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Search videos…", color = InkMuted) },
+                leadingIcon = { Icon(Icons.Outlined.Search, null, tint = InkMuted) },
+                trailingIcon = {
+                    if (query.isNotBlank()) {
+                        IconButton(onClick = { query = "" }) {
+                            Icon(Icons.Filled.Close, "Clear search", tint = InkMuted)
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(16.dp),
+            )
             Spacer(Modifier.height(4.dp))
         }
-        if (videos.isEmpty()) {
+        if (shown.isEmpty()) {
             item {
                 Text(
-                    text = if (loading) "Finding videos for you…" else "No videos yet.",
+                    text = when {
+                        loading -> "Finding videos for you…"
+                        query.isNotBlank() -> "Nothing matches \"$query\"."
+                        else -> "No videos yet."
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkMuted,
                 )
             }
         }
-        items(videos, key = { it.id }) { video ->
+        items(shown, key = { it.id }) { video ->
             AiraCard {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { playVideo(context, video) },
+                        .clickable { playVideo(context, video, onOpenPlayer) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RemoteImage(
@@ -130,6 +177,34 @@ fun VideosScreen(
                                 video.durationMinutes?.let { "$it min" },
                             ).joinToString(" · "),
                             style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                        // Social line: the true average only once someone
+                        // actually rated — no invented stars.
+                        video.avgStars?.let { avg ->
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = "★ $avg (${video.ratingCount})",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Plum,
+                            )
+                        }
+                    }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        IconButton(onClick = { onLike(video) }) {
+                            Icon(
+                                imageVector = if (video.myLike) {
+                                    Icons.Filled.Favorite
+                                } else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (video.myLike) {
+                                    "Unlike ${video.title}"
+                                } else "Like ${video.title}",
+                                tint = if (video.myLike) LikeRose else InkMuted,
+                            )
+                        }
+                        Text(
+                            text = "${video.likeCount}",
+                            style = MaterialTheme.typography.labelSmall,
                             color = InkMuted,
                         )
                     }

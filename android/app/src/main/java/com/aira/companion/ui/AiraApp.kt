@@ -51,6 +51,7 @@ import com.aira.companion.ui.screens.OnboardingChatScreen
 import com.aira.companion.ui.screens.SettingsScreen
 import com.aira.companion.ui.screens.ToolTraySheet
 import com.aira.companion.ui.screens.UrgentHelpDialog
+import com.aira.companion.ui.screens.VideoPlayerScreen
 import com.aira.companion.ui.screens.VideosScreen
 import com.aira.companion.ui.screens.WelcomeScreen
 import com.aira.companion.ui.theme.Ink
@@ -153,6 +154,7 @@ private fun MainExperience(
                 MainDestination.Me ->
                     MeScreen(
                         state = state,
+                        onOpenPlayer = viewModel::openPlayer,
                         onSetMood = viewModel::setMood,
                         onSaveMoodNote = { mood, note -> viewModel.setMood(mood, note) },
                         onTick = viewModel::tickReminder,
@@ -179,6 +181,8 @@ private fun MainExperience(
                     VideosScreen(
                         videos = state.videos,
                         loading = state.videosLoading,
+                        onOpenPlayer = viewModel::openPlayer,
+                        onLike = viewModel::toggleVideoLike,
                         modifier = Modifier.padding(padding),
                     )
             }
@@ -215,6 +219,17 @@ private fun MainExperience(
                         )
                 }
             }
+        }
+
+        state.playerVideo?.let { playing ->
+            BackHandler { viewModel.closePlayer() }
+            VideoPlayerScreen(
+                video = playing,
+                onClose = viewModel::closePlayer,
+                onCompleted = viewModel::playerCompleted,
+                onLike = viewModel::toggleVideoLike,
+                onRate = viewModel::rateVideo,
+            )
         }
 
         if (state.settingsOpen) {

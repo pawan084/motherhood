@@ -429,7 +429,28 @@ object AiraApi {
         streamPath = json.optString("stream_path").takeIf { it.isNotBlank() && it != "null" },
         thumbPath = json.optString("thumb_path").takeIf { it.isNotBlank() && it != "null" },
         durationMinutes = if (json.isNull("duration_minutes")) null else json.getInt("duration_minutes"),
+        likeCount = json.optInt("like_count", 0),
+        myLike = json.optBoolean("my_like", false),
+        avgStars = if (json.isNull("avg_stars")) null else json.getDouble("avg_stars"),
+        ratingCount = json.optInt("rating_count", 0),
+        myStars = if (json.isNull("my_stars")) null else json.getInt("my_stars"),
     )
+
+    suspend fun toggleVideoLike(context: Context, id: String): Pair<Boolean, Int> =
+        withContext(Dispatchers.IO) {
+            val json = request("POST", "/videos/$id/like", ensureDeviceToken(context), JSONObject())
+            json.getBoolean("liked") to json.getInt("like_count")
+        }
+
+    suspend fun rateVideo(context: Context, id: String, stars: Int): Triple<Int, Double, Int> =
+        withContext(Dispatchers.IO) {
+            val json = request(
+                "POST", "/videos/$id/rate", ensureDeviceToken(context),
+                JSONObject().put("stars", stars),
+            )
+            Triple(json.getInt("my_stars"), json.getDouble("avg_stars"),
+                   json.getInt("rating_count"))
+        }
 
     suspend fun getVideos(context: Context): List<VideoItem> = withContext(Dispatchers.IO) {
         val token = ensureDeviceToken(context)

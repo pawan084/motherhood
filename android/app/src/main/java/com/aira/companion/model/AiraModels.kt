@@ -103,6 +103,12 @@ data class VideoItem(
     val streamPath: String?,    // own hosted media, relative to the API base
     val thumbPath: String?,
     val durationMinutes: Int?,
+    // Social layer — REAL aggregates from the backend, never invented.
+    val likeCount: Int = 0,
+    val myLike: Boolean = false,
+    val avgStars: Double? = null,
+    val ratingCount: Int = 0,
+    val myStars: Int? = null,
 )
 
 val moodOptions = listOf("great", "okay", "tired", "low", "unwell")
@@ -270,6 +276,8 @@ data class AiraUiState(
     // Week-flip celebration: set when the computed week advanced past the
     // last acknowledged one; cleared by the banner's dismiss.
     val weekJustFlipped: Int? = null,
+    // In-app player overlay (hosted videos only; YouTube stays external).
+    val playerVideo: VideoItem? = null,
 )
 
 data class OnboardingPrompt(

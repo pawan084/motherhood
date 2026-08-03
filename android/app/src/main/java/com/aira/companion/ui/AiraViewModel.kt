@@ -12,6 +12,7 @@ import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.OnboardingAnswer
 import com.aira.companion.model.Reminder
+import com.aira.companion.model.VideoItem
 import com.aira.companion.model.applyTick
 import com.aira.companion.model.applyUntick
 import com.aira.companion.model.postpartumAnchorPrompt
@@ -489,6 +490,69 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     notify("Reminder created — it lives in Today's care on Me.")
                 }
                 .onFailure { notify("Couldn't create the reminder — try again in a moment.") }
+        }
+    }
+
+    // ── In-app video player + the social layer (likes / stars) ──────────────
+
+    fun openPlayer(video: VideoItem) {
+        _uiState.update { it.copy(playerVideo = video) }
+    }
+
+    fun closePlayer() {
+        _uiState.update { it.copy(playerVideo = null) }
+    }
+
+    /** Completion from the in-app player -> unwatched-first rotation. */
+    fun playerCompleted(video: VideoItem) {
+        viewModelScope.launch {
+            runCatching { AiraApi.markVideoWatched(appContext, video.id) }
+        }
+    }
+
+    private fun updateVideoEverywhere(id: String, transform: (VideoItem) -> VideoItem) {
+        _uiState.update { state ->
+            state.copy(
+                videos = state.videos.map { if (it.id == id) transform(it) else it },
+                suggestedVideo = state.suggestedVideo
+                    ?.let { if (it.id == id) transform(it) else it },
+                playerVideo = state.playerVideo
+                    ?.let { if (it.id == id) transform(it) else it },
+            )
+        }
+    }
+
+    fun toggleVideoLike(video: VideoItem) {
+        // Optimistic flip; the server response then carries the true count.
+        updateVideoEverywhere(video.id) {
+            it.copy(myLike = !it.myLike,
+                    likeCount = it.likeCount + if (it.myLike) -1 else 1)
+        }
+        viewModelScope.launch {
+            runCatching { AiraApi.toggleVideoLike(appContext, video.id) }
+                .onSuccess { (liked, count) ->
+                    updateVideoEverywhere(video.id) {
+                        it.copy(myLike = liked, likeCount = count)
+                    }
+                }
+                .onFailure {
+                    updateVideoEverywhere(video.id) {
+                        it.copy(myLike = video.myLike, likeCount = video.likeCount)
+                    }
+                }
+        }
+    }
+
+    fun rateVideo(video: VideoItem, stars: Int) {
+        updateVideoEverywhere(video.id) { it.copy(myStars = stars) }
+        viewModelScope.launch {
+            runCatching { AiraApi.rateVideo(appContext, video.id, stars) }
+                .onSuccess { (my, avg, count) ->
+                    updateVideoEverywhere(video.id) {
+                        it.copy(myStars = my, avgStars = avg, ratingCount = count)
+                    }
+                }
+                .onFailure { notify("Couldn't save your rating — try again in a moment.") }
         }
     }
 
