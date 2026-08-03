@@ -7,7 +7,13 @@
  * guest surface is complete without them.)
  */
 
-const API = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://127.0.0.1:8001";
+// Default API base follows the host the page was opened from (localhost,
+// 127.0.0.1, or a LAN IP like 192.168.x.x for phone testing) — the backend
+// runs beside the dev server on :8001 in every dev setup. VITE_API_URL
+// overrides for production.
+const API =
+  (import.meta.env.VITE_API_URL as string | undefined) ??
+  `http://${location.hostname}:8001`;
 
 const TOKEN_KEY = "aira.device_token";
 
