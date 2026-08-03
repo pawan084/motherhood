@@ -123,3 +123,28 @@ persisted server-side -> water tick 1/8 -> stage-aware suggested video ->
 Videos catalog -> YouTube handoff -> Settings with real week -> chat turn
 grounded in the real context ("normal to feel tired at 8 weeks"), memory
 extracted, gate audited.
+
+---
+
+## World-class Me sprint (2026-08-03/04)
+
+The 55-point home-page review is fully implemented. The app now has:
+
+- Proactive Me driven by `GET /today` (hero with Week · Day, ~cm, streaks;
+  focus nudges with tap-learning; daily tip + video; Sunday recap;
+  week-flip banner; first-run name prompt)
+- Dark mode (AiraPalette state-getters — no per-screen changes), with a
+  Settings System/Light/Dark picker
+- Undo on ticks, haptics, editable water goal, pace rings on droplets,
+  mood notes, postpartum AM/PM check-in slots
+- Videos: search, likes, real star averages, in-app VideoView player,
+  watched -> unwatched-first rotation, transcript expander (mechanism)
+- Opt-in daily notification (AlarmManager; enabling posts a preview through
+  the same path — adaptive icons are NOT valid small icons, use the vector)
+- Home-screen widget (RemoteViews from a prefs cache the ViewModel writes
+  on every Me refresh)
+- Pull-to-refresh, offline banner, thumbnail disk cache, l10n pipeline
+  (values-hi covers Me chrome; clinical copy stays server-side, HUMAN-GATED)
+
+Still zero new dependencies: HttpURLConnection, org.json, framework
+VideoView/AlarmManager/RemoteViews/Canvas throughout.

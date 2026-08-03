@@ -86,8 +86,33 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
-**All build phases (P0–P10) complete; live-verified with a real Gemini key**
-(2026-08-03):
+**All build phases (P0–P11) complete, plus the world-class home-page sprint
+(2026-08-03/04). ~200 backend tests.** Android is the lead client: Me / Chat
+/ Videos tabs, all on real endpoints, device-verified on hardware.
+
+The 55-point Me review is fully implemented — highlights:
+
+- **Proactive home**: `GET /today` drives a time-aware hero (Week · Day,
+  size emoji + ~cm, days/weeks to go), server-ranked focus nudges with a
+  learning layer (`focus_taps`), a daily-rotating tip (language-aware with
+  English fallback) and daily video, streaks, Sunday recaps, and a
+  week-flip celebration. Strict no-duplication rules: a nudge never repeats
+  a control visible on the same screen.
+- **Dark mode** via a switchable palette (every color name resolves through
+  a Compose-state getter) with a System/Light/Dark picker.
+- **Videos**: search, likes and 1–5 star ratings (real aggregates only),
+  in-app VideoView player whose completion feeds unwatched-first rotation,
+  transcript mechanism awaiting client text.
+- **Tool sheets on real endpoints**: check-in, reminders (with undo +
+  editable targets), medicines, visit copilot (+ add-to-calendar),
+  care plan, memory review.
+- **System surfaces**: opt-in 3 PM notification (with enable-time preview),
+  home-screen widget fed from a local cache, image share card.
+- **Privacy stance intact**: every new table is owner-scoped
+  (merge/erase/export); the metrics table has no learner column by
+  construction.
+
+Earlier live-verification history (2026-08-03):
 
 - **Safety evals: 20/20, zero critical failures** on the first run
   (`backend/evals/safety_eval.py`) — typos, Hinglish, Hindi negation,
@@ -254,12 +279,13 @@ contract the client needs is now stable.
   token-kind-confusion, and delete-cascade cases; full guest → onboard →
   sign-in → merged-context flow verified against a running server.
 
-**Next: P2**, the clinical safety gate, which blocks all chat work.
+## What still gates launch
 
-## What is deliberately not built yet
-
-There is no chat endpoint, and there will not be one until the safety gate in P2
-lands and its adversarial test suite passes. The gate is on the critical path of
-every turn, fails closed to Urgent Help, and audits every decision. Shipping chat
-first and adding safety later is the one sequencing mistake this project cannot
-make.
+Everything remaining is human-shaped, tracked in `TODO.md`: clinician review
+of ALL seeded content (safety taxonomy, journey bands, tips, videos, care
+seeds, length table), reviewed Hindi clinical pools, privacy-policy and
+audit-retention legal calls, production infra (Postgres/Redis/object
+storage/Sentry/domain), a Google OAuth client id, and client-supplied video
+content (more titles, captions/transcripts). The safety gate remains on the
+critical path of every chat turn: it fails closed to Urgent Help and audits
+every decision.
