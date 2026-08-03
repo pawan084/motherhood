@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.WaterDrop
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -157,26 +158,78 @@ fun MeScreen(
             }
         }
 
-        // ── Right now: proactive, time-aware focus (max 2, server-ranked).
+        // ── Right now: proactive, server-ranked focus — ONE card, compact
+        // rows (was one card per nudge; the page is a home, not a feed).
         // mood_checkin is dropped HERE (not server-side): the mood picker is
-        // two cards below, and a nudge duplicating a visible control is
-        // noise. Chat still shows it — no picker lives there. ──────────────
-        state.todayFeed?.focus?.filter { it.kind != "mood_checkin" }?.forEach { focus ->
-            FocusCard(focus) {
-                when (focus.kind) {
-                    "appointment_soon", "evening_wrapup", "water_pace" ->
-                        onOpenDetail(DetailPage.Care)
-                    "milestone_week" -> onOpenDetail(DetailPage.Journey)
+        // right below, and a nudge duplicating a visible control is noise.
+        // Chat still shows it — no picker lives there. ─────────────────────
+        val focusItems = state.todayFeed?.focus
+            ?.filter { it.kind != "mood_checkin" }.orEmpty()
+        if (focusItems.isNotEmpty()) {
+            AiraCard(containerColor = LilacMist) {
+                SectionLabel("Right now")
+                Spacer(Modifier.height(4.dp))
+                focusItems.forEachIndexed { index, focus ->
+                    if (index > 0) HorizontalDivider(color = Lilac)
+                    FocusRow(focus) {
+                        when (focus.kind) {
+                            "milestone_week" -> onOpenDetail(DetailPage.Journey)
+                            else -> onOpenDetail(DetailPage.Care)
+                        }
+                    }
                 }
             }
         }
 
-        // ── Daily insight: changes every day (the reason to come back) ─────
-        state.todayFeed?.tipText?.let { tip ->
+        // ── Daily for you: the tip + the day's video in ONE card — both
+        // rotate at midnight, so they share the "changes every day" slot. ──
+        if (state.todayFeed?.tipText != null || state.suggestedVideo != null) {
             AiraCard(containerColor = SageMist) {
-                SectionLabel("Today's insight")
-                Spacer(Modifier.height(6.dp))
-                Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                SectionLabel("Daily for you")
+                state.todayFeed?.tipText?.let { tip ->
+                    Spacer(Modifier.height(6.dp))
+                    Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
+                }
+                state.suggestedVideo?.let { video ->
+                    Spacer(Modifier.height(10.dp))
+                    HorizontalDivider(color = OutlineSoft)
+                    Spacer(Modifier.height(10.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { playVideo(context, video) },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RemoteImage(
+                            url = videoThumbUrl(video) ?: "",
+                            contentDescription = video.title,
+                            modifier = Modifier
+                                .width(108.dp)
+                                .height(61.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                video.title,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Ink,
+                            )
+                            Text(
+                                text = listOfNotNull(
+                                    video.durationMinutes?.let { "$it min" },
+                                    "Aira video",
+                                ).joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                        Icon(
+                            Icons.Filled.ChevronRight, null,
+                            tint = Plum, modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
             }
         }
 
@@ -220,10 +273,12 @@ fun MeScreen(
                     }
                 }
             }
-        }
 
-        // ── Today's care (graphical) -> care detail ────────────────────────
-        AiraCard {
+            // Care lives in the same card: mood + check-offs are the page's
+            // two interactive dailies — one "Today" surface, not two cards.
+            Spacer(Modifier.height(14.dp))
+            HorizontalDivider(color = OutlineSoft)
+            Spacer(Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 SectionLabel("Today's care", modifier = Modifier.weight(1f))
                 TextButton(onClick = { onOpenDetail(DetailPage.Care) }) {
@@ -248,46 +303,6 @@ fun MeScreen(
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.reminders.forEach { reminder ->
                     ReminderRow(reminder, onTick)
-                }
-            }
-        }
-
-        // ── Suggested video (thumbnail + context) ──────────────────────────
-        state.suggestedVideo?.let { video ->
-            AiraCard(containerColor = LilacMist) {
-                SectionLabel("Today's watch")
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { playVideo(context, video) },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    RemoteImage(
-                        url = videoThumbUrl(video) ?: "",
-                        contentDescription = video.title,
-                        modifier = Modifier
-                            .width(124.dp)
-                            .height(70.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            video.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Ink,
-                        )
-                        Text(
-                            text = listOfNotNull(
-                                video.topic.takeIf { it.isNotBlank() },
-                                video.weekBand?.let { "weeks $it" },
-                                video.durationMinutes?.let { "$it min" },
-                            ).joinToString(" · ") + " · Aira video",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = InkMuted,
-                        )
-                    }
                 }
             }
         }
@@ -324,31 +339,28 @@ fun MeScreen(
 }
 
 @Composable
-private fun FocusCard(focus: TodayFocus, onTap: () -> Unit) {
-    AiraCard(containerColor = LilacMist) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onTap),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(focus.title, style = MaterialTheme.typography.titleSmall, color = Ink)
-                if (focus.body.isNotBlank()) {
-                    Text(
-                        focus.body,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
-                }
-            }
-            if (focus.kind != "mood_checkin") {
-                Icon(
-                    Icons.Filled.ChevronRight, null,
-                    tint = Plum, modifier = Modifier.size(18.dp),
+private fun FocusRow(focus: TodayFocus, onTap: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onTap)
+            .padding(vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(focus.title, style = MaterialTheme.typography.titleSmall, color = Ink)
+            if (focus.body.isNotBlank()) {
+                Text(
+                    focus.body,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
                 )
             }
         }
+        Icon(
+            Icons.Filled.ChevronRight, null,
+            tint = Plum, modifier = Modifier.size(18.dp),
+        )
     }
 }
 
