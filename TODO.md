@@ -74,11 +74,17 @@ the code.
       terms, floors, timeout, invalid model output, stage scoping, audit trail.
 - [x] Latency budget: `SAFETY_LLM_TIMEOUT_MS` (default 4000), enforced by a
       worker-thread timeout.
-- [ ] **Live-classifier evals** with recorded Gemini fixtures (reported speech,
-      past tense, typos — the nuance the mocked suite can't pin). Needs a
-      GEMINI_API_KEY; build the eval harness when it exists.
-- [ ] Tune `GEMINI_SAFETY_MODEL` + measure real p95 gate latency once a key
-      exists.
+- [x] **Live-classifier evals** — done 2026-08-03: `evals/safety_eval.py`,
+      20 labeled adversarial cases against real Gemini. **20/20, zero
+      critical failures** on the first run (typos, Hinglish, Hindi postfix
+      negation, LLM-only catches, third-party, past-resolved, idioms).
+      Results in `evals/results-*.json`. Re-run after any taxonomy or
+      classifier-prompt change, and grow the case set over time.
+- [x] Measured live: p50 1.45s / p95 1.7s on `gemini-2.5-flash-lite`, well
+      inside the 4s budget — model pin stands.
+- [x] Bug found only live: per-call `genai.Client()` construction dies
+      intermittently under server threading ("client has been closed") —
+      fixed with a process-wide shared client (`services._client`).
 
 ### P8 — Web client
 - [x] Vite + React SPA wired to the backend (device bootstrap, onboarding-in-

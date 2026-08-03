@@ -86,7 +86,17 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
-**All build phases (P0–P10) complete** (2026-08-03).
+**All build phases (P0–P10) complete; live-verified with a real Gemini key**
+(2026-08-03):
+
+- **Safety evals: 20/20, zero critical failures** on the first run
+  (`backend/evals/safety_eval.py`) — typos, Hinglish, Hindi negation,
+  LLM-only catches, third-party reports, idioms. p95 gate latency 1.7s.
+- **The full product loop verified live**: caution turn → empathy-first
+  reply → typed cards → memory extraction; SSE streaming in Hinglish with
+  Hinglish cards. One threading bug found only live (per-call genai clients
+  dying) — fixed with a shared client.
+- Still keyless: ElevenLabs (voice quality checks in TODO.md).
 
 **P9 complete** — the voice loop, built and wired, live verification pending
 API keys:

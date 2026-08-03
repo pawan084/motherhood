@@ -209,14 +209,15 @@ _STAGE_DESC = {
 
 def _classify_llm(text: str, stage: str | None, week: int | None) -> dict:
     """One Gemini call → {"decision": ..., "reason": ...}. Raises on any failure;
-    the caller owns fail-closed semantics."""
-    from google import genai
+    the caller owns fail-closed semantics. Uses the process-wide shared client
+    (services._client) — per-call Clients intermittently die under threading."""
     from google.genai import types
+
+    import services
 
     stage_desc = _STAGE_DESC.get(stage or "", "an expecting or new parent (stage unknown)")
     stage_desc = stage_desc.format(week=week if week is not None else "unknown")
-    client = genai.Client(api_key=config.GEMINI_API_KEY)
-    resp = client.models.generate_content(
+    resp = services._client().models.generate_content(
         model=config.GEMINI_SAFETY_MODEL,
         contents=_CLASSIFIER_PROMPT.format(stage_desc=stage_desc, text=text[:4000]),
         config=types.GenerateContentConfig(

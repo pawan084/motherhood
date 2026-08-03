@@ -27,9 +27,24 @@ ELEVEN_TTS_MODEL = os.environ.get("ELEVEN_TTS_MODEL", "eleven_multilingual_v2")
 ELEVENLABS_VOICE_ID = os.environ.get("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
 
 
+_genai_client = None
+_genai_lock = threading.Lock()
+
+
 def _client():
-    from google import genai
-    return genai.Client(api_key=config.GEMINI_API_KEY)
+    """One shared genai client for the whole process (safety.py uses it too).
+
+    Found live, not in tests: constructing a Client per call intermittently
+    dies with "Cannot send a request, as the client has been closed" under the
+    server's threading — a GC'd Client tears down transport state a new one
+    is still using. A process-wide singleton is also simply cheaper.
+    """
+    global _genai_client
+    with _genai_lock:
+        if _genai_client is None:
+            from google import genai
+            _genai_client = genai.Client(api_key=config.GEMINI_API_KEY)
+        return _genai_client
 
 
 def _to_contents(history: list[dict], text: str):

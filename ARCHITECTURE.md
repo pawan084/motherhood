@@ -184,10 +184,15 @@ narrows it.
 and latency to `safety_audit`. An audit-write failure never blocks the decision
 but logs as an incident-level error.
 
-**Not verified by these tests:** the live classifier's judgment. The suite pins
-the deterministic guarantees with the LLM mocked; recorded-fixture evals
-against real Gemini output are tracked in TODO.md, and the taxonomy still
-requires clinician review before any real user sees the product.
+**The live classifier's judgment** is pinned separately by
+`evals/safety_eval.py` — a labeled adversarial set (typos, Hinglish, Hindi
+postfix negation, LLM-only catches with no rule hit, third-party reports,
+past-resolved symptoms, idioms) run against the REAL rules + REAL Gemini.
+First full run (2026-08-03, gemini-2.5-flash-lite): **20/20, zero critical
+failures, p95 latency 1.7s** against the 4s budget; results recorded in
+`evals/results-*.json`. It bills the key, so it runs on demand, never in the
+suite. The taxonomy still requires clinician review before any real user
+sees the product.
 
 ---
 
