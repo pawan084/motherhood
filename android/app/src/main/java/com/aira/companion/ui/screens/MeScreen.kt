@@ -150,11 +150,14 @@ fun MeScreen(
                             )
                         }
                     }
-                    JourneyPathPreview(
+                    // Full path on Me (client's call) — every milestone,
+                    // bottom-to-top; tapping opens the week's guide.
+                    JourneyPathTimeline(
                         milestones = journey.milestones,
                         currentWeek = journey.currentWeek,
+                        shownWeek = null,
                         sizeEmoji = journey.sizeEmoji,
-                        onOpen = { onOpenDetail(DetailPage.Journey) },
+                        onSelect = { onOpenDetail(DetailPage.Journey) },
                     )
                 }
             }
