@@ -9,6 +9,8 @@ import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.ReminderReport
 import com.aira.companion.model.ReportDay
+import com.aira.companion.model.TodayFeed
+import com.aira.companion.model.TodayFocus
 import com.aira.companion.model.VideoItem
 import com.aira.companion.model.WellnessReport
 import kotlinx.coroutines.Dispatchers
@@ -172,6 +174,28 @@ object AiraApi {
     suspend fun deleteReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
         request("DELETE", "/reminders/$id", ensureDeviceToken(context), null)
     }
+
+    /** The proactive Me feed; `hour` is the DEVICE's local hour so the
+     * server's timezone never decides the learner's morning. */
+    suspend fun getToday(context: Context, hour: Int): TodayFeed =
+        withContext(Dispatchers.IO) {
+            val token = ensureDeviceToken(context)
+            val json = request("GET", "/today?hour=$hour", token, null)
+            val ctx = json.optJSONObject("context")
+            val focusArr = json.optJSONArray("focus") ?: JSONArray()
+            TodayFeed(
+                slot = json.optString("slot", "morning"),
+                dayInWeek = ctx?.let { if (it.isNull("day_in_week")) null else it.getInt("day_in_week") },
+                daysToGo = ctx?.let { if (it.isNull("days_to_go")) null else it.getInt("days_to_go") },
+                tipText = json.optJSONObject("tip")?.optString("text"),
+                focus = (0 until focusArr.length()).mapNotNull { i ->
+                    focusArr.optJSONObject(i)?.let {
+                        TodayFocus(it.getString("kind"), it.getString("title"),
+                                   it.optString("body"))
+                    }
+                },
+            )
+        }
 
     /** The weekly/monthly report source: mood series + each reminder's
      * per-day tick history (medicines included). */

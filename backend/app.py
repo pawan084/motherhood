@@ -31,6 +31,7 @@ import privacy  # noqa: E402
 import prompts  # noqa: E402
 import safety  # noqa: E402
 import security  # noqa: E402
+import today  # noqa: E402
 import wellness  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
@@ -93,6 +94,7 @@ app.include_router(chat.router)
 app.include_router(journey.router)
 app.include_router(memory.router)
 app.include_router(privacy.router)
+app.include_router(today.router)
 app.include_router(wellness.router)
 app.include_router(admin.router)
 # Demo personas exist ONLY where dev login is allowed — never in production

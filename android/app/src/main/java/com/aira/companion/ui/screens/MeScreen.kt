@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.DetailPage
 import com.aira.companion.model.Reminder
+import com.aira.companion.model.TodayFocus
 import com.aira.companion.model.moodEmoji
 import com.aira.companion.model.moodOptions
 import com.aira.companion.ui.components.AiraCard
@@ -90,20 +91,36 @@ fun MeScreen(
             Column {
                 val care = state.careSummary
                 if (care != null) {
+                    val greeting = when (state.todayFeed?.slot) {
+                        "afternoon" -> "Good afternoon"
+                        "evening" -> "Good evening"
+                        else -> "Good morning"
+                    }
                     Text(
-                        text = if (care.displayName.isNotBlank()) "Hi ${care.displayName}" else "Hi there",
+                        text = if (care.displayName.isNotBlank()) "$greeting, ${care.displayName}" else greeting,
                         style = MaterialTheme.typography.titleMedium,
                         color = InkMuted,
                     )
                     Spacer(Modifier.height(4.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = care.week?.let { week ->
+                                state.todayFeed?.dayInWeek?.let { d -> "Week $week · Day $d" }
+                                    ?: "Week $week"
+                            } ?: stageLabel(care.stage),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = Ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                        state.journeyContent?.sizeEmoji?.let {
+                            Text(it, style = MaterialTheme.typography.headlineLarge)
+                        }
+                    }
                     Text(
-                        text = care.week?.let { "Week $it" } ?: stageLabel(care.stage),
-                        style = MaterialTheme.typography.headlineLarge,
-                        color = Ink,
-                    )
-                    // This week's headline — the "relevant information" line.
-                    Text(
-                        text = state.journeyContent?.title ?: stageLabel(care.stage),
+                        text = listOfNotNull(
+                            state.journeyContent?.title,
+                            state.todayFeed?.daysToGo?.let { "$it days to go" },
+                        ).joinToString(" · ").ifBlank { stageLabel(care.stage) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = InkMuted,
                     )
@@ -136,30 +153,24 @@ fun MeScreen(
             }
         }
 
-        // ── Path preview (client ask: the path on Me too) ──────────────────
-        state.journeyContent?.let { journey ->
-            if (journey.currentWeek != null && journey.milestones.isNotEmpty()) {
-                AiraCard {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        SectionLabel("Your path", modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onOpenDetail(DetailPage.Journey) }) {
-                            Text(
-                                "Full path",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Plum,
-                            )
-                        }
-                    }
-                    // Full path on Me (client's call) — every milestone,
-                    // bottom-to-top; tapping opens the week's guide.
-                    JourneyPathTimeline(
-                        milestones = journey.milestones,
-                        currentWeek = journey.currentWeek,
-                        shownWeek = null,
-                        sizeEmoji = journey.sizeEmoji,
-                        onSelect = { onOpenDetail(DetailPage.Journey) },
-                    )
+        // ── Right now: proactive, time-aware focus (max 2, server-ranked) ──
+        state.todayFeed?.focus?.forEach { focus ->
+            FocusCard(focus) {
+                when (focus.kind) {
+                    "appointment_soon", "evening_wrapup", "water_pace" ->
+                        onOpenDetail(DetailPage.Care)
+                    "milestone_week" -> onOpenDetail(DetailPage.Journey)
+                    // mood_checkin: the picker is directly below
                 }
+            }
+        }
+
+        // ── Daily insight: changes every day (the reason to come back) ─────
+        state.todayFeed?.tipText?.let { tip ->
+            AiraCard(containerColor = SageMist) {
+                SectionLabel("Today's insight")
+                Spacer(Modifier.height(6.dp))
+                Text(tip, style = MaterialTheme.typography.bodyMedium, color = Ink)
             }
         }
 
@@ -275,7 +286,61 @@ fun MeScreen(
             }
         }
 
+        // ── Path preview (client ask: the path on Me too) ──────────────────
+        state.journeyContent?.let { journey ->
+            if (journey.currentWeek != null && journey.milestones.isNotEmpty()) {
+                AiraCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        SectionLabel("Your path", modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onOpenDetail(DetailPage.Journey) }) {
+                            Text(
+                                "Full path",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Plum,
+                            )
+                        }
+                    }
+                    // Full path on Me (client's call) — every milestone,
+                    // bottom-to-top; tapping opens the week's guide.
+                    JourneyPathTimeline(
+                        milestones = journey.milestones,
+                        currentWeek = journey.currentWeek,
+                        shownWeek = null,
+                        sizeEmoji = journey.sizeEmoji,
+                        onSelect = { onOpenDetail(DetailPage.Journey) },
+                    )
+                }
+            }
+        }
+
         Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun FocusCard(focus: TodayFocus, onTap: () -> Unit) {
+    AiraCard(containerColor = LilacMist) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onTap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(focus.title, style = MaterialTheme.typography.titleSmall, color = Ink)
+                if (focus.body.isNotBlank()) {
+                    Text(
+                        focus.body,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                }
+            }
+            Icon(
+                Icons.Filled.ChevronRight, null,
+                tint = Plum, modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 

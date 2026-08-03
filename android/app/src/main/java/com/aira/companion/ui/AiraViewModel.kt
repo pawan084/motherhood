@@ -155,6 +155,9 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             val reminders = runCatching { AiraApi.getReminders(appContext) }.getOrNull()
             val suggested = runCatching { AiraApi.getSuggestedVideo(appContext) }.getOrNull()
             val journey = runCatching { AiraApi.getJourney(appContext) }.getOrNull()
+            val feed = runCatching {
+                AiraApi.getToday(appContext, java.time.LocalTime.now().hour)
+            }.getOrNull()
             _uiState.update { state ->
                 state.copy(
                     careSummary = care ?: state.careSummary,
@@ -162,6 +165,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     reminders = reminders ?: state.reminders,
                     suggestedVideo = suggested ?: state.suggestedVideo,
                     journeyContent = journey ?: state.journeyContent,
+                    todayFeed = feed ?: state.todayFeed,
                     meLoading = false,
                 )
             }

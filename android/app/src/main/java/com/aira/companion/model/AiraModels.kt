@@ -128,6 +128,17 @@ data class ReminderReport(
     val days: List<ReportDay>,
 )
 
+data class TodayFocus(val kind: String, val title: String, val body: String)
+
+/** GET /today — the proactive feed driving the top of the Me tab. */
+data class TodayFeed(
+    val slot: String,                  // morning | afternoon | evening
+    val dayInWeek: Int?,
+    val daysToGo: Int?,
+    val tipText: String?,
+    val focus: List<TodayFocus>,
+)
+
 data class WellnessReport(
     val days: Int,
     val moods: List<MoodEntry>,
@@ -188,6 +199,7 @@ data class AiraUiState(
     val journeyContent: JourneyContent? = null,
     val moodHistory: List<MoodEntry> = emptyList(),
     val report: WellnessReport? = null,
+    val todayFeed: TodayFeed? = null,
 )
 
 data class OnboardingPrompt(
