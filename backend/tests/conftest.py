@@ -16,12 +16,14 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("SQLITE_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("UPLOAD_DIR", str(tmp_path / "uploads"))
     monkeypatch.setenv("ALLOW_DEV_LOGIN", "1")
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_EMAIL", "owner@test.dev")
+    monkeypatch.setenv("ADMIN_BOOTSTRAP_PASSWORD", "test-owner-password")
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.delenv("ENV", raising=False)
     monkeypatch.setenv("RATE_LIMIT_PER_MIN", "0")  # tests hammer endpoints
 
     # Fresh module graph so every module re-reads the env above.
-    for mod in ("app", "care", "chat", "privacy", "journey", "seed_journey", "memory", "services", "prompts", "safety", "safety_taxonomy",
+    for mod in ("app", "admin", "care", "chat", "privacy", "journey", "seed_journey", "memory", "services", "prompts", "safety", "safety_taxonomy",
                 "care_context", "device_auth", "accounts", "security", "db", "config"):
         sys.modules.pop(mod, None)
     app_module = importlib.import_module("app")

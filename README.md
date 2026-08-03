@@ -86,6 +86,20 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P10 complete** (2026-08-03). Admin + deploy hardening:
+
+- `admin.py` — owner/support/content roles, PBKDF2 passwords, HMAC admin
+  tokens (disjoint from learner tokens, tested), bootstrap owner from env.
+- **Safety review queue**: filterable, paginated, reviews in a separate
+  table (the gate's record stays append-only), `unreviewed_urgent` on the
+  overview, every admin action logged. Journey CMS edits reach learners
+  immediately.
+- Admin console at `/admin.html` (second Vite entry).
+- `Dockerfile` + `smoke_test.sh`; full urgent→queue→review loop
+  live-verified. **128 backend tests.**
+- Remaining in P9-P10: the voice loop (needs GEMINI/ELEVENLABS keys to
+  verify) and the production human-gated list in TODO.md.
+
 **P7 complete** (2026-08-03). Privacy controls are real:
 
 - `privacy.py` — the `ai_personalisation` consent with real effect (off = no

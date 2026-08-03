@@ -311,6 +311,35 @@ this codebase should decide silently. It is decided *visibly* here.
 Partner access is deferred: it needs a second-party consent flow designed
 properly (invitation, scope, revocation), not bolted on.
 
+## 16. Admin + deploy (P10)
+
+`admin.py` — roles are a linear hierarchy (owner > support > content) behind
+`require_admin(min_role)`. Passwords are PBKDF2-HMAC-SHA256 (stdlib, per-admin
+salt, 600k iterations); tokens are the product's HMAC envelope with a disjoint
+`kind="admin"` claim shape — learner sessions can never pass admin auth
+(tested). Login is constant-shape: unknown emails hash a dummy attempt so
+timing doesn't leak which addresses exist. Bootstrap owner via
+`ADMIN_BOOTSTRAP_EMAIL/_PASSWORD` on an empty admins table.
+
+**The safety review queue is why this phase exists**: an escalation system
+nobody reviews is theater. `GET /admin/safety-audit` filters by decision +
+unreviewed, paginates; reviews live in a separate `safety_reviews` table so
+the gate's own record stays append-only; `unreviewed_urgent` is on the
+overview as the number that must be zero. Every mutating admin action lands
+in `admin_audit` — the reviewers are subject to review too.
+
+The Journey CMS closes P5's loop: `PUT /admin/journey/{band}` edits reach
+learners immediately (tested end to end), and seed-once means those edits
+survive restarts.
+
+The admin console is a second Vite entry (`/admin.html`) sharing the visual
+system; the token lives in sessionStorage. Same origin in dev — production
+should serve it from a separate host (TODO.md).
+
+Deploy: `Dockerfile` (slim, libpq, secrets never baked in, `ENV=production`
+so the startup guard is armed by default) + `smoke_test.sh` (read-only:
+liveness, catalogs, auth posture on learner AND admin routes).
+
 ---
 
 ## Filled in as phases land

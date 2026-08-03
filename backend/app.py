@@ -20,6 +20,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 # Imported after load_dotenv so module-level config reads the .env values.
 import config  # noqa: E402
 import accounts  # noqa: E402
+import admin  # noqa: E402
 import care  # noqa: E402
 import care_context  # noqa: E402
 import chat  # noqa: E402
@@ -42,6 +43,7 @@ async def lifespan(_app: FastAPI):
     # a missing DATABASE_URL. Failing to boot is the intended outcome.
     config.verify_production_config()
     accounts.init()
+    admin.init()
     care.init()
     care_context.init()
     journey.init()
@@ -76,6 +78,7 @@ app.include_router(chat.router)
 app.include_router(journey.router)
 app.include_router(memory.router)
 app.include_router(privacy.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")
