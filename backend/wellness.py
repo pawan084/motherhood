@@ -539,7 +539,7 @@ def mark_watched(video_id: str, learner_id: str = Depends(resolve_learner)):
 
 
 _METRIC_EVENTS = {"me_open", "chat_open", "videos_open", "video_play",
-                  "nudge_tap", "widget_tap"}
+                  "nudge_tap", "widget_tap", "reset_done", "game_done"}
 
 
 @router.post("/metrics")

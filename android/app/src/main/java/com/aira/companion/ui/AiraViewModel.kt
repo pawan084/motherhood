@@ -276,6 +276,87 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun addSymptom(text: String, severity: Int) {
+        viewModelScope.launch {
+            runCatching { AiraApi.addSymptom(appContext, text, severity) }
+                .onSuccess {
+                    loadToolData(AiraTool.Symptom)
+                    notify("Logged for your timeline — Aira tracks, it doesn't diagnose.")
+                }
+                .onFailure { notify("Couldn't save that — try again in a moment.") }
+        }
+    }
+
+    fun uploadDocument(uri: android.net.Uri, kind: String) {
+        viewModelScope.launch {
+            runCatching {
+                val resolver = appContext.contentResolver
+                val bytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+                    ?: error("unreadable")
+                require(bytes.size <= 20 * 1024 * 1024) { "too large" }
+                val mime = resolver.getType(uri) ?: "application/octet-stream"
+                var name = "document"
+                resolver.query(uri, null, null, null, null)?.use { c ->
+                    val idx = c.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (idx >= 0 && c.moveToFirst()) name = c.getString(idx) ?: name
+                }
+                AiraApi.uploadDocument(appContext, bytes, name, mime, kind)
+            }
+                .onSuccess { notify("Saved to your private Care Vault.") }
+                .onFailure { notify("Couldn't upload that document — try again in a moment.") }
+        }
+    }
+
+    fun shareExport() {
+        viewModelScope.launch {
+            runCatching {
+                val json = AiraApi.exportJson(appContext)
+                val dir = java.io.File(appContext.cacheDir, "share").apply { mkdirs() }
+                val file = java.io.File(dir, "aira-export.json")
+                file.writeText(json)
+                val uri = androidx.core.content.FileProvider.getUriForFile(
+                    appContext, "com.aira.companion.fileprovider", file,
+                )
+                appContext.startActivity(
+                    android.content.Intent.createChooser(
+                        android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                            type = "application/json"
+                            putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        },
+                        "Your Aira data",
+                    ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            }.onFailure { notify("Couldn't prepare your export — try again in a moment.") }
+        }
+    }
+
+    /** Destructive: server-side cascade of everything this learner owns.
+     * Only reachable through the sheet's explicit type-to-confirm dialog. */
+    fun eraseEverything() {
+        viewModelScope.launch {
+            runCatching { AiraApi.eraseLearnerData(appContext) }
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            moods = emptyList(), reminders = emptyList(),
+                            symptoms = null, memoryItems = null, medicines = null,
+                            appointments = null, planItems = null,
+                            careSummary = null, journeyContent = null,
+                            todayFeed = null, activeTool = null,
+                        )
+                    }
+                    notify("Everything erased. Aira starts fresh with you.")
+                    refreshMe()
+                }
+                .onFailure { notify("Couldn't erase right now — try again in a moment.") }
+        }
+    }
+
+    fun logCalmDone(event: String) {
+        viewModelScope.launch { runCatching { AiraApi.postMetric(appContext, event) } }
+    }
+
     fun nudgeActedOn(kind: String) {
         viewModelScope.launch {
             runCatching { AiraApi.postFocusTap(appContext, kind) }
@@ -466,6 +547,8 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     .onSuccess { fresh -> _uiState.update { it.copy(planItems = fresh) } }
                 AiraTool.Memory -> runCatching { AiraApi.getMemory(appContext) }
                     .onSuccess { fresh -> _uiState.update { it.copy(memoryItems = fresh) } }
+                AiraTool.Symptom -> runCatching { AiraApi.getSymptoms(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(symptoms = fresh) } }
                 else -> Unit
             }
         }

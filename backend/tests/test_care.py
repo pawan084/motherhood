@@ -170,3 +170,35 @@ def test_account_deletion_erases_care_data_and_files(client):
     assert client.get("/medicines", headers=h).json()["medicines"] == []
     assert client.get("/documents", headers=h).json()["documents"] == []
     assert not os.path.exists(os.path.join(config.UPLOAD_DIR, uid, doc_id + ".pdf"))
+
+
+# ── symptom log (track, don't diagnose) ──────────────────────────────────────
+
+def _h(client):
+    r = client.post("/device/register")
+    return {"X-Device-Token": r.json()["device_token"]}
+
+
+def test_symptom_crud_validation_and_scope(client):
+    h = _h(client)
+    assert client.post("/symptoms", json={"text": " ", "severity": 3},
+                       headers=h).status_code == 422
+    assert client.post("/symptoms", json={"text": "headache", "severity": 9},
+                       headers=h).status_code == 422
+    sid = client.post("/symptoms", json={"text": "Mild headache since noon",
+                                         "severity": 2}, headers=h).json()["id"]
+    rows = client.get("/symptoms", headers=h).json()["symptoms"]
+    assert rows[0]["text"] == "Mild headache since noon" and rows[0]["severity"] == 2
+    other = _h(client)
+    assert client.delete(f"/symptoms/{sid}", headers=other).status_code == 404
+    assert client.get("/symptoms", headers=other).json()["symptoms"] == []
+    assert client.delete(f"/symptoms/{sid}", headers=h).status_code == 200
+
+
+def test_symptoms_survive_export_and_erase(client):
+    h = _h(client)
+    client.post("/symptoms", json={"text": "Backache", "severity": 3}, headers=h)
+    export = client.get("/export", headers=h).json()
+    assert export["symptoms"][0]["text"] == "Backache"
+    client.delete("/learner-data", headers=h)
+    assert client.get("/export", headers=h).json().get("symptoms") == []

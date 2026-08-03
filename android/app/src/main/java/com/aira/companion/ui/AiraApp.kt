@@ -273,6 +273,11 @@ private fun MainExperience(
                 onAddPlanItem = viewModel::addPlanItem,
                 onTogglePlanItem = viewModel::togglePlanItem,
                 onForgetMemory = viewModel::forgetMemory,
+                onAddSymptom = viewModel::addSymptom,
+                onUploadDocument = viewModel::uploadDocument,
+                onShareExport = viewModel::shareExport,
+                onEraseEverything = viewModel::eraseEverything,
+                onCalmDone = viewModel::logCalmDone,
             )
         }
 

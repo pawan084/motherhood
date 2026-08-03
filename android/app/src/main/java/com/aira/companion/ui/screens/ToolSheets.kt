@@ -144,6 +144,7 @@ private val chatToolItems =
         ChatToolItem(AiraTool.Reset, "Reset", "Two calm minutes", Icons.Outlined.Waves),
         ChatToolItem(AiraTool.Symptom, "Track", "Log a change", Icons.Outlined.TrackChanges),
         ChatToolItem(AiraTool.Companion, "Companion", "Voice or avatar mode", Icons.Outlined.RecordVoiceOver),
+        ChatToolItem(AiraTool.Game, "Calm match", "A quiet minute of play", Icons.Outlined.SentimentSatisfied),
     )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -238,11 +239,17 @@ fun DynamicToolSheet(
     onAddPlanItem: (String) -> Unit,
     onTogglePlanItem: (String) -> Unit,
     onForgetMemory: (String) -> Unit,
+    onAddSymptom: (String, Int) -> Unit,
+    onUploadDocument: (Uri, String) -> Unit,
+    onShareExport: () -> Unit,
+    onEraseEverything: () -> Unit,
+    onCalmDone: (String) -> Unit,
 ) {
+    var pickedDocument by remember(tool) { mutableStateOf<Uri?>(null) }
     val documentLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.OpenDocument(),
-        ) { uri -> if (uri != null) onNotify("Document selected securely.") }
+        ) { uri -> if (uri != null) pickedDocument = uri }
 
     var selfPhoto by remember(tool) { mutableStateOf<Uri?>(null) }
     var partnerPhoto by remember(tool) { mutableStateOf<Uri?>(null) }
@@ -281,15 +288,20 @@ fun DynamicToolSheet(
                 AiraTool.Appointment -> AppointmentTool(state.appointments, onAddAppointment, onNotify)
                 AiraTool.CareVault ->
                     CareVaultTool(
+                        pickedDocument = pickedDocument,
                         onPickDocument = {
                             documentLauncher.launch(
                                 arrayOf("application/pdf", "image/jpeg", "image/png"),
                             )
                         },
-                        onNotify = onNotify,
+                        onUpload = { uri, kind ->
+                            onUploadDocument(uri, kind)
+                            pickedDocument = null
+                            onDismiss()
+                        },
                     )
-                AiraTool.Reset -> ResetTool(onNotify)
-                AiraTool.Symptom -> SymptomTool(onNotify, onUrgentHelp)
+                AiraTool.Reset -> ResetTool(onNotify, onCalmDone)
+                AiraTool.Symptom -> SymptomTool(state.symptoms, onAddSymptom, onUrgentHelp)
                 AiraTool.Companion ->
                     CompanionTool(
                         selfPhoto = selfPhoto,
@@ -299,11 +311,12 @@ fun DynamicToolSheet(
                         onNotify = onNotify,
                     )
                 AiraTool.CarePlan -> CarePlanTool(state.planItems, onAddPlanItem, onTogglePlanItem)
-                AiraTool.Privacy -> PrivacyTool(onNotify)
+                AiraTool.Privacy -> PrivacyTool(onShareExport, onEraseEverything)
                 AiraTool.Memory -> MemoryTool(state.memoryItems, onForgetMemory)
                 AiraTool.Voice -> VoiceTool(onNotify)
                 AiraTool.Partner -> PartnerTool(onNotify)
                 AiraTool.Support -> SupportTool(onNotify, onUrgentHelp)
+                AiraTool.Game -> CalmMatchTool(onCalmDone)
                 AiraTool.Emergency -> EmergencyProfileTool(state, onNotify)
             }
         }
@@ -720,12 +733,11 @@ private fun AppointmentTool(
 
 @Composable
 private fun CareVaultTool(
+    pickedDocument: Uri?,
     onPickDocument: () -> Unit,
-    onNotify: (String) -> Unit,
+    onUpload: (Uri, String) -> Unit,
 ) {
     var category by remember { mutableStateOf("Prescription") }
-    var useInAnswers by remember { mutableStateOf(false) }
-
     ChoiceChips(
         options = listOf("Prescription", "Lab report", "Scan", "Other"),
         selected = category,
@@ -739,36 +751,40 @@ private fun CareVaultTool(
                 .height(138.dp)
                 .clickable(role = Role.Button, onClick = onPickDocument)
                 .border(1.dp, OutlineSoft, RoundedCornerShape(20.dp)),
-        color = Paper,
+        color = if (pickedDocument != null) SageMist else Paper,
         shape = RoundedCornerShape(20.dp),
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Icon(Icons.Outlined.CloudUpload, contentDescription = null, tint = Plum, modifier = Modifier.size(32.dp))
+            Icon(
+                if (pickedDocument != null) Icons.Outlined.CheckCircle else Icons.Outlined.CloudUpload,
+                contentDescription = null, tint = Plum, modifier = Modifier.size(32.dp),
+            )
             Spacer(Modifier.height(8.dp))
-            Text("Choose or scan a document", style = MaterialTheme.typography.titleSmall, color = Ink)
+            Text(
+                if (pickedDocument != null) "Document ready to save" else "Choose or scan a document",
+                style = MaterialTheme.typography.titleSmall, color = Ink,
+            )
             Text("PDF, JPG or PNG · Max 20 MB", style = MaterialTheme.typography.bodySmall, color = InkMuted)
         }
     }
-    Spacer(Modifier.height(14.dp))
-    SettingLine(
-        title = "Use in future answers",
-        subtitle = "Only after you approve extracted details",
-        checked = useInAnswers,
-        onCheckedChange = { useInAnswers = it },
-    )
     Spacer(Modifier.height(16.dp))
     PrimaryButton(
         label = "Save to Care Vault",
-        onClick = { onNotify("$category saved to your private Care Vault.") },
+        enabled = pickedDocument != null,
+        onClick = {
+            pickedDocument?.let {
+                onUpload(it, category.lowercase().replace(" ", "_"))
+            }
+        },
         modifier = Modifier.fillMaxWidth(),
     )
 }
 
 @Composable
-private fun ResetTool(onNotify: (String) -> Unit) {
+private fun ResetTool(onNotify: (String) -> Unit, onCalmDone: (String) -> Unit) {
     val infinite = rememberInfiniteTransition(label = "breathing")
     val scale by infinite.animateFloat(
         initialValue = 0.84f,
@@ -780,6 +796,17 @@ private fun ResetTool(onNotify: (String) -> Unit) {
             ),
         label = "breathing scale",
     )
+    var secondsLeft by remember { mutableStateOf(-1) }   // -1 = not started
+    androidx.compose.runtime.LaunchedEffect(secondsLeft > 0) {
+        while (secondsLeft > 0) {
+            kotlinx.coroutines.delay(1000)
+            secondsLeft -= 1
+            if (secondsLeft == 0) {
+                onCalmDone("reset_done")
+                onNotify("Two calm minutes, done. Carry it with you.")
+            }
+        }
+    }
     Box(
         modifier =
             Modifier
@@ -807,7 +834,12 @@ private fun ResetTool(onNotify: (String) -> Unit) {
         }
     }
     Text(
-        text = "Breathe in slowly",
+        text = when {
+            secondsLeft > 0 -> "Breathe with the circle · ${secondsLeft / 60}:" +
+                "%02d".format(secondsLeft % 60)
+            secondsLeft == 0 -> "Session complete"
+            else -> "Breathe in slowly"
+        },
         modifier = Modifier.fillMaxWidth(),
         style = MaterialTheme.typography.headlineSmall,
         textAlign = TextAlign.Center,
@@ -822,8 +854,9 @@ private fun ResetTool(onNotify: (String) -> Unit) {
     )
     Spacer(Modifier.height(18.dp))
     PrimaryButton(
-        label = "Begin guided session",
-        onClick = { onNotify("Two-minute reset started.") },
+        label = if (secondsLeft > 0) "Session running…" else "Begin guided session",
+        enabled = secondsLeft <= 0,
+        onClick = { secondsLeft = 120 },
         modifier = Modifier.fillMaxWidth(),
         trailingIcon = Icons.Outlined.PlayArrow,
     )
@@ -831,7 +864,8 @@ private fun ResetTool(onNotify: (String) -> Unit) {
 
 @Composable
 private fun SymptomTool(
-    onNotify: (String) -> Unit,
+    symptoms: List<com.aira.companion.model.Symptom>?,
+    onAddSymptom: (String, Int) -> Unit,
     onUrgentHelp: () -> Unit,
 ) {
     var symptom by remember { mutableStateOf("") }
@@ -863,9 +897,30 @@ private fun SymptomTool(
     PrimaryButton(
         label = "Save symptom log",
         enabled = symptom.isNotBlank(),
-        onClick = { onNotify("Symptom logged safely for your timeline.") },
+        onClick = {
+            onAddSymptom(symptom.trim(), severity.toInt())
+            symptom = ""
+        },
         modifier = Modifier.fillMaxWidth(),
     )
+    // The real timeline this sheet writes to — latest first.
+    if (!symptoms.isNullOrEmpty()) {
+        Spacer(Modifier.height(16.dp))
+        SectionLabel("Recent entries")
+        Spacer(Modifier.height(6.dp))
+        symptoms.take(5).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("●".repeat(row.severity), color = Plum,
+                     style = MaterialTheme.typography.labelSmall)
+                Spacer(Modifier.width(8.dp))
+                Text(row.text, style = MaterialTheme.typography.bodySmall,
+                     color = Ink, modifier = Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
@@ -1004,35 +1059,53 @@ private fun CarePlanTool(
 }
 
 @Composable
-private fun PrivacyTool(onNotify: (String) -> Unit) {
-    var personalisation by remember { mutableStateOf(true) }
-    var partner by remember { mutableStateOf(false) }
-    var rawAudio by remember { mutableStateOf(false) }
-    SettingLine("AI personalisation", "Approved context shapes answers", personalisation) { personalisation = it }
-    HorizontalDivider(color = OutlineSoft)
-    SettingLine("Partner access", "Tasks only", partner) { partner = it }
-    HorizontalDivider(color = OutlineSoft)
-    SettingLine("Store raw voice audio", "Off · transcript only", rawAudio) { rawAudio = it }
+private fun PrivacyTool(
+    onShareExport: () -> Unit,
+    onEraseEverything: () -> Unit,
+) {
+    SettingLine("AI personalisation", "Approved context shapes answers", true) { }
     HorizontalDivider(color = OutlineSoft)
     SettingLine("Health data for ads", "Never", false, onCheckedChange = {}, enabled = false)
     Spacer(Modifier.height(16.dp))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { onNotify("Data export requested.") }) {
-            Icon(Icons.Outlined.Download, null)
-            Spacer(Modifier.width(6.dp))
-            Text("Download data")
-        }
-        OutlinedButton(onClick = { onNotify("Consent history opened.") }) {
-            Icon(Icons.Outlined.Description, null)
-            Spacer(Modifier.width(6.dp))
-            Text("Consent history")
-        }
+    // REAL export: the same GET /export the web client uses, shared as JSON.
+    OutlinedButton(onClick = onShareExport, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Outlined.Download, null)
+        Spacer(Modifier.width(6.dp))
+        Text("Download my data (JSON)")
     }
     Spacer(Modifier.height(10.dp))
-    OutlinedButton(onClick = { onNotify("Selective deletion flow opened.") }, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Filled.DeleteOutline, null, tint = Urgent)
-        Spacer(Modifier.width(7.dp))
-        Text("Delete selected data", color = Urgent)
+    var confirming by remember { mutableStateOf(false) }
+    var typed by remember { mutableStateOf("") }
+    if (!confirming) {
+        OutlinedButton(onClick = { confirming = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Filled.DeleteOutline, null, tint = Urgent)
+            Spacer(Modifier.width(7.dp))
+            Text("Erase everything Aira knows", color = Urgent)
+        }
+    } else {
+        InfoBanner(
+            icon = Icons.Outlined.Security,
+            text = "This deletes your moods, care items, documents, memories and context from Aira's server. It cannot be undone.",
+            color = UrgentMist,
+            contentColor = Urgent,
+        )
+        Spacer(Modifier.height(8.dp))
+        OutlinedTextField(
+            value = typed,
+            onValueChange = { typed = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Type ERASE to confirm") },
+            shape = RoundedCornerShape(14.dp),
+        )
+        Spacer(Modifier.height(8.dp))
+        Row {
+            TextButton(onClick = { confirming = false; typed = "" }) { Text("Keep my data") }
+            Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = onEraseEverything,
+                enabled = typed.trim() == "ERASE",
+            ) { Text("Erase now", color = Urgent) }
+        }
     }
 }
 
@@ -1176,6 +1249,74 @@ private fun EmergencyProfileTool(
         onClick = { onNotify("Emergency profile editing arrives with sign-in.") },
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+/** Calm match: six emoji pairs, no timer pressure, no score — flip two,
+ * find friends. Completion logs an aggregate metric only. */
+@Composable
+private fun CalmMatchTool(onCalmDone: (String) -> Unit) {
+    val emojis = listOf("🫐", "🍓", "🥑", "🌽", "🥭", "🎃")
+    var deck by remember { mutableStateOf((emojis + emojis).shuffled()) }
+    var revealed by remember { mutableStateOf(setOf<Int>()) }
+    var matched by remember { mutableStateOf(setOf<Int>()) }
+    var done by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(revealed) {
+        if (revealed.size == 2) {
+            val (a, b) = revealed.toList()
+            if (deck[a] == deck[b]) {
+                matched = matched + revealed
+            } else {
+                kotlinx.coroutines.delay(700)
+            }
+            revealed = setOf()
+            if (matched.size == deck.size && !done) {
+                done = true
+                onCalmDone("game_done")
+            }
+        }
+    }
+    if (matched.size == deck.size && done) {
+        InfoBanner(Icons.Outlined.CheckCircle, "All pairs found. Nicely done — that's your calm minute.", SageMist)
+        Spacer(Modifier.height(10.dp))
+    }
+    Text(
+        "Flip two cards, find the pairs. No timer, no score.",
+        style = MaterialTheme.typography.bodyMedium, color = InkMuted,
+    )
+    Spacer(Modifier.height(12.dp))
+    (0 until 4).forEach { row ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            (0 until 3).forEach { col ->
+                val i = row * 3 + col
+                val faceUp = i in revealed || i in matched
+                Surface(
+                    onClick = {
+                        if (!faceUp && revealed.size < 2) revealed = revealed + i
+                    },
+                    modifier = Modifier.weight(1f).height(72.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    color = if (i in matched) SageMist else if (faceUp) LilacMist else Paper,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            if (faceUp) deck[i] else "·",
+                            style = MaterialTheme.typography.headlineMedium,
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+    }
+    TextButton(
+        onClick = {
+            deck = (emojis + emojis).shuffled()
+            revealed = setOf(); matched = setOf(); done = false
+        },
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("Shuffle again", color = Plum) }
 }
 
 @Composable

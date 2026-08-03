@@ -66,6 +66,10 @@ def init() -> None:
               " title TEXT NOT NULL, when_ts REAL NOT NULL,"
               " location TEXT DEFAULT '', notes TEXT DEFAULT '',"
               " created REAL)")
+    c.execute("CREATE TABLE IF NOT EXISTS symptoms ("
+              " id TEXT PRIMARY KEY, learner_id TEXT NOT NULL,"
+              " text TEXT NOT NULL, severity INTEGER DEFAULT 1,"
+              " created REAL)")
     c.execute("CREATE TABLE IF NOT EXISTS care_plan_items ("
               " id TEXT PRIMARY KEY, learner_id TEXT NOT NULL,"
               " title TEXT NOT NULL, done INTEGER DEFAULT 0,"
@@ -100,7 +104,8 @@ def merge(did: str, uid: str) -> None:
         if os.path.exists(src):
             os.makedirs(os.path.dirname(dst), exist_ok=True)
             os.replace(src, dst)
-    for table in ("medicines", "documents", "appointments", "care_plan_items"):
+    for table in ("medicines", "documents", "appointments", "care_plan_items",
+                  "symptoms"):
         _conn.execute(f"UPDATE {table} SET learner_id=? WHERE learner_id=?", (uid, did))
     _conn.commit()
 
@@ -116,7 +121,8 @@ def erase(learner_id: str) -> None:
             pass
     _conn.execute("DELETE FROM medicine_taken WHERE medicine_id IN"
                   " (SELECT id FROM medicines WHERE learner_id=?)", (learner_id,))
-    for table in ("medicines", "documents", "appointments", "care_plan_items"):
+    for table in ("medicines", "documents", "appointments", "care_plan_items",
+                  "symptoms"):
         _conn.execute(f"DELETE FROM {table} WHERE learner_id=?", (learner_id,))
 
 
@@ -337,5 +343,47 @@ def toggle_plan_item(item_id: str, learner_id: str = Depends(resolve_learner)):
 def delete_plan_item(item_id: str, learner_id: str = Depends(resolve_learner)):
     _owned("care_plan_items", item_id, learner_id)
     _conn.execute("DELETE FROM care_plan_items WHERE id=?", (item_id,))
+    _conn.commit()
+    return {"ok": True}
+
+
+# ── Symptom log ──────────────────────────────────────────────────────────────
+# Track, don't diagnose: free-text observation + 1-5 noticeability. The chat
+# gate remains the ONLY place that assesses danger; this is a timeline.
+
+class SymptomIn(BaseModel):
+    text: str
+    severity: int = 1
+
+
+@router.post("/symptoms")
+def add_symptom(body: SymptomIn, learner_id: str = Depends(resolve_learner)):
+    text = body.text.strip()[:300]
+    if not text:
+        raise HTTPException(status_code=422, detail="text is required")
+    if not 1 <= body.severity <= 5:
+        raise HTTPException(status_code=422, detail="severity must be 1-5")
+    sid = "sym_" + secrets.token_hex(8)
+    _conn.execute(
+        "INSERT INTO symptoms (id, learner_id, text, severity, created)"
+        " VALUES (?,?,?,?,?)", (sid, learner_id, text, body.severity, time.time()))
+    _conn.commit()
+    return {"id": sid}
+
+
+@router.get("/symptoms")
+def list_symptoms(learner_id: str = Depends(resolve_learner)):
+    rows = _conn.execute(
+        "SELECT id, text, severity, created FROM symptoms WHERE learner_id=?"
+        " ORDER BY created DESC LIMIT 30", (learner_id,)).fetchall()
+    return {"symptoms": [
+        {"id": r[0], "text": r[1], "severity": r[2], "created": r[3]}
+        for r in rows]}
+
+
+@router.delete("/symptoms/{symptom_id}")
+def delete_symptom(symptom_id: str, learner_id: str = Depends(resolve_learner)):
+    _owned("symptoms", symptom_id, learner_id)
+    _conn.execute("DELETE FROM symptoms WHERE id=?", (symptom_id,))
     _conn.commit()
     return {"ok": True}

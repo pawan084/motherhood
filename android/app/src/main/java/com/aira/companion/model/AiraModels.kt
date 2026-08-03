@@ -37,6 +37,7 @@ enum class AiraTool(
     Reset("A two-minute reset", "Guided wellness"),
     Symptom("Log a symptom", "Track, don’t diagnose"),
     Companion("Companion mode", "Avatar & connection"),
+    Game("Calm match", "A quiet minute of play"),
     CarePlan("Your care plan", "Your priorities"),
     Privacy("Privacy centre", "Your data, your control"),
     Memory("What Aira remembers", "Care context"),
@@ -195,6 +196,9 @@ data class Appointment(
 /** GET /care-plan items. */
 data class PlanItem(val id: String, val title: String, val done: Boolean)
 
+/** GET /symptoms — track, don't diagnose. */
+data class Symptom(val id: String, val text: String, val severity: Int)
+
 /** GET /memory — what Aira remembers, deletable per item. */
 data class MemoryItem(val id: String, val content: String)
 
@@ -275,6 +279,7 @@ data class AiraUiState(
     val appointments: List<Appointment>? = null,
     val planItems: List<PlanItem>? = null,
     val memoryItems: List<MemoryItem>? = null,
+    val symptoms: List<Symptom>? = null,
     // Week-flip celebration: set when the computed week advanced past the
     // last acknowledged one; cleared by the banner's dismiss.
     val weekJustFlipped: Int? = null,

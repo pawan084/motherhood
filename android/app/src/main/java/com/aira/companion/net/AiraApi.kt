@@ -359,6 +359,66 @@ object AiraApi {
         request("POST", "/care-plan/$id/toggle", ensureDeviceToken(context), JSONObject())
     }
 
+    suspend fun addSymptom(context: Context, text: String, severity: Int) =
+        withContext(Dispatchers.IO) {
+            request("POST", "/symptoms", ensureDeviceToken(context),
+                    JSONObject().put("text", text).put("severity", severity))
+        }
+
+    suspend fun getSymptoms(context: Context): List<com.aira.companion.model.Symptom> =
+        withContext(Dispatchers.IO) {
+            val arr = request("GET", "/symptoms", ensureDeviceToken(context), null)
+                .optJSONArray("symptoms") ?: JSONArray()
+            (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let {
+                    com.aira.companion.model.Symptom(
+                        it.getString("id"), it.getString("text"), it.optInt("severity", 1),
+                    )
+                }
+            }
+        }
+
+    /** Multipart upload to POST /documents — the one non-JSON request. */
+    suspend fun uploadDocument(
+        context: Context,
+        bytes: ByteArray,
+        filename: String,
+        mime: String,
+        kind: String,
+    ): JSONObject = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        val boundary = "aira-" + System.currentTimeMillis()
+        val conn = URL("$base/documents").openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.connectTimeout = 8_000
+        conn.readTimeout = 60_000
+        conn.doOutput = true
+        conn.setRequestProperty("X-Device-Token", token)
+        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        conn.outputStream.use { out ->
+            fun field(s: String) = out.write(s.toByteArray())
+            field("--$boundary\r\nContent-Disposition: form-data; name=\"kind\"\r\n\r\n$kind\r\n")
+            field("--$boundary\r\nContent-Disposition: form-data; name=\"file\";" +
+                  " filename=\"$filename\"\r\nContent-Type: $mime\r\n\r\n")
+            out.write(bytes)
+            field("\r\n--$boundary--\r\n")
+        }
+        val code = conn.responseCode
+        val text = (if (code < 400) conn.inputStream else conn.errorStream)
+            ?.bufferedReader()?.readText() ?: ""
+        if (code >= 400) throw ApiException("HTTP $code: ${text.take(200)}")
+        if (text.isBlank()) JSONObject() else JSONObject(text)
+    }
+
+    /** The full learner export, pretty-printed for the privacy sheet. */
+    suspend fun exportJson(context: Context): String = withContext(Dispatchers.IO) {
+        request("GET", "/export", ensureDeviceToken(context), null).toString(2)
+    }
+
+    suspend fun eraseLearnerData(context: Context) = withContext(Dispatchers.IO) {
+        request("DELETE", "/learner-data", ensureDeviceToken(context), null)
+    }
+
     suspend fun getMemory(context: Context): List<MemoryItem> = withContext(Dispatchers.IO) {
         val arr = request("GET", "/memory", ensureDeviceToken(context), null)
             .optJSONArray("items") ?: JSONArray()

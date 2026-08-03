@@ -121,6 +121,10 @@ def export_data(learner_id: str = Depends(resolve_learner)):
         "memories": [dict(zip(("kind", "content", "created", "updated"), m)) for m in mems],
         "medicines": [dict(zip(("name", "dose", "time_of_day", "notes", "created"), m)) for m in meds],
         "documents": [dict(zip(("id", "kind", "filename", "size", "created"), d)) for d in docs],
+        "symptoms": [dict(zip(("text", "severity", "created"), r)) for r in
+                     care._conn.execute(
+                         "SELECT text, severity, created FROM symptoms"
+                         " WHERE learner_id=?", (learner_id,)).fetchall()],
         "appointments": [dict(zip(("title", "when_ts", "location", "notes"), a)) for a in apts],
         "care_plan": [dict(zip(("title", "done", "created"), p)) for p in plan],
         **wellness.export(learner_id),
