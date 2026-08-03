@@ -13,11 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.HealthAndSafety
-import androidx.compose.material.icons.outlined.Notifications
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,25 +36,23 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
+import com.aira.companion.model.CareSummary
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.components.AiraBottomNavigation
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.screens.AiraChatScreen
-import com.aira.companion.ui.screens.CareScreen
 import com.aira.companion.ui.screens.DynamicToolSheet
-import com.aira.companion.ui.screens.JourneyScreen
+import com.aira.companion.ui.screens.MeScreen
 import com.aira.companion.ui.screens.OnboardingChatScreen
-import com.aira.companion.ui.screens.TodayScreen
+import com.aira.companion.ui.screens.SettingsScreen
 import com.aira.companion.ui.screens.ToolTraySheet
 import com.aira.companion.ui.screens.UrgentHelpDialog
+import com.aira.companion.ui.screens.VideosScreen
 import com.aira.companion.ui.screens.WelcomeScreen
-import com.aira.companion.ui.screens.YouScreen
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Paper
-import com.aira.companion.ui.theme.Plum
-import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
 import com.aira.companion.ui.theme.UrgentMist
 
@@ -95,6 +92,16 @@ private fun MainExperience(
     viewModel: AiraViewModel,
     snackbarHostState: SnackbarHostState,
 ) {
+    // Data loads fire here, not in selectDestination — ViewModel transitions
+    // stay pure/synchronous for the JVM unit tests.
+    LaunchedEffect(state.destination) {
+        when (state.destination) {
+            MainDestination.Me -> viewModel.refreshMe()
+            MainDestination.Videos -> viewModel.ensureVideos()
+            else -> Unit
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -103,8 +110,8 @@ private fun MainExperience(
             topBar = {
                 AiraAppHeader(
                     destination = state.destination,
-                    notificationCount = state.notificationCount,
-                    onNotifications = { viewModel.openTool(AiraTool.Notifications) },
+                    careSummary = state.careSummary,
+                    onSettings = viewModel::openSettings,
                     onUrgentHelp = viewModel::openUrgentHelp,
                 )
             },
@@ -117,13 +124,15 @@ private fun MainExperience(
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
             when (state.destination) {
-                MainDestination.Today ->
-                    TodayScreen(
-                        onDestination = viewModel::selectDestination,
+                MainDestination.Me ->
+                    MeScreen(
+                        state = state,
+                        onSetMood = viewModel::setMood,
+                        onTick = viewModel::tickReminder,
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier.padding(padding),
                     )
-                MainDestination.Aira ->
+                MainDestination.Chat ->
                     AiraChatScreen(
                         state = state,
                         onDraftChange = viewModel::updateDraft,
@@ -133,22 +142,24 @@ private fun MainExperience(
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier.padding(padding),
                     )
-                MainDestination.Journey ->
-                    JourneyScreen(
-                        onOpenTool = viewModel::openTool,
+                MainDestination.Videos ->
+                    VideosScreen(
+                        videos = state.videos,
+                        loading = state.videosLoading,
                         modifier = Modifier.padding(padding),
                     )
-                MainDestination.Care ->
-                    CareScreen(
-                        onOpenTool = viewModel::openTool,
-                        onUrgentHelp = viewModel::openUrgentHelp,
-                        modifier = Modifier.padding(padding),
-                    )
-                MainDestination.You ->
-                    YouScreen(
-                        onOpenTool = viewModel::openTool,
-                        modifier = Modifier.padding(padding),
-                    )
+            }
+        }
+
+        if (state.settingsOpen) {
+            BackHandler { viewModel.closeSettings() }
+            Surface(modifier = Modifier.fillMaxSize(), color = Ivory) {
+                SettingsScreen(
+                    careSummary = state.careSummary,
+                    onOpenTool = viewModel::openTool,
+                    onClose = viewModel::closeSettings,
+                    modifier = Modifier.statusBarsPadding(),
+                )
             }
         }
 
@@ -183,8 +194,8 @@ private fun MainExperience(
 @Composable
 private fun AiraAppHeader(
     destination: MainDestination,
-    notificationCount: Int,
-    onNotifications: () -> Unit,
+    careSummary: CareSummary?,
+    onSettings: () -> Unit,
     onUrgentHelp: () -> Unit,
 ) {
     Surface(
@@ -208,27 +219,17 @@ private fun AiraAppHeader(
                     color = Ink,
                 )
                 Text(
-                    text = destinationSubtitle(destination),
+                    text = destinationSubtitle(destination, careSummary),
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
                 )
             }
-            IconButton(onClick = onNotifications) {
-                BadgedBox(
-                    badge = {
-                        if (notificationCount > 0) {
-                            Badge(containerColor = Plum) {
-                                Text(notificationCount.toString())
-                            }
-                        }
-                    },
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Notifications,
-                        contentDescription = "Open notifications",
-                        tint = Ink,
-                    )
-                }
+            IconButton(onClick = onSettings) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Open settings",
+                    tint = Ink,
+                )
             }
             Surface(
                 modifier = Modifier.size(42.dp),
@@ -249,11 +250,12 @@ private fun AiraAppHeader(
     }
 }
 
-private fun destinationSubtitle(destination: MainDestination): String =
+private fun destinationSubtitle(
+    destination: MainDestination,
+    careSummary: CareSummary?,
+): String =
     when (destination) {
-        MainDestination.Today -> "Tuesday · Week 24"
-        MainDestination.Aira -> "Your care companion"
-        MainDestination.Journey -> "Week 24"
-        MainDestination.Care -> "Private care hub"
-        MainDestination.You -> "Your care, your control"
+        MainDestination.Me -> careSummary?.week?.let { "Week $it" } ?: "Your day"
+        MainDestination.Chat -> "Your care companion"
+        MainDestination.Videos -> "Short, stage-aware guides"
     }

@@ -94,3 +94,27 @@ This app now runs against the real Aira API (see `net/AiraApi.kt`):
 
 Not yet ported: SSE streaming, voice, cards-as-UI, Journey/Care/You backend
 data (screens still show prototype content), sign-in.
+
+---
+
+## P11 part 2: Me / Chat / Videos + Settings (2026-08-03)
+
+Restructured from the prototype's five tabs. Me (journey hero, mood check-in
+with 7-day strip, Today's care check-offs, suggested video), Chat (unchanged
+wired chat), Videos (backend catalog -> YouTube via intent). Settings lives
+behind the top-bar gear (full-screen overlay; absorbs the old You screen +
+care tools). Optimistic updates via pure reducers in AiraModels.kt.
+
+Dev networking: prefer `adb reverse tcp:8001 tcp:8001` + the default
+`http://127.0.0.1:8001` debug URL — works over USB regardless of Wi-Fi.
+Re-run the reverse after replugging the cable.
+
+Device quirk (OPPO/ColorOS): `input tap` from ADB can double-fire, and
+`am start` from ADB is blocked entirely — launch by tapping the icon.
+
+On-device e2e verified (OPPO CPH2681, real backend + Gemini): onboarding
+with the pregnancy anchor question -> real care context (week 8) -> mood
+persisted server-side -> water tick 1/8 -> stage-aware suggested video ->
+Videos catalog -> YouTube handoff -> Settings with real week -> chat turn
+grounded in the real context ("normal to feel tired at 8 weeks"), memory
+extracted, gate audited.

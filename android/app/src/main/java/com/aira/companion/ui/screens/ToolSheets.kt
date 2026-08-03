@@ -103,6 +103,7 @@ import com.aira.companion.model.AiraTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.ChoiceCard
+import com.aira.companion.ui.components.ChoiceChips
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.theme.Amber
@@ -933,39 +934,6 @@ private fun EmergencyProfileTool(onNotify: (String) -> Unit) {
         onClick = { onNotify("Emergency profile editor opened.") },
         modifier = Modifier.fillMaxWidth(),
     )
-}
-
-@Composable
-private fun ChoiceChips(
-    options: List<String>,
-    selected: String,
-    onSelect: (String) -> Unit,
-) {
-    FlowRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        options.forEach { option ->
-            val active = option == selected
-            Surface(
-                color = if (active) Plum else Paper,
-                contentColor = if (active) Paper else Ink,
-                shape = CircleShape,
-                border =
-                    androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (active) Plum else OutlineSoft,
-                    ),
-                onClick = { onSelect(option) },
-            ) {
-                Text(
-                    text = option,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                )
-            }
-        }
-    }
 }
 
 @Composable

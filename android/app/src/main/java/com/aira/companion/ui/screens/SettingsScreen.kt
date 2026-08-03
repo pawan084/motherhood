@@ -15,7 +15,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Emergency
 import androidx.compose.material.icons.outlined.Group
+import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Memory
@@ -23,6 +28,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.RecordVoiceOver
 import androidx.compose.material.icons.outlined.SupportAgent
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -35,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
+import com.aira.companion.model.CareSummary
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
@@ -46,10 +53,15 @@ import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+import com.aira.companion.ui.theme.Urgent
 
+/** Settings: opened from the top-bar gear as a full-screen overlay. Absorbs
+ * the old You tab plus the care tools orphaned by the 3-tab restructure. */
 @Composable
-fun YouScreen(
+fun SettingsScreen(
+    careSummary: CareSummary?,
     onOpenTool: (AiraTool) -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var personalisationEnabled by remember { mutableStateOf(true) }
@@ -61,8 +73,19 @@ fun YouScreen(
                 .background(Ivory)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
-                .padding(top = 18.dp, bottom = 28.dp),
+                .padding(top = 6.dp, bottom = 28.dp),
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Close settings",
+                    tint = Ink,
+                )
+            }
+            Text("Settings", style = MaterialTheme.typography.titleMedium, color = Ink)
+        }
+        Spacer(modifier = Modifier.height(14.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier =
@@ -72,16 +95,27 @@ fun YouScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "M",
+                    text = (careSummary?.displayName?.take(1) ?: "A").uppercase(),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Plum,
                 )
             }
             Spacer(modifier = Modifier.width(15.dp))
             Column {
-                Text("Maya", style = MaterialTheme.typography.headlineMedium, color = Ink)
                 Text(
-                    "Week 24 · English & Hindi",
+                    text = careSummary?.displayName?.takeIf { it.isNotBlank() } ?: "Your profile",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = Ink,
+                )
+                Text(
+                    text = listOfNotNull(
+                        careSummary?.week?.let { "Week $it" },
+                        when (careSummary?.language) {
+                            "hi" -> "Hindi"
+                            "hi-Latn" -> "Hinglish"
+                            else -> "English"
+                        },
+                    ).joinToString(" · "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = InkMuted,
                 )
@@ -128,6 +162,35 @@ fun YouScreen(
             subtitle = "Care navigator, FAQs and feedback",
             onClick = { onOpenTool(AiraTool.Support) },
             accent = SageDeep,
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+        SectionLabel("Care tools")
+
+        ToolListRow(
+            icon = Icons.Outlined.Emergency,
+            title = "Emergency profile",
+            subtitle = "Available offline",
+            onClick = { onOpenTool(AiraTool.Emergency) },
+            accent = Urgent,
+        )
+        ToolListRow(
+            icon = Icons.Outlined.Medication,
+            title = "Medicines",
+            subtitle = "Your care routine",
+            onClick = { onOpenTool(AiraTool.Medicines) },
+        )
+        ToolListRow(
+            icon = Icons.Outlined.CalendarMonth,
+            title = "Visit copilot",
+            subtitle = "Prepare questions for appointments",
+            onClick = { onOpenTool(AiraTool.Appointment) },
+        )
+        ToolListRow(
+            icon = Icons.Outlined.Checklist,
+            title = "Care plan",
+            subtitle = "Your current priorities",
+            onClick = { onOpenTool(AiraTool.CarePlan) },
         )
 
         Spacer(modifier = Modifier.height(18.dp))

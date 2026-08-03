@@ -2,6 +2,10 @@ package com.aira.companion.net
 
 import android.content.Context
 import com.aira.companion.BuildConfig
+import com.aira.companion.model.CareSummary
+import com.aira.companion.model.MoodEntry
+import com.aira.companion.model.Reminder
+import com.aira.companion.model.VideoItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -90,6 +94,85 @@ object AiraApi {
             language?.let { put("language", it) }
         }
         request("PUT", "/care-context", token, body)
+    }
+
+    // ── Wellness + care context (P11 part 2) ────────────────────────────────
+    // All list responses are enveloped ({"reminders": [...]}), matching the
+    // backend convention, so request() stays JSONObject-only.
+
+    suspend fun getCareContext(context: Context): CareSummary? = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        val ctx = request("GET", "/care-context", token, null).optJSONObject("context")
+            ?: return@withContext null
+        CareSummary(
+            stage = ctx.optString("stage"),
+            week = if (ctx.isNull("week")) null else ctx.getInt("week"),
+            displayName = ctx.optString("display_name"),
+            language = ctx.optString("language", "en"),
+        )
+    }
+
+    suspend fun postMood(context: Context, mood: String, note: String? = null) =
+        withContext(Dispatchers.IO) {
+            val token = ensureDeviceToken(context)
+            val body = JSONObject().put("mood", mood)
+            note?.let { body.put("note", it) }
+            request("POST", "/moods", token, body)
+        }
+
+    suspend fun getMoods(context: Context, days: Int = 7): List<MoodEntry> =
+        withContext(Dispatchers.IO) {
+            val token = ensureDeviceToken(context)
+            val arr = request("GET", "/moods?days=$days", token, null).optJSONArray("moods")
+                ?: JSONArray()
+            (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let { MoodEntry(it.getString("day"), it.getString("mood")) }
+            }
+        }
+
+    private fun parseReminder(json: JSONObject) = Reminder(
+        id = json.getString("id"),
+        title = json.getString("title"),
+        kind = json.getString("kind"),
+        targetPerDay = json.optInt("target_per_day", 1),
+        ticksToday = json.optInt("ticks_today", 0),
+        doneToday = json.optBoolean("done_today", false),
+    )
+
+    suspend fun getReminders(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        val arr = request("GET", "/reminders?include_medicines=true", token, null)
+            .optJSONArray("reminders") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(::parseReminder) }
+    }
+
+    suspend fun tickReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/reminders/$id/tick", ensureDeviceToken(context), JSONObject())
+    }
+
+    suspend fun markMedicineTaken(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/medicines/$id/taken", ensureDeviceToken(context), JSONObject())
+    }
+
+    private fun parseVideo(json: JSONObject) = VideoItem(
+        id = json.getString("id"),
+        title = json.getString("title"),
+        topic = json.optString("topic"),
+        stage = json.optString("stage"),
+        weekBand = json.optString("week_band").takeIf { it.isNotBlank() && it != "null" },
+        youtubeId = json.getString("youtube_id"),
+        durationMinutes = if (json.isNull("duration_minutes")) null else json.getInt("duration_minutes"),
+    )
+
+    suspend fun getVideos(context: Context): List<VideoItem> = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        val arr = request("GET", "/videos", token, null).optJSONArray("videos") ?: JSONArray()
+        (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let(::parseVideo) }
+    }
+
+    suspend fun getSuggestedVideo(context: Context): VideoItem? = withContext(Dispatchers.IO) {
+        val token = ensureDeviceToken(context)
+        request("GET", "/videos/suggested", token, null).optJSONObject("video")?.let(::parseVideo)
     }
 
     /** One gated chat turn. Never throws for gate/generation outcomes — those

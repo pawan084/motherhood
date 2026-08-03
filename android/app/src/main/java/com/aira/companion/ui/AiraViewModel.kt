@@ -10,8 +10,11 @@ import com.aira.companion.model.ChatMessage
 import com.aira.companion.model.JourneyType
 import com.aira.companion.model.MainDestination
 import com.aira.companion.model.OnboardingAnswer
+import com.aira.companion.model.Reminder
+import com.aira.companion.model.applyTick
 import com.aira.companion.model.postpartumAnchorPrompt
 import com.aira.companion.model.pregnancyAnchorPrompt
+import com.aira.companion.model.upsertMood
 import com.aira.companion.net.AiraApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -73,7 +76,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 stage = AppStage.Main,
-                destination = MainDestination.Today,
+                destination = MainDestination.Me,
                 messages =
                     listOf(
                         ChatMessage(
@@ -136,6 +139,86 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectDestination(destination: MainDestination) {
         _uiState.update { it.copy(destination = destination, toolsOpen = false) }
+    }
+
+    // ── Me / Videos data (loaders fired from LaunchedEffect in MainExperience,
+    // never from selectDestination — state transitions stay pure for tests) ──
+
+    fun refreshMe() {
+        if (_uiState.value.meLoading) return
+        _uiState.update { it.copy(meLoading = true) }
+        viewModelScope.launch {
+            // Individually runCatching: one failed fetch must not blank the rest.
+            val care = runCatching { AiraApi.getCareContext(appContext) }.getOrNull()
+            val moods = runCatching { AiraApi.getMoods(appContext) }.getOrNull()
+            val reminders = runCatching { AiraApi.getReminders(appContext) }.getOrNull()
+            val suggested = runCatching { AiraApi.getSuggestedVideo(appContext) }.getOrNull()
+            _uiState.update { state ->
+                state.copy(
+                    careSummary = care ?: state.careSummary,
+                    moods = moods ?: state.moods,
+                    reminders = reminders ?: state.reminders,
+                    suggestedVideo = suggested ?: state.suggestedVideo,
+                    meLoading = false,
+                )
+            }
+            if (care == null && moods == null && reminders == null) {
+                notify("Couldn't reach Aira's care service — showing what's cached.")
+            }
+        }
+    }
+
+    fun ensureVideos() {
+        if (_uiState.value.videosLoaded || _uiState.value.videosLoading) return
+        _uiState.update { it.copy(videosLoading = true) }
+        viewModelScope.launch {
+            runCatching { AiraApi.getVideos(appContext) }
+                .onSuccess { videos ->
+                    _uiState.update {
+                        it.copy(videos = videos, videosLoading = false, videosLoaded = true)
+                    }
+                }
+                .onFailure {
+                    _uiState.update { it.copy(videosLoading = false) }
+                    notify("Couldn't load videos right now — try again in a moment.")
+                }
+        }
+    }
+
+    fun setMood(mood: String) {
+        val day = LocalDate.now().toString()
+        _uiState.update { it.copy(moods = upsertMood(it.moods, day, mood)) } // optimistic
+        viewModelScope.launch {
+            runCatching { AiraApi.postMood(appContext, mood) }
+                .onFailure {
+                    runCatching { AiraApi.getMoods(appContext) } // re-sync to server truth
+                        .onSuccess { fresh -> _uiState.update { it.copy(moods = fresh) } }
+                    notify("Couldn't save your check-in — try again in a moment.")
+                }
+        }
+    }
+
+    fun tickReminder(reminder: Reminder) {
+        if (reminder.doneToday) return
+        _uiState.update { it.copy(reminders = applyTick(it.reminders, reminder.id)) } // optimistic
+        viewModelScope.launch {
+            runCatching {
+                if (reminder.kind == "medicine") AiraApi.markMedicineTaken(appContext, reminder.id)
+                else AiraApi.tickReminder(appContext, reminder.id)
+            }.onFailure {
+                runCatching { AiraApi.getReminders(appContext) } // re-sync
+                    .onSuccess { fresh -> _uiState.update { it.copy(reminders = fresh) } }
+                notify("Couldn't record that — it'll stay unticked until it syncs.")
+            }
+        }
+    }
+
+    fun openSettings() {
+        _uiState.update { it.copy(settingsOpen = true, toolsOpen = false) }
+    }
+
+    fun closeSettings() {
+        _uiState.update { it.copy(settingsOpen = false) }
     }
 
     fun openTools() {

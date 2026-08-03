@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -21,16 +22,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Book
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.MedicalServices
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.SmartDisplay
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -364,11 +361,9 @@ private data class DestinationIcon(
 
 private val destinationIcons =
     mapOf(
-        MainDestination.Today to DestinationIcon(Icons.Filled.Home, Icons.Outlined.Home),
-        MainDestination.Aira to DestinationIcon(Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome),
-        MainDestination.Journey to DestinationIcon(Icons.Filled.Book, Icons.Outlined.Book),
-        MainDestination.Care to DestinationIcon(Icons.Filled.MedicalServices, Icons.Outlined.MedicalServices),
-        MainDestination.You to DestinationIcon(Icons.Filled.Person, Icons.Outlined.Person),
+        MainDestination.Me to DestinationIcon(Icons.Filled.Person, Icons.Outlined.Person),
+        MainDestination.Chat to DestinationIcon(Icons.Filled.AutoAwesome, Icons.Outlined.AutoAwesome),
+        MainDestination.Videos to DestinationIcon(Icons.Filled.SmartDisplay, Icons.Outlined.SmartDisplay),
     )
 
 @Composable
@@ -487,3 +482,37 @@ fun ToolListRow(
         )
     }
 }
+
+@Composable
+fun ChoiceChips(
+    options: List<String>,
+    selected: String,
+    onSelect: (String) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { option ->
+            val active = option == selected
+            Surface(
+                color = if (active) Plum else Paper,
+                contentColor = if (active) Paper else Ink,
+                shape = CircleShape,
+                border =
+                    androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (active) Plum else OutlineSoft,
+                    ),
+                onClick = { onSelect(option) },
+            ) {
+                Text(
+                    text = option,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
+        }
+    }
+}
+

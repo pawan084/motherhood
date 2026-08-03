@@ -9,11 +9,9 @@ enum class AppStage {
 enum class MainDestination(
     val label: String,
 ) {
-    Today("Today"),
-    Aira("Aira"),
-    Journey("Journey"),
-    Care("Care"),
-    You("You"),
+    Me("Me"),
+    Chat("Chat"),
+    Videos("Videos"),
 }
 
 enum class JourneyType(
@@ -54,6 +52,55 @@ data class ChatMessage(
     val text: String,
 )
 
+/** Journey summary from GET /care-context (week computed server-side). */
+data class CareSummary(
+    val stage: String,
+    val week: Int?,
+    val displayName: String,
+    val language: String,
+)
+
+data class MoodEntry(
+    val day: String, // ISO yyyy-MM-dd
+    val mood: String,
+)
+
+data class Reminder(
+    val id: String,
+    val title: String,
+    val kind: String, // water | exercise | custom | medicine
+    val targetPerDay: Int,
+    val ticksToday: Int,
+    val doneToday: Boolean,
+)
+
+data class VideoItem(
+    val id: String,
+    val title: String,
+    val topic: String,
+    val stage: String,
+    val weekBand: String?,
+    val youtubeId: String,
+    val durationMinutes: Int?,
+)
+
+val moodOptions = listOf("great", "okay", "tired", "low", "unwell")
+
+/** Pure optimistic-update reducers — top-level so unit tests hit them without
+ * a ViewModel or coroutines (the networked paths are on-device-verified). */
+fun upsertMood(moods: List<MoodEntry>, day: String, mood: String): List<MoodEntry> =
+    moods.filterNot { it.day == day } + MoodEntry(day, mood)
+
+fun applyTick(reminders: List<Reminder>, id: String): List<Reminder> =
+    reminders.map { reminder ->
+        if (reminder.id != id || reminder.doneToday) {
+            reminder
+        } else {
+            val ticks = (reminder.ticksToday + 1).coerceAtMost(reminder.targetPerDay)
+            reminder.copy(ticksToday = ticks, doneToday = ticks >= reminder.targetPerDay)
+        }
+    }
+
 data class OnboardingAnswer(
     val question: String,
     val answer: String,
@@ -61,7 +108,7 @@ data class OnboardingAnswer(
 
 data class AiraUiState(
     val stage: AppStage = AppStage.Welcome,
-    val destination: MainDestination = MainDestination.Aira,
+    val destination: MainDestination = MainDestination.Chat,
     val onboardingStep: Int = 0,
     val onboardingAnswers: List<OnboardingAnswer> = emptyList(),
     // Live prompt list: an anchor question (how far along / baby's age) is
@@ -76,11 +123,19 @@ data class AiraUiState(
     val activeTool: AiraTool? = null,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
-    val notificationCount: Int = 3,
     val chatDraft: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val sending: Boolean = false,
     val snackbarMessage: String? = null,
+    val careSummary: CareSummary? = null,
+    val moods: List<MoodEntry> = emptyList(),
+    val reminders: List<Reminder> = emptyList(),
+    val videos: List<VideoItem> = emptyList(),
+    val suggestedVideo: VideoItem? = null,
+    val meLoading: Boolean = false,
+    val videosLoading: Boolean = false,
+    val videosLoaded: Boolean = false,
+    val settingsOpen: Boolean = false,
 )
 
 data class OnboardingPrompt(

@@ -4,6 +4,11 @@ import android.app.Application
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.JourneyType
+import com.aira.companion.model.MainDestination
+import com.aira.companion.model.MoodEntry
+import com.aira.companion.model.Reminder
+import com.aira.companion.model.applyTick
+import com.aira.companion.model.upsertMood
 import com.aira.companion.ui.AiraViewModel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -79,5 +84,74 @@ class AiraViewModelTest {
         assertEquals(AppStage.Welcome, viewModel.uiState.value.stage)
         viewModel.startOnboarding()
         assertEquals(AppStage.Onboarding, viewModel.uiState.value.stage)
+    }
+
+    @Test
+    fun defaultDestinationIsChatAndEnumHasThreeTabs() {
+        val viewModel = vm()
+        assertEquals(MainDestination.Chat, viewModel.uiState.value.destination)
+        // Guards the destinationIcons map's getValue contract.
+        assertEquals(3, MainDestination.entries.size)
+    }
+
+    @Test
+    fun settingsOpensAndClosesAndClosesTray() {
+        val viewModel = vm()
+        viewModel.openTools()
+        viewModel.openSettings()
+        assertTrue(viewModel.uiState.value.settingsOpen)
+        assertFalse(viewModel.uiState.value.toolsOpen)
+        viewModel.closeSettings()
+        assertFalse(viewModel.uiState.value.settingsOpen)
+    }
+}
+
+/** Pure reducer tests — the optimistic-update logic without any network. */
+class WellnessReducerTest {
+    private fun water(ticks: Int) =
+        Reminder("r1", "Drink water", "water", targetPerDay = 8,
+                 ticksToday = ticks, doneToday = ticks >= 8)
+
+    private fun medicine(done: Boolean) =
+        Reminder("m1", "Prenatal vitamin", "medicine", targetPerDay = 1,
+                 ticksToday = if (done) 1 else 0, doneToday = done)
+
+    @Test
+    fun upsertMoodReplacesTodaysEntry() {
+        val moods = listOf(MoodEntry("2026-08-02", "tired"), MoodEntry("2026-08-03", "low"))
+        val next = upsertMood(moods, "2026-08-03", "okay")
+        assertEquals(2, next.size)
+        assertEquals("okay", next.last { it.day == "2026-08-03" }.mood)
+    }
+
+    @Test
+    fun upsertMoodAppendsNewDay() {
+        val next = upsertMood(listOf(MoodEntry("2026-08-02", "great")), "2026-08-03", "low")
+        assertEquals(2, next.size)
+    }
+
+    @Test
+    fun applyTickIncrementsAndCompletesAtTarget() {
+        val step = applyTick(listOf(water(6)), "r1").first()
+        assertEquals(7, step.ticksToday)
+        assertFalse(step.doneToday)
+        val done = applyTick(listOf(water(7)), "r1").first()
+        assertEquals(8, done.ticksToday)
+        assertTrue(done.doneToday)
+        // Past done: no-op, never 9/8.
+        assertEquals(8, applyTick(listOf(done), "r1").first().ticksToday)
+    }
+
+    @Test
+    fun applyTickClampsMedicineAtOne() {
+        val ticked = applyTick(listOf(medicine(false)), "m1").first()
+        assertEquals(1, ticked.ticksToday)
+        assertTrue(ticked.doneToday)
+    }
+
+    @Test
+    fun applyTickIgnoresUnknownId() {
+        val before = listOf(water(3))
+        assertEquals(before, applyTick(before, "nope"))
     }
 }
