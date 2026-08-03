@@ -34,6 +34,11 @@ htmlcov/
 # Uploaded documents (prescriptions, reports, scans) — PHI, never in git.
 backend/uploads/
 
+# Hosted demo media (own videos) — large binaries stay out of git; copy them
+# in from the source folder (see backend/media/README.md).
+backend/media/
+!backend/media/README.md
+
 # ── Node / web client ─────────────────────────────────────────────────────────
 **/node_modules/
 **/.next/

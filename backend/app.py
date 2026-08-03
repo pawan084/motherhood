@@ -33,6 +33,7 @@ import safety  # noqa: E402
 import security  # noqa: E402
 import wellness  # noqa: E402
 from fastapi import FastAPI  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 
 log = logging.getLogger("aira")
@@ -76,6 +77,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Own hosted media (videos + thumbnails). StaticFiles honours Range headers,
+# so video players can stream and seek. Directory is gitignored (large
+# binaries); backend/media/README.md documents how to populate it.
+_media_dir = os.path.join(os.path.dirname(__file__), "media")
+if os.path.isdir(_media_dir):
+    app.mount("/media", StaticFiles(directory=_media_dir), name="media")
 
 app.include_router(device_auth.router)
 app.include_router(accounts.router)

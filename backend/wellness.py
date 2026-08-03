@@ -72,8 +72,17 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS videos ("
               " id TEXT PRIMARY KEY, title TEXT NOT NULL, topic TEXT NOT NULL,"
               " stage TEXT NOT NULL, week_start INTEGER NOT NULL,"
-              " week_end INTEGER NOT NULL, youtube_id TEXT NOT NULL,"
+              " week_end INTEGER NOT NULL, youtube_id TEXT DEFAULT '',"
+              " stream_path TEXT DEFAULT '', thumb_path TEXT DEFAULT '',"
               " duration_min INTEGER, updated REAL)")
+    # Guarded ALTERs for databases created before hosted videos existed.
+    for col in ("stream_path", "thumb_path"):
+        try:
+            c.execute(f"ALTER TABLE videos ADD COLUMN {col} TEXT DEFAULT ''")
+        except Exception as e:  # pragma: no cover
+            msg = str(e).lower()
+            if "duplicate column" not in msg and "already exists" not in msg:
+                raise
     for table in ("moods", "reminders"):
         c.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_learner"
                   f" ON {table} (learner_id)")
@@ -82,10 +91,11 @@ def init() -> None:
         # Seed-once: admin edits/deletions stick across restarts.
         c.execute(
             "INSERT INTO videos (id, title, topic, stage, week_start, week_end,"
-            " youtube_id, duration_min, updated) VALUES (?,?,?,?,?,?,?,?,?)"
-            " ON CONFLICT (id) DO NOTHING",
+            " youtube_id, stream_path, thumb_path, duration_min, updated)"
+            " VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING",
             (v["id"], v["title"], v["topic"], v["stage"], v["week_start"],
-             v["week_end"], v["youtube_id"], v["duration_min"], now))
+             v["week_end"], v.get("youtube_id", ""), v.get("stream_path", ""),
+             v.get("thumb_path", ""), v["duration_min"], now))
     c.commit()
     _conn = c
 
@@ -321,10 +331,14 @@ def wellness_report(days: int = Query(default=30, ge=7, le=90),
 def _video_dict(row) -> dict:
     return {"id": row[0], "title": row[1], "topic": row[2], "stage": row[3],
             "week_band": (f"{row[4]}-{row[5]}" if row[5] > 0 else None),
-            "youtube_id": row[6], "duration_minutes": row[7]}
+            "youtube_id": row[6] or None,
+            "stream_path": row[7] or None,
+            "thumb_path": row[8] or None,
+            "duration_minutes": row[9]}
 
 
-_VIDEO_COLS = "id, title, topic, stage, week_start, week_end, youtube_id, duration_min"
+_VIDEO_COLS = ("id, title, topic, stage, week_start, week_end, youtube_id,"
+               " stream_path, thumb_path, duration_min")
 
 
 @router.get("/videos")

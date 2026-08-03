@@ -99,3 +99,30 @@ def test_admin_edits_survive_reseed(client):
     journey._conn = None  # force re-init against the same DB
     journey.init()
     assert journey.band_for("pregnant", 24)["title"] == "Edited by admin"
+
+
+def test_journey_carries_size_milestones_progress(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 24)
+    body = client.get("/journey", headers=h).json()
+    assert body["total_weeks"] == 40
+    assert body["size"] == {"emoji": "🌽", "label": "an ear of corn"}
+    weeks = [m["week"] for m in body["milestones"]]
+    assert 12 in weeks and 40 in weeks
+    # Browsing another week updates the size with it.
+    body8 = client.get("/journey?week=8", headers=h).json()
+    assert body8["size"]["label"] == "a raspberry"
+    # Pre-detection weeks have no size to show.
+    assert client.get("/journey?week=2", headers=h).json()["size"] is None
+
+
+def test_hosted_videos_catalog_and_stream(client):
+    h = _register(client)
+    _pregnant_at_week(client, h, 8)
+    videos = client.get("/videos", headers=h).json()["videos"]
+    own = next(v for v in videos if v["id"] == "own-benefit")
+    assert own["stream_path"] == "/media/videos/portrait/benefit.mp4"
+    assert own["thumb_path"] == "/media/videos/thumbs/benefit.png"
+    assert own["youtube_id"] is None
+    suggested = client.get("/videos/suggested", headers=h).json()["video"]
+    assert suggested["id"] == "own-benefit"  # pregnant week 8 -> band 1-13

@@ -105,27 +105,86 @@ fun JourneyDetailScreen(
             return@DetailScaffold
         }
         val shown = content.shownWeek
+        val total = content.totalWeeks
+
+        // ── Hero: progress + baby size ─────────────────────────────────────
+        AiraCard(containerColor = LilacMist) {
+            if (shown != null && total != null) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            text = "Week $shown of $total" +
+                                if (shown == content.currentWeek) " · you are here" else "",
+                            style = MaterialTheme.typography.labelMedium, color = InkMuted,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            content.title,
+                            style = MaterialTheme.typography.headlineSmall, color = Ink,
+                        )
+                    }
+                    if (content.sizeEmoji != null) {
+                        Text(content.sizeEmoji, style = MaterialTheme.typography.displaySmall)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                // Progress bar: how far along the whole journey.
+                Surface(
+                    shape = RoundedCornerShape(99.dp), color = Paper,
+                    modifier = Modifier.fillMaxWidth().height(10.dp),
+                ) {
+                    Row {
+                        Surface(
+                            shape = RoundedCornerShape(99.dp), color = Plum,
+                            modifier = Modifier
+                                .weight(shown.toFloat().coerceAtLeast(0.5f))
+                                .height(10.dp),
+                        ) {}
+                        if (shown < total) Spacer(Modifier.weight((total - shown).toFloat()))
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row {
+                    if (content.sizeLabel != null) {
+                        Text(
+                            "Baby is about the size of ${content.sizeLabel}",
+                            style = MaterialTheme.typography.bodyMedium, color = Ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+                    Text(
+                        "${(total - shown).coerceAtLeast(0)} to go",
+                        style = MaterialTheme.typography.bodySmall, color = InkMuted,
+                    )
+                }
+            } else {
+                Text(content.title, style = MaterialTheme.typography.headlineSmall, color = Ink)
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+
         if (shown != null) {
             SectionLabel("Weekly timeline")
             Spacer(Modifier.height(8.dp))
             WeekTimeline(
                 shownWeek = shown,
                 currentWeek = content.currentWeek,
+                totalWeeks = total ?: 42,
+                milestones = content.milestones,
                 onSelect = onBrowseWeek,
             )
+            val next = content.milestones.firstOrNull { it.week > (content.currentWeek ?: 0) }
+            if (next != null) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Next milestone: ${next.emoji} ${next.label} · week ${next.week}",
+                    style = MaterialTheme.typography.bodySmall, color = InkMuted,
+                )
+            }
             Spacer(Modifier.height(16.dp))
         }
-        AiraCard(containerColor = LilacMist) {
-            if (shown != null) {
-                Text(
-                    text = "Week $shown" + if (shown == content.currentWeek) " · you are here" else "",
-                    style = MaterialTheme.typography.labelMedium, color = InkMuted,
-                )
-                Spacer(Modifier.height(4.dp))
-            }
-            Text(content.title, style = MaterialTheme.typography.headlineSmall, color = Ink)
-        }
-        Spacer(Modifier.height(12.dp))
         JourneySection("Your body", content.yourself)
         JourneySection("Your baby", content.baby)
         JourneySection("Prepare for your visit", content.prepare)
@@ -154,42 +213,62 @@ private fun JourneySection(label: String, body: String) {
 private fun WeekTimeline(
     shownWeek: Int,
     currentWeek: Int?,
+    totalWeeks: Int,
+    milestones: List<com.aira.companion.model.Milestone>,
     onSelect: (Int) -> Unit,
 ) {
     val scroll = rememberScrollState()
     val density = LocalDensity.current
-    // Bring the shown week into view (chips are ~50dp incl. spacing); without
-    // this the row always opened at week 1 and the current week sat off-screen
-    // — which read as "no timeline" at week 8+.
+    val milestoneByWeek = milestones.associateBy { it.week }
+    // Bring the shown week into view; without this the row always opened at
+    // week 1 and the current week sat off-screen ("no timeline" at week 8+).
     LaunchedEffect(shownWeek) {
-        val chipPx = with(density) { 50.dp.toPx() }
+        val chipPx = with(density) { 52.dp.toPx() }
         scroll.animateScrollTo(((shownWeek - 3).coerceAtLeast(0) * chipPx).toInt())
     }
     Row(
         modifier = Modifier.horizontalScroll(scroll),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.Top,
     ) {
-        (1..42).forEach { week ->
+        (1..totalWeeks).forEach { week ->
             val selected = week == shownWeek
             val isCurrent = week == currentWeek
-            Surface(
-                onClick = { onSelect(week) },
-                shape = CircleShape,
-                color = when {
-                    selected -> Plum
-                    isCurrent -> Lilac
-                    else -> Paper
-                },
-                contentColor = if (selected) Paper else Ink,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp, if (selected || isCurrent) Plum else OutlineSoft,
-                ),
-            ) {
-                Text(
-                    text = "$week",
-                    modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                )
+            val past = currentWeek != null && week < currentWeek
+            val milestone = milestoneByWeek[week]
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Surface(
+                    onClick = { onSelect(week) },
+                    shape = CircleShape,
+                    color = when {
+                        selected -> Plum
+                        isCurrent -> Lilac
+                        past -> LilacMist
+                        else -> Paper
+                    },
+                    contentColor = if (selected) Paper else Ink,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        when {
+                            selected || isCurrent -> Plum
+                            milestone != null -> Plum.copy(alpha = 0.45f)
+                            else -> OutlineSoft
+                        },
+                    ),
+                ) {
+                    Text(
+                        text = "$week",
+                        modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+                // Milestone marker under its week — what makes this a timeline.
+                if (milestone != null) {
+                    Text(
+                        milestone.emoji,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
             }
         }
     }

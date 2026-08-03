@@ -115,7 +115,7 @@ def test_catalog_orders_own_stage_first(client):
     h = _register(client)
     _pregnant_at_week(client, h, 24)
     videos = client.get("/videos", headers=h).json()["videos"]
-    assert len(videos) >= 12
+    assert len(videos) >= 6
     first_other = next(i for i, v in enumerate(videos) if v["stage"] != "pregnant")
     assert all(v["stage"] == "pregnant" for v in videos[:first_other])
 
@@ -149,7 +149,7 @@ def test_suggested_for_ttc_and_no_context(client):
 def test_video_seed_once_admin_edit_survives(client):
     wellness = sys.modules["wellness"]
     wellness._conn.execute(
-        "UPDATE videos SET title='Edited' WHERE id='vid-preg-tri1-3d'")
+        "UPDATE videos SET title='Edited' WHERE id='own-dodont'")
     wellness._conn.commit()
     wellness._conn = None
     wellness.init()

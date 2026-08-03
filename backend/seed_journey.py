@@ -171,3 +171,52 @@ BANDS = [
                  "35 — a conversation with your care team is reasonable, not "
                  "premature. Ask what basic checks make sense for both partners."),
 ]
+
+
+# ── Per-week baby size + milestones (the "journey" feel) ─────────────────────
+# Coarse, widely-used size comparisons — the emotional hook every week needs
+# even inside a content band. Same HUMAN-GATED posture as the copy above.
+# Weeks 1-3 are pre-detection; the app shows no size for them.
+
+WEEK_SIZES = {
+    4: ("🌱", "a poppy seed"), 5: ("🌱", "a sesame seed"),
+    6: ("🫛", "a lentil"), 7: ("🫐", "a blueberry"),
+    8: ("🫐", "a raspberry"), 9: ("🍒", "a cherry"),
+    10: ("🍓", "a strawberry"), 11: ("🌰", "a fig"),
+    12: ("🍋", "a lime"), 13: ("🫛", "a pea pod"),
+    14: ("🍋", "a lemon"), 15: ("🍎", "an apple"),
+    16: ("🥑", "an avocado"), 17: ("🥔", "a turnip"),
+    18: ("🫑", "a bell pepper"), 19: ("🍅", "an heirloom tomato"),
+    20: ("🍌", "a banana"), 21: ("🥕", "a carrot"),
+    22: ("🥥", "a papaya"), 23: ("🥭", "a large mango"),
+    24: ("🌽", "an ear of corn"), 25: ("🥬", "a swede"),
+    26: ("🥒", "a courgette"), 27: ("🥦", "a cauliflower"),
+    28: ("🍆", "a large aubergine"), 29: ("🎃", "a butternut squash"),
+    30: ("🥬", "a large cabbage"), 31: ("🥥", "a coconut"),
+    32: ("🥬", "a napa cabbage"), 33: ("🍍", "a pineapple"),
+    34: ("🍈", "a cantaloupe"), 35: ("🍈", "a honeydew melon"),
+    36: ("🥬", "a romaine lettuce"), 37: ("🥬", "a bunch of chard"),
+    38: ("🎃", "a small pumpkin"), 39: ("🍉", "a mini watermelon"),
+    40: ("🎃", "a small pumpkin"), 41: ("🍉", "a watermelon"),
+    42: ("🍉", "a watermelon"),
+}
+
+# The landmarks that make a timeline a timeline. Weeks are typical, not
+# prescriptive — the copy in each band still says "ask your care team".
+MILESTONES = {
+    "pregnant": [
+        {"week": 12, "label": "First scan", "emoji": "🩺"},
+        {"week": 13, "label": "Second trimester", "emoji": "🌿"},
+        {"week": 20, "label": "Anomaly scan", "emoji": "🩺"},
+        {"week": 26, "label": "Glucose test", "emoji": "🩸"},
+        {"week": 28, "label": "Third trimester", "emoji": "🌿"},
+        {"week": 37, "label": "Full term", "emoji": "🌟"},
+        {"week": 40, "label": "Due date", "emoji": "🎉"},
+    ],
+    "postpartum": [
+        {"week": 1, "label": "First days", "emoji": "🌱"},
+        {"week": 6, "label": "Six-week check", "emoji": "🩺"},
+        {"week": 8, "label": "First vaccinations", "emoji": "💉"},
+        {"week": 12, "label": "Three months", "emoji": "🌟"},
+    ],
+}

@@ -41,7 +41,6 @@ import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.GradientHeroSurface
 import com.aira.companion.ui.components.RemoteImage
 import com.aira.companion.ui.components.SectionLabel
-import com.aira.companion.ui.components.youtubeThumbnailUrl
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Lilac
@@ -217,11 +216,11 @@ fun MeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { openYouTube(context, video.youtubeId) },
+                        .clickable { playVideo(context, video) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RemoteImage(
-                        url = youtubeThumbnailUrl(video.youtubeId),
+                        url = videoThumbUrl(video) ?: "",
                         contentDescription = video.title,
                         modifier = Modifier
                             .width(124.dp)
@@ -240,7 +239,7 @@ fun MeScreen(
                                 video.topic.takeIf { it.isNotBlank() },
                                 video.weekBand?.let { "weeks $it" },
                                 video.durationMinutes?.let { "$it min" },
-                            ).joinToString(" · ") + " · YouTube",
+                            ).joinToString(" · ") + " · Aira video",
                             style = MaterialTheme.typography.bodySmall,
                             color = InkMuted,
                         )

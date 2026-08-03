@@ -4,6 +4,7 @@ import android.content.Context
 import com.aira.companion.BuildConfig
 import com.aira.companion.model.CareSummary
 import com.aira.companion.model.JourneyContent
+import com.aira.companion.model.Milestone
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.ReminderReport
@@ -30,7 +31,8 @@ object AiraApi {
     private const val PREFS = "aira_net"
     private const val KEY_TOKEN = "device_token"
 
-    private val base: String get() = BuildConfig.AIRA_BACKEND_URL.trimEnd('/')
+    val baseUrl: String get() = BuildConfig.AIRA_BACKEND_URL.trimEnd('/')
+    private val base: String get() = baseUrl
 
     class ApiException(message: String) : Exception(message)
 
@@ -218,9 +220,20 @@ object AiraApi {
                 throw e
             }
             val content = json.optJSONObject("content") ?: return@withContext null
+            val size = json.optJSONObject("size")
+            val msArr = json.optJSONArray("milestones") ?: JSONArray()
             JourneyContent(
                 currentWeek = if (json.isNull("current_week")) null else json.getInt("current_week"),
                 shownWeek = if (json.isNull("shown_week")) null else json.getInt("shown_week"),
+                totalWeeks = if (json.isNull("total_weeks")) null else json.getInt("total_weeks"),
+                sizeEmoji = size?.optString("emoji"),
+                sizeLabel = size?.optString("label"),
+                milestones = (0 until msArr.length()).mapNotNull { i ->
+                    msArr.optJSONObject(i)?.let {
+                        Milestone(it.getInt("week"), it.getString("label"),
+                                  it.optString("emoji"))
+                    }
+                },
                 title = content.optString("title"),
                 yourself = content.optString("yourself"),
                 baby = content.optString("baby"),
@@ -239,7 +252,9 @@ object AiraApi {
         topic = json.optString("topic"),
         stage = json.optString("stage"),
         weekBand = json.optString("week_band").takeIf { it.isNotBlank() && it != "null" },
-        youtubeId = json.getString("youtube_id"),
+        youtubeId = json.optString("youtube_id").takeIf { it.isNotBlank() && it != "null" },
+        streamPath = json.optString("stream_path").takeIf { it.isNotBlank() && it != "null" },
+        thumbPath = json.optString("thumb_path").takeIf { it.isNotBlank() && it != "null" },
         durationMinutes = if (json.isNull("duration_minutes")) null else json.getInt("duration_minutes"),
     )
 

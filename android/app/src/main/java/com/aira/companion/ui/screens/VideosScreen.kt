@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.aira.companion.model.VideoItem
+import com.aira.companion.net.AiraApi
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.RemoteImage
 import com.aira.companion.ui.components.SectionLabel
@@ -32,14 +33,35 @@ import com.aira.companion.ui.components.youtubeThumbnailUrl
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 
-/** Open a catalog entry in the YouTube app (or browser fallback — ACTION_VIEW
- * on a watch URL resolves either way). Shared by MeScreen's suggested card. */
-fun openYouTube(context: Context, youtubeId: String) {
+/** Play a catalog entry. Own hosted videos stream from the API (ACTION_VIEW
+ * with an explicit video/mp4 type — the system player handles HTTP range
+ * streaming); legacy entries fall back to YouTube. Shared by MeScreen. */
+fun playVideo(context: Context, video: com.aira.companion.model.VideoItem) {
     runCatching {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, "https://www.youtube.com/watch?v=$youtubeId".toUri()),
-        )
+        val stream = video.streamPath
+        if (stream != null) {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType((AiraApi.baseUrl + stream).toUri(), "video/mp4")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                },
+            )
+        } else if (video.youtubeId != null) {
+            context.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    ("https://www.youtube.com/watch?v=" + video.youtubeId).toUri(),
+                ),
+            )
+        }
     }
+}
+
+/** Thumbnail URL for a catalog entry: own hosted thumb, else YouTube's. */
+fun videoThumbUrl(video: com.aira.companion.model.VideoItem): String? = when {
+    video.thumbPath != null -> AiraApi.baseUrl + video.thumbPath
+    video.youtubeId != null -> youtubeThumbnailUrl(video.youtubeId)
+    else -> null
 }
 
 private fun stageLabel(stage: String): String = when (stage) {
@@ -81,11 +103,11 @@ fun VideosScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { openYouTube(context, video.youtubeId) },
+                        .clickable { playVideo(context, video) },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RemoteImage(
-                        url = youtubeThumbnailUrl(video.youtubeId),
+                        url = videoThumbUrl(video) ?: "",
                         contentDescription = video.title,
                         modifier = Modifier
                             .width(132.dp)

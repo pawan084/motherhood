@@ -80,7 +80,9 @@ data class VideoItem(
     val topic: String,
     val stage: String,
     val weekBand: String?,
-    val youtubeId: String,
+    val youtubeId: String?,     // legacy/external entries
+    val streamPath: String?,    // own hosted media, relative to the API base
+    val thumbPath: String?,
     val durationMinutes: Int?,
 )
 
@@ -93,10 +95,17 @@ val moodEmoji = mapOf(
     "low" to "😔", "unwell" to "🤒",
 )
 
-/** Week-banded editorial content from GET /journey. */
+data class Milestone(val week: Int, val label: String, val emoji: String)
+
+/** Week-banded editorial content from GET /journey, plus the journey feel:
+ * per-week baby size, stage milestones, and total weeks for progress. */
 data class JourneyContent(
     val currentWeek: Int?,
     val shownWeek: Int?,
+    val totalWeeks: Int?,
+    val sizeEmoji: String?,
+    val sizeLabel: String?,
+    val milestones: List<Milestone>,
     val title: String,
     val yourself: String,
     val baby: String,

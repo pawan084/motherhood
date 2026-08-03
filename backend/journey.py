@@ -93,10 +93,16 @@ def get_journey(week: int | None = Query(default=None, ge=1, le=52),
     stage = ctx["stage"]
     shown_week = week if week is not None else ctx["week"]
     content = band_for(stage, shown_week)
+    size = (seed_journey.WEEK_SIZES.get(shown_week)
+            if stage == "pregnant" and shown_week else None)
+    total_weeks = {"pregnant": 40, "postpartum": 52}.get(stage)
     return {
         "stage": stage,
         "current_week": ctx["week"],
         "shown_week": shown_week if stage != "trying_to_conceive" else None,
+        "total_weeks": total_weeks,
+        "size": ({"emoji": size[0], "label": size[1]} if size else None),
+        "milestones": seed_journey.MILESTONES.get(stage, []),
         "content": content,
         "disclaimer": _DISCLAIMER,
     }
