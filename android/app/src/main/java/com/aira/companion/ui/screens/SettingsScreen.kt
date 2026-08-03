@@ -232,6 +232,65 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        // ── Daily care reminder (review #18): opt-in, one nudge at 3 PM ────
+        AiraCard {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val context = androidx.compose.ui.platform.LocalContext.current
+                var remindersOn by remember {
+                    mutableStateOf(
+                        com.aira.companion.notify.CareReminders.isEnabled(context),
+                    )
+                }
+                val permissionLauncher =
+                    androidx.activity.compose.rememberLauncherForActivityResult(
+                        androidx.activity.result.contract.ActivityResultContracts
+                            .RequestPermission(),
+                    ) { granted ->
+                        if (granted) {
+                            com.aira.companion.notify.CareReminders
+                                .setEnabled(context, true)
+                            remindersOn = true
+                        }
+                    }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Daily care reminder",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Ink,
+                    )
+                    Text(
+                        text = "One gentle nudge at 3 PM · off by default",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                }
+                Switch(
+                    checked = remindersOn,
+                    onCheckedChange = { on ->
+                        if (!on) {
+                            com.aira.companion.notify.CareReminders
+                                .setEnabled(context, false)
+                            remindersOn = false
+                        } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                            context.checkSelfPermission(
+                                android.Manifest.permission.POST_NOTIFICATIONS,
+                            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                        ) {
+                            permissionLauncher.launch(
+                                android.Manifest.permission.POST_NOTIFICATIONS,
+                            )
+                        } else {
+                            com.aira.companion.notify.CareReminders
+                                .setEnabled(context, true)
+                            remindersOn = true
+                        }
+                    },
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
         AiraCard(containerColor = SageMist) {
             Text(
                 text = "Never used for advertising",
