@@ -24,6 +24,9 @@ the code.
 - [ ] **Clinical review of the red-flag taxonomy** (P2) by someone qualified. The
       rules can be written from published obstetric guidance, but shipping them to
       real pregnant users without a clinician signing off is not acceptable.
+- [ ] **Clinical review of the Journey seed content** (P5, `seed_journey.py`) —
+      same posture: general-knowledge copy written for development, must be
+      reviewed before real users see it.
 - [ ] **Emergency-contact policy**: what "Call care team" does when no care team is
       configured, and the fallback for each supported country.
 - [ ] App-store **health-claims compliance** review (both stores restrict medical

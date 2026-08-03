@@ -241,6 +241,26 @@ messages, never transcripts (chat history is not persisted server-side).
 - On the streaming path, extraction runs after `done` is delivered so it can
   never delay a turn; on both paths `extract_memory` never raises.
 
+## 13. Journey content (P5)
+
+`journey.py` + `seed_journey.py`. Content is **banded** (week ranges), served
+per-week: `GET /journey` derives the week from the caller's care context and
+resolves it to its band; `?week=` pages without touching the stored context.
+
+Why bands and not 50 per-week rows: each band is a substantial, reviewable
+unit — a clinician reviews 16 units instead of 54 thin ones, and the API
+shape doesn't change if per-week admin overrides land later. Coverage is
+pinned by test: every pregnant week 1–42 resolves; postpartum weeks past the
+last band clamp to it instead of erroring.
+
+Seeding is **seed-once** (INSERT ... ON CONFLICT DO NOTHING keyed on band
+id) so admin edits and deletions survive restarts — sayli's scenarios lesson,
+inherited and tested.
+
+The seed copy is general-knowledge material written for development. It is
+flagged HUMAN-GATED like the safety taxonomy: clinician review before real
+users. Every band's "prepare" section points worry back to the care team.
+
 ---
 
 ## Filled in as phases land

@@ -86,6 +86,17 @@ health data** — it is excluded from git deliberately, along with
 
 ## Current state
 
+**P5 complete** (2026-08-03). Journey has real content:
+
+- `seed_journey.py` — 16 week-banded content units (pregnant 1–42, postpartum
+  1–52+, TTC) covering the mockup's three sections: your body / your baby /
+  prepare for your visit. **General-knowledge copy, human-gated: clinician
+  review required before real users** (TODO.md).
+- `journey.py` — `GET /journey` derives the week from the care context;
+  `?week=` pages without modifying it; seed-once so admin edits stick.
+- Journey tab renders the sections with week paging and the disclaimer.
+- **97 backend tests**; band coverage for every week is pinned by test.
+
 **P4 complete** (2026-08-03). Memory — "What Aira remembers" — is live:
 
 - `memory.py` — structured facts (fact/concern/symptom/preference) extracted

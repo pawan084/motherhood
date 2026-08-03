@@ -20,7 +20,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_PER_MIN", "0")  # tests hammer endpoints
 
     # Fresh module graph so every module re-reads the env above.
-    for mod in ("app", "chat", "memory", "services", "prompts", "safety", "safety_taxonomy",
+    for mod in ("app", "chat", "journey", "seed_journey", "memory", "services", "prompts", "safety", "safety_taxonomy",
                 "care_context", "device_auth", "accounts", "security", "db", "config"):
         sys.modules.pop(mod, None)
     app_module = importlib.import_module("app")

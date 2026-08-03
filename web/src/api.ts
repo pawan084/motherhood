@@ -93,6 +93,29 @@ export async function putCareContext(body: {
   return (await r.json()).context;
 }
 
+export type JourneyContent = {
+  id: string;
+  title: string;
+  yourself: string;
+  baby: string;
+  prepare: string;
+};
+
+export type JourneyResponse = {
+  stage: string;
+  current_week: number | null;
+  shown_week: number | null;
+  content: JourneyContent | null;
+  disclaimer: string;
+};
+
+export async function getJourney(week?: number): Promise<JourneyResponse> {
+  const url = week ? `${API}/journey?week=${week}` : `${API}/journey`;
+  const r = await fetch(url, { headers: headers() });
+  if (!r.ok) throw new Error(`journey failed: ${r.status}`);
+  return r.json();
+}
+
 export type MemoryItem = { id: string; kind: string; content: string; updated: number };
 
 export async function getMemory(): Promise<MemoryItem[]> {
