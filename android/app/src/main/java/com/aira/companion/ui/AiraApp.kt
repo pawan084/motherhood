@@ -154,8 +154,14 @@ private fun MainExperience(
                     MeScreen(
                         state = state,
                         onSetMood = viewModel::setMood,
+                        onSaveMoodNote = { mood, note -> viewModel.setMood(mood, note) },
                         onTick = viewModel::tickReminder,
+                        onUntick = viewModel::untickReminder,
                         onOpenDetail = viewModel::openDetail,
+                        onTalkToAira = {
+                            viewModel.selectDestination(MainDestination.Chat)
+                        },
+                        onAckWeekFlip = viewModel::acknowledgeWeekFlip,
                         modifier = Modifier.padding(padding),
                     )
                 MainDestination.Chat ->
@@ -200,6 +206,8 @@ private fun MainExperience(
                             reminders = state.reminders,
                             report = state.report,
                             onTick = viewModel::tickReminder,
+                            onUntick = viewModel::untickReminder,
+                            onSetTarget = viewModel::setReminderTarget,
                             onAdd = viewModel::addReminder,
                             onDelete = viewModel::deleteReminder,
                             onClose = viewModel::closeDetail,

@@ -90,6 +90,7 @@ data class Reminder(
     val targetPerDay: Int,
     val ticksToday: Int,
     val doneToday: Boolean,
+    val detail: String? = null,        // medicines: "dose · time"
 )
 
 data class VideoItem(
@@ -146,7 +147,12 @@ data class ReminderReport(
     val days: List<ReportDay>,
 )
 
-data class TodayFocus(val kind: String, val title: String, val body: String)
+data class TodayFocus(
+    val kind: String,
+    val title: String,
+    val body: String,
+    val whenTs: Double? = null,        // appointment_soon: for add-to-calendar
+)
 
 /** GET /today — the proactive feed driving the top of the Me tab. */
 data class TodayFeed(
@@ -154,7 +160,11 @@ data class TodayFeed(
     val dayInWeek: Int?,
     val daysToGo: Int?,
     val tipText: String?,
+    val tipId: String?,
     val focus: List<TodayFocus>,
+    val streak: Int = 0,               // consecutive all-done days
+    val recapMoods: Int? = null,       // Sunday only
+    val recapWaterAvg: Double? = null,
 )
 
 /** GET /medicines — real rows, today's taken state computed server-side. */
@@ -190,6 +200,16 @@ data class WellnessReport(
  * a ViewModel or coroutines (the networked paths are on-device-verified). */
 fun upsertMood(moods: List<MoodEntry>, day: String, mood: String): List<MoodEntry> =
     moods.filterNot { it.day == day } + MoodEntry(day, mood)
+
+fun applyUntick(reminders: List<Reminder>, id: String): List<Reminder> =
+    reminders.map { reminder ->
+        if (reminder.id != id || reminder.ticksToday == 0) {
+            reminder
+        } else {
+            val ticks = reminder.ticksToday - 1
+            reminder.copy(ticksToday = ticks, doneToday = ticks >= reminder.targetPerDay)
+        }
+    }
 
 fun applyTick(reminders: List<Reminder>, id: String): List<Reminder> =
     reminders.map { reminder ->
@@ -247,6 +267,9 @@ data class AiraUiState(
     val appointments: List<Appointment>? = null,
     val planItems: List<PlanItem>? = null,
     val memoryItems: List<MemoryItem>? = null,
+    // Week-flip celebration: set when the computed week advanced past the
+    // last acknowledged one; cleared by the banner's dismiss.
+    val weekJustFlipped: Int? = null,
 )
 
 data class OnboardingPrompt(

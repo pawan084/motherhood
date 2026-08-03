@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.DirectionsWalk
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.TaskAlt
@@ -24,11 +25,16 @@ import androidx.compose.material.icons.outlined.WaterDrop
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,12 +67,22 @@ private fun journeyNext(state: AiraUiState): String? {
     val journey = state.journeyContent ?: return null
     val week = journey.currentWeek ?: return null
     val next = journey.milestones.firstOrNull { it.week >= week } ?: return null
+    val daysTo = (next.week - week) * 7 - ((state.todayFeed?.dayInWeek ?: 1) - 1)
     val distance = when {
         next.week == week -> "this week"
+        daysTo in 1..10 -> "in $daysTo day${if (daysTo == 1) "" else "s"}"
         next.week - week == 1 -> "next week"
         else -> "${next.week - week} weeks away"
     }
     return "${next.emoji} ${next.label} · Week ${next.week} · $distance"
+}
+
+/** Where the droplet row SHOULD be by this hour (7am-9pm pace) — the same
+ * formula the server's water_pace nudge uses. */
+fun expectedWaterByNow(target: Int): Int {
+    val hour = java.time.LocalTime.now().hour
+    if (hour < 7) return 0
+    return Math.round(target * minOf(1f, (hour - 7) / 14f))
 }
 
 private fun stageLabel(stage: String): String = when (stage) {
@@ -83,8 +99,12 @@ private fun stageLabel(stage: String): String = when (stage) {
 fun MeScreen(
     state: AiraUiState,
     onSetMood: (String) -> Unit,
+    onSaveMoodNote: (String, String) -> Unit,
     onTick: (Reminder) -> Unit,
+    onUntick: (Reminder) -> Unit,
     onOpenDetail: (DetailPage) -> Unit,
+    onTalkToAira: () -> Unit,
+    onAckWeekFlip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -113,7 +133,8 @@ fun MeScreen(
                     val greeting = when {
                         hour < 12 -> "Good morning"
                         hour < 17 -> "Good afternoon"
-                        else -> "Good evening"
+                        hour < 22 -> "Good evening"
+                        else -> "Good night"
                     }
                     Text(
                         text = if (care.displayName.isNotBlank()) "$greeting, ${care.displayName}" else greeting,
@@ -138,7 +159,13 @@ fun MeScreen(
                     Text(
                         text = listOfNotNull(
                             state.journeyContent?.title,
-                            state.todayFeed?.daysToGo?.let { "$it days to go" },
+                            state.todayFeed?.daysToGo?.let { days ->
+                                // Days feel abstract until the third trimester;
+                                // weeks read as progress, days as a countdown.
+                                if ((care.week ?: 0) < 28 && days > 70) {
+                                    "${(days + 6) / 7} weeks to go"
+                                } else "$days days to go"
+                            },
                         ).joinToString(" · ").ifBlank { stageLabel(care.stage) },
                         style = MaterialTheme.typography.bodyMedium,
                         color = InkMuted,
@@ -171,6 +198,35 @@ fun MeScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = InkMuted,
                     )
+                }
+            }
+        }
+
+        // ── Week-flip celebration: shown once per new week (review #8) ─────
+        state.weekJustFlipped?.let { newWeek ->
+            AiraCard(containerColor = LilacMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Week $newWeek begins 🎉",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Ink,
+                        )
+                        Text(
+                            "A new week on your path — see what's changing.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                    TextButton(onClick = {
+                        onAckWeekFlip()
+                        onOpenDetail(DetailPage.Journey)
+                    }) {
+                        Text("See what's new", color = Plum)
+                    }
+                    IconButton(onClick = onAckWeekFlip) {
+                        Icon(Icons.Filled.Close, "Dismiss", tint = InkMuted)
+                    }
                 }
             }
         }
@@ -215,6 +271,50 @@ fun MeScreen(
                     }
                 }
             }
+            // A note is where the real signal lives (review #20): optional,
+            // shown once today's mood exists; posts via the same upsert.
+            if (todayMood != null) {
+                var noteOpen by remember { mutableStateOf(false) }
+                var noteText by remember { mutableStateOf("") }
+                if (!noteOpen) {
+                    TextButton(onClick = { noteOpen = true }) {
+                        Text("Add a note", style = MaterialTheme.typography.labelMedium, color = Plum)
+                    }
+                } else {
+                    Spacer(Modifier.height(6.dp))
+                    OutlinedTextField(
+                        value = noteText,
+                        onValueChange = { noteText = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        placeholder = { Text("Anything behind it? (private)") },
+                        shape = RoundedCornerShape(14.dp),
+                        trailingIcon = {
+                            TextButton(
+                                onClick = {
+                                    onSaveMoodNote(todayMood, noteText.trim())
+                                    noteOpen = false
+                                },
+                                enabled = noteText.isNotBlank(),
+                            ) { Text("Save") }
+                        },
+                    )
+                }
+                // The page answers a hard day (review #21) instead of
+                // carrying on as if nothing was said.
+                if (todayMood == "low" || todayMood == "unwell") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Be gentle with yourself today.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(onClick = onTalkToAira) {
+                            Text("Talk to Aira", color = Plum)
+                        }
+                    }
+                }
+            }
 
             // Care lives in the same card: mood + check-offs are the page's
             // two interactive dailies — one "Today" surface, not two cards.
@@ -229,11 +329,24 @@ fun MeScreen(
             }
             val done = state.reminders.count { it.doneToday }
             if (state.reminders.isNotEmpty()) {
-                Text(
-                    text = "$done of ${state.reminders.size} done",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (done == state.reminders.size) Sage else InkMuted,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = if (done == state.reminders.size) {
+                            "All done for today 🎉"
+                        } else "$done of ${state.reminders.size} done",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (done == state.reminders.size) Sage else InkMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val streak = state.todayFeed?.streak ?: 0
+                    if (streak >= 2) {
+                        Text(
+                            "🔥 $streak-day streak",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Plum,
+                        )
+                    }
+                }
                 Spacer(Modifier.height(10.dp))
             } else {
                 Text(
@@ -266,7 +379,7 @@ fun MeScreen(
             }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 state.reminders.forEach { reminder ->
-                    ReminderRow(reminder, onTick)
+                    ReminderRow(reminder, onTick, onUntick)
                 }
             }
         }
@@ -363,7 +476,9 @@ private fun FocusNudge(focus: TodayFocus, onTap: () -> Unit) {
 private fun ReminderRow(
     reminder: Reminder,
     onTick: (Reminder) -> Unit,
+    onUntick: (Reminder) -> Unit,
 ) {
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Column {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -384,16 +499,22 @@ private fun ReminderRow(
             Column(modifier = Modifier.weight(1f)) {
                 Text(reminder.title, style = MaterialTheme.typography.titleSmall, color = Ink)
                 Text(
-                    text = if (reminder.targetPerDay > 1) {
+                    text = reminder.detail ?: if (reminder.targetPerDay > 1) {
                         "${reminder.ticksToday} of ${reminder.targetPerDay} today"
                     } else if (reminder.doneToday) "Done today" else "Not yet today",
                     style = MaterialTheme.typography.bodySmall,
                     color = InkMuted,
                 )
             }
+            // Done rows stay tappable: tapping again UNDOES the last tick
+            // (review #10 — an accidental tap was permanent for the day).
             Surface(
-                onClick = { onTick(reminder) },
-                enabled = !reminder.doneToday,
+                onClick = {
+                    haptics.performHapticFeedback(
+                        androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                    )
+                    if (reminder.doneToday) onUntick(reminder) else onTick(reminder)
+                },
                 shape = RoundedCornerShape(12.dp),
                 color = if (reminder.doneToday) SageMist else Paper,
                 contentColor = if (reminder.doneToday) Sage else Plum,
@@ -403,14 +524,19 @@ private fun ReminderRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Check,
-                    contentDescription = if (reminder.doneToday) "${reminder.title} done" else "Tick ${reminder.title}",
+                    contentDescription = if (reminder.doneToday) {
+                        "${reminder.title} done — tap to undo"
+                    } else "Tick ${reminder.title}",
                     modifier = Modifier.padding(8.dp).size(18.dp),
                 )
             }
         }
         if (reminder.kind == "water" && reminder.targetPerDay > 1) {
             Spacer(Modifier.height(8.dp))
-            WaterDroplets(reminder.ticksToday, reminder.targetPerDay)
+            WaterDroplets(
+                reminder.ticksToday, reminder.targetPerDay,
+                expectedNow = expectedWaterByNow(reminder.targetPerDay),
+            )
         }
     }
 }

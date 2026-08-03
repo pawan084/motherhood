@@ -1,6 +1,7 @@
 package com.aira.companion.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -358,6 +360,8 @@ fun CareDetailScreen(
     reminders: List<Reminder>,
     report: WellnessReport?,
     onTick: (Reminder) -> Unit,
+    onUntick: (Reminder) -> Unit,
+    onSetTarget: (Reminder, Int) -> Unit,
     onAdd: (String, String, Int) -> Unit,
     onDelete: (Reminder) -> Unit,
     onClose: () -> Unit,
@@ -410,8 +414,9 @@ fun CareDetailScreen(
                         }
                     }
                     Surface(
-                        onClick = { onTick(reminder) },
-                        enabled = !reminder.doneToday,
+                        onClick = {
+                            if (reminder.doneToday) onUntick(reminder) else onTick(reminder)
+                        },
                         shape = RoundedCornerShape(12.dp),
                         color = if (reminder.doneToday) SageMist else Paper,
                         contentColor = if (reminder.doneToday) Sage else Plum,
@@ -421,14 +426,38 @@ fun CareDetailScreen(
                     ) {
                         Icon(
                             Icons.Filled.Check,
-                            contentDescription = "Tick ${reminder.title}",
+                            contentDescription = if (reminder.doneToday) {
+                                "${reminder.title} done — tap to undo"
+                            } else "Tick ${reminder.title}",
                             modifier = Modifier.padding(8.dp).size(18.dp),
                         )
                     }
                 }
                 if (reminder.kind == "water") {
                     Spacer(Modifier.height(10.dp))
-                    WaterDroplets(reminder.ticksToday, reminder.targetPerDay)
+                    WaterDroplets(
+                        reminder.ticksToday, reminder.targetPerDay,
+                        expectedNow = expectedWaterByNow(reminder.targetPerDay),
+                    )
+                    // Editable goal (review #24): a doctor's "10 glasses"
+                    // shouldn't fight a hardcoded 8.
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Daily goal: ${reminder.targetPerDay} glasses",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = { onSetTarget(reminder, reminder.targetPerDay - 1) },
+                            enabled = reminder.targetPerDay > 4,
+                        ) { Text("−", color = Plum) }
+                        TextButton(
+                            onClick = { onSetTarget(reminder, reminder.targetPerDay + 1) },
+                            enabled = reminder.targetPerDay < 16,
+                        ) { Text("+", color = Plum) }
+                    }
                 }
                 val series = report?.reminders?.firstOrNull { it.id == reminder.id }
                 if (series != null) {
@@ -495,11 +524,14 @@ fun CareDetailScreen(
     }
 }
 
-/** The water graphic: one droplet per target unit, filled as ticked. */
+/** The water graphic: one droplet per target unit, filled as ticked.
+ * `expectedNow` outlines the droplets that SHOULD be done by this hour —
+ * the pace is visible without a single word (review #25). */
 @Composable
-fun WaterDroplets(ticks: Int, target: Int) {
+fun WaterDroplets(ticks: Int, target: Int, expectedNow: Int = -1) {
     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         repeat(target.coerceAtMost(12)) { index ->
+            val behindPace = index >= ticks && index < expectedNow
             Icon(
                 imageVector = Icons.Outlined.WaterDrop,
                 contentDescription = null,
@@ -509,6 +541,13 @@ fun WaterDroplets(ticks: Int, target: Int) {
                     .background(
                         if (index < ticks) LilacMist else Paper,
                         CircleShape,
+                    )
+                    .then(
+                        if (behindPace) {
+                            Modifier.border(
+                                1.dp, Plum.copy(alpha = 0.45f), CircleShape,
+                            )
+                        } else Modifier,
                     )
                     .padding(2.dp),
             )

@@ -152,6 +152,23 @@ def read_context(learner_id: str = Depends(resolve_learner)):
     return {"context": get(learner_id)}
 
 
+class NameIn(BaseModel):
+    display_name: str
+
+
+@router.patch("/care-context")
+def patch_name(body: NameIn, learner_id: str = Depends(resolve_learner)):
+    """Name-only update (review #1): PUT replaces the whole context, and the
+    client doesn't hold the anchor dates to resend them."""
+    if not get(learner_id):
+        raise HTTPException(status_code=404, detail="no care context yet")
+    _conn.execute(
+        "UPDATE care_context SET display_name=?, updated=? WHERE learner_id=?",
+        (body.display_name.strip()[:80], time.time(), learner_id))
+    _conn.commit()
+    return {"context": get(learner_id)}
+
+
 @router.put("/care-context")
 def write_context(body: ContextIn, learner_id: str = Depends(resolve_learner)):
     if body.stage not in config.JOURNEY_STAGES:

@@ -161,6 +161,7 @@ object AiraApi {
         targetPerDay = json.optInt("target_per_day", 1),
         ticksToday = json.optInt("ticks_today", 0),
         doneToday = json.optBoolean("done_today", false),
+        detail = json.optString("detail").takeIf { it.isNotBlank() },
     )
 
     suspend fun getReminders(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
@@ -172,6 +173,48 @@ object AiraApi {
 
     suspend fun tickReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
         request("POST", "/reminders/$id/tick", ensureDeviceToken(context), JSONObject())
+    }
+
+    suspend fun untickReminder(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/reminders/$id/untick", ensureDeviceToken(context), JSONObject())
+    }
+
+    suspend fun medicineUntaken(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/medicines/$id/untaken", ensureDeviceToken(context), JSONObject())
+    }
+
+    suspend fun setReminderTarget(context: Context, id: String, target: Int) =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST", "/reminders/$id/target", ensureDeviceToken(context),
+                JSONObject().put("target_per_day", target),
+            )
+        }
+
+    /** Name-only context update — PUT would need the anchor dates resent. */
+    suspend fun setDisplayName(context: Context, name: String) = withContext(Dispatchers.IO) {
+        request("PATCH", "/care-context", ensureDeviceToken(context),
+                JSONObject().put("display_name", name))
+    }
+
+    suspend fun sendTipFeedback(context: Context, tipId: String, helpful: Boolean) =
+        withContext(Dispatchers.IO) {
+            request(
+                "POST", "/today/tip-feedback", ensureDeviceToken(context),
+                JSONObject().put("tip_id", tipId).put("helpful", helpful),
+            )
+        }
+
+    suspend fun markVideoWatched(context: Context, id: String) = withContext(Dispatchers.IO) {
+        request("POST", "/videos/$id/watched", ensureDeviceToken(context), JSONObject())
+    }
+
+    /** Week-flip memory, next to the token: celebrate each new week once. */
+    fun lastSeenWeek(context: Context): Int? =
+        prefs(context).getInt("last_seen_week", -1).takeIf { it >= 0 }
+
+    fun setLastSeenWeek(context: Context, week: Int) {
+        prefs(context).edit().putInt("last_seen_week", week).apply()
     }
 
     suspend fun addReminder(
@@ -193,23 +236,31 @@ object AiraApi {
 
     /** The proactive Me feed; `hour` is the DEVICE's local hour so the
      * server's timezone never decides the learner's morning. */
-    suspend fun getToday(context: Context, hour: Int): TodayFeed =
+    suspend fun getToday(context: Context, hour: Int, date: String): TodayFeed =
         withContext(Dispatchers.IO) {
             val token = ensureDeviceToken(context)
-            val json = request("GET", "/today?hour=$hour", token, null)
+            val json = request("GET", "/today?hour=$hour&date=$date", token, null)
             val ctx = json.optJSONObject("context")
+            val recap = json.optJSONObject("recap")
             val focusArr = json.optJSONArray("focus") ?: JSONArray()
             TodayFeed(
                 slot = json.optString("slot", "morning"),
                 dayInWeek = ctx?.let { if (it.isNull("day_in_week")) null else it.getInt("day_in_week") },
                 daysToGo = ctx?.let { if (it.isNull("days_to_go")) null else it.getInt("days_to_go") },
                 tipText = json.optJSONObject("tip")?.optString("text"),
+                tipId = json.optJSONObject("tip")?.optString("id"),
                 focus = (0 until focusArr.length()).mapNotNull { i ->
                     focusArr.optJSONObject(i)?.let {
-                        TodayFocus(it.getString("kind"), it.getString("title"),
-                                   it.optString("body"))
+                        TodayFocus(
+                            it.getString("kind"), it.getString("title"),
+                            it.optString("body"),
+                            whenTs = if (it.isNull("when_ts")) null else it.getDouble("when_ts"),
+                        )
                     }
                 },
+                streak = ctx?.optInt("streak", 0) ?: 0,
+                recapMoods = recap?.optInt("moods_logged"),
+                recapWaterAvg = recap?.optDouble("water_avg"),
             )
         }
 

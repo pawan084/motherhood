@@ -13,6 +13,7 @@ import com.aira.companion.model.MainDestination
 import com.aira.companion.model.OnboardingAnswer
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.applyTick
+import com.aira.companion.model.applyUntick
 import com.aira.companion.model.postpartumAnchorPrompt
 import com.aira.companion.model.pregnancyAnchorPrompt
 import com.aira.companion.model.upsertMood
@@ -178,8 +179,24 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             val suggested = runCatching { AiraApi.getSuggestedVideo(appContext) }.getOrNull()
             val journey = runCatching { AiraApi.getJourney(appContext) }.getOrNull()
             val feed = runCatching {
-                AiraApi.getToday(appContext, java.time.LocalTime.now().hour)
+                AiraApi.getToday(appContext, java.time.LocalTime.now().hour,
+                                 LocalDate.now().toString())
             }.getOrNull()
+            // Week-flip celebration (review #8): the first refresh that sees
+            // a HIGHER computed week than the last acknowledged one raises the
+            // banner; first-ever sight is stored silently (nothing to
+            // celebrate about opening the app).
+            val flipped = care?.week?.let { week ->
+                val prev = runCatching { AiraApi.lastSeenWeek(appContext) }.getOrNull()
+                when {
+                    prev == null -> {
+                        runCatching { AiraApi.setLastSeenWeek(appContext, week) }
+                        null
+                    }
+                    week > prev -> week
+                    else -> null
+                }
+            }
             _uiState.update { state ->
                 state.copy(
                     careSummary = care ?: state.careSummary,
@@ -188,6 +205,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     suggestedVideo = suggested ?: state.suggestedVideo,
                     journeyContent = journey ?: state.journeyContent,
                     todayFeed = feed ?: state.todayFeed,
+                    weekJustFlipped = flipped ?: state.weekJustFlipped,
                     meLoading = false,
                 )
             }
@@ -214,16 +232,69 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setMood(mood: String) {
+    fun setMood(mood: String, note: String? = null) {
         val day = LocalDate.now().toString()
         _uiState.update { it.copy(moods = upsertMood(it.moods, day, mood)) } // optimistic
         viewModelScope.launch {
-            runCatching { AiraApi.postMood(appContext, mood) }
+            runCatching { AiraApi.postMood(appContext, mood, note) }
+                .onSuccess { if (note != null) notify("Noted — thanks for sharing.") }
                 .onFailure {
                     runCatching { AiraApi.getMoods(appContext) } // re-sync to server truth
                         .onSuccess { fresh -> _uiState.update { it.copy(moods = fresh) } }
                     notify("Couldn't save your check-in — try again in a moment.")
                 }
+        }
+    }
+
+    fun acknowledgeWeekFlip() {
+        _uiState.value.weekJustFlipped?.let { week ->
+            runCatching { AiraApi.setLastSeenWeek(appContext, week) }
+        }
+        _uiState.update { it.copy(weekJustFlipped = null) }
+    }
+
+    fun untickReminder(reminder: Reminder) {
+        if (reminder.ticksToday == 0) return
+        _uiState.update { it.copy(reminders = applyUntick(it.reminders, reminder.id)) }
+        viewModelScope.launch {
+            runCatching {
+                if (reminder.kind == "medicine") AiraApi.medicineUntaken(appContext, reminder.id)
+                else AiraApi.untickReminder(appContext, reminder.id)
+            }.onFailure {
+                runCatching { AiraApi.getReminders(appContext) }
+                    .onSuccess { fresh -> _uiState.update { it.copy(reminders = fresh) } }
+            }
+        }
+    }
+
+    fun setReminderTarget(reminder: Reminder, target: Int) {
+        val clamped = target.coerceIn(1, 24)
+        _uiState.update { state ->
+            state.copy(reminders = state.reminders.map {
+                if (it.id == reminder.id) {
+                    it.copy(targetPerDay = clamped, doneToday = it.ticksToday >= clamped)
+                } else it
+            })
+        }
+        viewModelScope.launch {
+            runCatching { AiraApi.setReminderTarget(appContext, reminder.id, clamped) }
+                .onFailure {
+                    runCatching { AiraApi.getReminders(appContext) }
+                        .onSuccess { fresh -> _uiState.update { it.copy(reminders = fresh) } }
+                    notify("Couldn't change the goal — try again in a moment.")
+                }
+        }
+    }
+
+    fun updateDisplayName(name: String) {
+        viewModelScope.launch {
+            runCatching { AiraApi.setDisplayName(appContext, name) }
+                .onSuccess {
+                    runCatching { AiraApi.getCareContext(appContext) }
+                        .onSuccess { fresh -> _uiState.update { it.copy(careSummary = fresh) } }
+                    notify("Nice to meet you${if (name.isNotBlank()) ", $name" else ""}.")
+                }
+                .onFailure { notify("Couldn't save your name — try again in a moment.") }
         }
     }
 

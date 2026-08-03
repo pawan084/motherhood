@@ -137,3 +137,22 @@ def test_merge_freshest_wins(client):
                 headers=device_headers)
     r = client.get("/care-context", headers={"Authorization": f"Bearer {session}"})
     assert r.json()["context"]["stage"] == "trying_to_conceive"
+
+
+def test_patch_updates_only_the_name(client):
+    r = client.post("/device/register")
+    h = {"X-Device-Token": r.json()["device_token"]}
+    from datetime import date, timedelta
+    due = (date.today() + timedelta(days=200)).isoformat()
+    client.put("/care-context", json={"stage": "pregnant", "due_date": due}, headers=h)
+    ctx = client.patch("/care-context", json={"display_name": "Priya"},
+                       headers=h).json()["context"]
+    assert ctx["display_name"] == "Priya"
+    assert ctx["due_date"] == due and ctx["stage"] == "pregnant"  # untouched
+
+
+def test_patch_name_needs_existing_context(client):
+    r = client.post("/device/register")
+    h = {"X-Device-Token": r.json()["device_token"]}
+    assert client.patch("/care-context", json={"display_name": "X"},
+                        headers=h).status_code == 404
