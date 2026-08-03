@@ -92,7 +92,9 @@ fun MeScreen(
             Column {
                 val care = state.careSummary
                 if (care != null) {
-                    val hour = remember { java.time.LocalTime.now().hour }
+                    // Recomputed on recomposition (every refresh), never cached:
+                    // a home resumed at 18:00 must not greet the morning.
+                    val hour = java.time.LocalTime.now().hour
                     val greeting = when {
                         hour < 12 -> "Good morning"
                         hour < 17 -> "Good afternoon"
@@ -251,7 +253,7 @@ fun MeScreen(
         // ── Suggested video (thumbnail + context) ──────────────────────────
         state.suggestedVideo?.let { video ->
             AiraCard(containerColor = LilacMist) {
-                SectionLabel("For you this week")
+                SectionLabel("Today's watch")
                 Spacer(Modifier.height(10.dp))
                 Row(
                     modifier = Modifier

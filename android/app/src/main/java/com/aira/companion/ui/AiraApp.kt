@@ -105,6 +105,21 @@ private fun MainExperience(
             else -> Unit
         }
     }
+    // Coming back from the background must refetch Me: the /today slot,
+    // focus cards, and day counters go stale while the app sleeps — a
+    // proactive home is only proactive if resume means "now", not "then".
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME &&
+                viewModel.uiState.value.destination == MainDestination.Me
+            ) {
+                viewModel.refreshMe()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     LaunchedEffect(state.detail) {
         state.detail?.let(viewModel::loadDetailData)
     }

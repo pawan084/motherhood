@@ -355,27 +355,21 @@ def list_videos(learner_id: str = Depends(resolve_learner)):
 
 @router.get("/videos/suggested")
 def suggested_video(learner_id: str = Depends(resolve_learner)):
-    """One pick for the Me tab: the caller's stage + computed week, preferring
-    the tightest matching band; stage-wide rows fall back; weeks past every
-    band clamp to the last one (not a learner-visible error)."""
+    """One pick for the Me tab, ROTATING DAILY over the stage's catalog
+    (same deterministic day-keyed rotation as the /today tip): the home
+    card must change every day, and with today's small catalog (one video
+    per band) band-scoped rotation would pin the same video for weeks.
+    The client shows each video's week band, so an out-of-band day is
+    honest, not wrong. Stable within a day, across devices.
+    TODO when the catalog grows past ~3 per band: rotate within the
+    matching band first."""
     ctx = care_context.get(learner_id)
     if not ctx:
         return {"video": None}
-    stage, week = ctx["stage"], ctx.get("week")
-    if week is not None:
-        row = _conn.execute(
-            f"SELECT {_VIDEO_COLS} FROM videos"
-            " WHERE stage=? AND week_start<=? AND week_end>=?"
-            " ORDER BY (week_end - week_start) LIMIT 1",
-            (stage, week, week)).fetchone()
-        if not row:  # past every band -> latest band for the stage
-            row = _conn.execute(
-                f"SELECT {_VIDEO_COLS} FROM videos WHERE stage=? AND week_end>0"
-                " ORDER BY week_end DESC LIMIT 1", (stage,)).fetchone()
-    else:
-        row = None
-    if not row:  # stage-wide (week_end=0) or nothing at all
-        row = _conn.execute(
-            f"SELECT {_VIDEO_COLS} FROM videos WHERE stage=?"
-            " ORDER BY week_end LIMIT 1", (stage,)).fetchone()
-    return {"video": _video_dict(row) if row else None}
+    rows = _conn.execute(
+        f"SELECT {_VIDEO_COLS} FROM videos WHERE stage=?"
+        " ORDER BY week_start, id", (ctx["stage"],)).fetchall()
+    if not rows:
+        return {"video": None}
+    row = rows[date.today().toordinal() % len(rows)]
+    return {"video": _video_dict(row)}

@@ -124,5 +124,9 @@ def test_hosted_videos_catalog_and_stream(client):
     assert own["stream_path"] == "/media/videos/portrait/benefit.mp4"
     assert own["thumb_path"] == "/media/videos/thumbs/benefit.png"
     assert own["youtube_id"] is None
+    # The suggested pick rotates daily across the stage catalog but is
+    # stable within a day (rotation contract lives in test_wellness).
     suggested = client.get("/videos/suggested", headers=h).json()["video"]
-    assert suggested["id"] == "own-benefit"  # pregnant week 8 -> band 1-13
+    assert suggested["stage"] == "pregnant"
+    again = client.get("/videos/suggested", headers=h).json()["video"]
+    assert again["id"] == suggested["id"]

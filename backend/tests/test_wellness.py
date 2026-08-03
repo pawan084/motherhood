@@ -120,13 +120,28 @@ def test_catalog_orders_own_stage_first(client):
     assert all(v["stage"] == "pregnant" for v in videos[:first_other])
 
 
-def test_suggested_picks_tightest_band_for_week(client):
+def test_suggested_rotates_daily_within_stage(client):
+    """The pick is stage-scoped, deterministic for the day (two calls agree),
+    and covers the whole stage catalog across days — the daily-rotation
+    contract the Me tab's card depends on."""
     h = _register(client)
     _pregnant_at_week(client, h, 24)
     video = client.get("/videos/suggested", headers=h).json()["video"]
     assert video is not None and video["stage"] == "pregnant"
-    start, end = map(int, video["week_band"].split("-"))
-    assert start <= 24 <= end
+    again = client.get("/videos/suggested", headers=h).json()["video"]
+    assert again["id"] == video["id"]
+    # The day index walks every stage row as dates advance.
+    wellness = sys.modules["wellness"]
+    ids = {r[0] for r in wellness._conn.execute(
+        "SELECT id FROM videos WHERE stage='pregnant'")}
+    assert len(ids) > 1  # rotation is real, not a single-row no-op
+    from datetime import date as _date
+    rows = wellness._conn.execute(
+        "SELECT id FROM videos WHERE stage='pregnant'"
+        " ORDER BY week_start, id").fetchall()
+    picks = {rows[(_date.today().toordinal() + d) % len(rows)][0]
+             for d in range(len(rows))}
+    assert picks == ids
 
 
 def test_suggested_clamps_past_last_band(client):
