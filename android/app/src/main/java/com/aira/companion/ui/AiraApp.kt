@@ -147,6 +147,7 @@ private fun MainExperience(
                         onQuickMessage = viewModel::quickMessage,
                         onOpenTools = viewModel::openTools,
                         onOpenTool = viewModel::openTool,
+                        onOpenDetail = viewModel::openDetail,
                         modifier = Modifier.padding(padding),
                     )
                 MainDestination.Videos ->

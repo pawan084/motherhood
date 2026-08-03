@@ -392,22 +392,19 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.update { it.copy(sending = false) }
                 }
                 else -> {
-                    appendAira(turn.reply ?: "")
-                    if (turn.cardTitles.isNotEmpty()) {
-                        appendAira("You could try: " + turn.cardTitles.joinToString(" · "))
-                    }
+                    appendAira(turn.reply ?: "", turn.cards)
                     _uiState.update { it.copy(sending = false) }
                 }
             }
         }
     }
 
-    private fun appendAira(text: String) {
+    private fun appendAira(text: String, cards: List<com.aira.companion.model.ActionCard> = emptyList()) {
         if (text.isBlank()) return
         _uiState.update { state ->
             state.copy(
                 messages = state.messages +
-                    ChatMessage(id = System.nanoTime(), fromAira = true, text = text),
+                    ChatMessage(id = System.nanoTime(), fromAira = true, text = text, cards = cards),
             )
         }
     }

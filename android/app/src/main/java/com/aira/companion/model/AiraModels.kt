@@ -50,7 +50,25 @@ data class ChatMessage(
     val id: Long,
     val fromAira: Boolean,
     val text: String,
+    // Typed action cards the backend suggested for this turn (0-3).
+    val cards: List<ActionCard> = emptyList(),
 )
+
+/** A per-turn suggestion from POST /respond's card model. */
+data class ActionCard(val type: String, val title: String, val subtitle: String)
+
+/** Backend card type -> the tool sheet that fulfils it. Null = unknown type
+ * (newer server); the card is still shown, tapping does nothing surprising. */
+fun toolForCard(type: String): AiraTool? = when (type) {
+    "check_in" -> AiraTool.CheckIn
+    "reminder" -> AiraTool.Reminder
+    "appointment_copilot" -> AiraTool.Appointment
+    "document_upload" -> AiraTool.CareVault
+    "wellness_session" -> AiraTool.Reset
+    "symptom_log" -> AiraTool.Symptom
+    "partner_task" -> AiraTool.Partner
+    else -> null
+}
 
 /** Journey summary from GET /care-context (week computed server-side). */
 data class CareSummary(

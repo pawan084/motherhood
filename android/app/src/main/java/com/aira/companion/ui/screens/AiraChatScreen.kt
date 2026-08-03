@@ -41,6 +41,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
+import com.aira.companion.model.DetailPage
+import com.aira.companion.model.toolForCard
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
@@ -62,6 +64,7 @@ fun AiraChatScreen(
     onQuickMessage: (String) -> Unit,
     onOpenTools: () -> Unit,
     onOpenTool: (AiraTool) -> Unit,
+    onOpenDetail: (DetailPage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -95,63 +98,106 @@ fun AiraChatScreen(
             }
 
             items(state.messages, key = { it.id }) { message ->
-                ChatBubble(text = message.text, fromAira = message.fromAira)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ChatBubble(text = message.text, fromAira = message.fromAira)
+                    // The turn's typed suggestions (0-3) as tappable cards.
+                    message.cards.forEach { card ->
+                        Surface(
+                            color = SageMist,
+                            shape = RoundedCornerShape(16.dp),
+                            onClick = { toolForCard(card.type)?.let(onOpenTool) },
+                        ) {
+                            Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                Text(
+                                    text = card.title,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = Ink,
+                                )
+                                if (card.subtitle.isNotBlank()) {
+                                    Text(
+                                        text = card.subtitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = InkMuted,
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = LilacMist),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Lilac),
-                ) {
-                    Column(modifier = Modifier.padding(18.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(40.dp)
-                                        .background(Plum, RoundedCornerShape(13.dp)),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CalendarMonth,
-                                    contentDescription = null,
-                                    tint = Paper,
-                                    modifier = Modifier.size(20.dp),
-                                )
+            state.todayFeed?.focus?.firstOrNull()?.let { focus ->
+                item {
+                    val (buttonLabel, action) = when (focus.kind) {
+                        "appointment_soon" ->
+                            "Prepare questions" to { onOpenTool(AiraTool.Appointment) }
+                        "mood_checkin" ->
+                            "Log how you feel" to { onOpenTool(AiraTool.CheckIn) }
+                        "milestone_week" ->
+                            "See your path" to { onOpenDetail(DetailPage.Journey) }
+                        else ->
+                            "Open today's care" to { onOpenDetail(DetailPage.Care) }
+                    }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = LilacMist),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Lilac),
+                    ) {
+                        Column(modifier = Modifier.padding(18.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .size(40.dp)
+                                            .background(Plum, RoundedCornerShape(13.dp)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = if (focus.kind == "appointment_soon") {
+                                            Icons.Outlined.CalendarMonth
+                                        } else {
+                                            Icons.Outlined.AutoAwesome
+                                        },
+                                        contentDescription = null,
+                                        tint = Paper,
+                                        modifier = Modifier.size(20.dp),
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(11.dp))
+                                Column {
+                                    Text(
+                                        text = "NEXT BEST ACTION",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = Plum,
+                                    )
+                                    Text(
+                                        text = "Based on your day right now",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = InkMuted,
+                                    )
+                                }
                             }
-                            Spacer(modifier = Modifier.width(11.dp))
-                            Column {
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Text(
+                                text = focus.title,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Ink,
+                            )
+                            if (focus.body.isNotBlank()) {
                                 Text(
-                                    text = "NEXT BEST ACTION",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Plum,
-                                )
-                                Text(
-                                    text = "Based on your context",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    text = focus.body,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = InkMuted,
                                 )
                             }
+                            Spacer(modifier = Modifier.height(15.dp))
+                            PrimaryButton(
+                                label = buttonLabel,
+                                onClick = action,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Appointment copilot",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Ink,
-                        )
-                        Text(
-                            text = "Three questions based on Week 24 and your fatigue note.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = InkMuted,
-                        )
-                        Spacer(modifier = Modifier.height(15.dp))
-                        PrimaryButton(
-                            label = "Prepare questions",
-                            onClick = { onOpenTool(AiraTool.Appointment) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
                     }
                 }
             }
@@ -164,7 +210,15 @@ fun AiraChatScreen(
                             .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    listOf("I feel tired", "Set a reminder", "Ask anything").forEach { prompt ->
+                    val care = state.careSummary
+                    val stageChip = when (care?.stage) {
+                        "pregnant" -> care.week?.let { "What's happening in week $it?" }
+                            ?: "What's happening this week?"
+                        "postpartum" -> "Is this normal after birth?"
+                        "trying_to_conceive" -> "When is my fertile window?"
+                        else -> "I feel tired"
+                    }
+                    listOf(stageChip, "Set a reminder", "Ask anything").forEach { prompt ->
                         Surface(
                             color = Paper,
                             shape = CircleShape,

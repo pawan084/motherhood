@@ -5,6 +5,7 @@ import com.aira.companion.BuildConfig
 import com.aira.companion.model.CareSummary
 import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.Milestone
+import com.aira.companion.model.ActionCard
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.ReminderReport
@@ -47,7 +48,7 @@ object AiraApi {
         val urgentHeadline: String?,
         val urgentBody: String?,
         val message: String?,          // error copy when decision == error
-        val cardTitles: List<String>,
+        val cards: List<ActionCard>,
     )
 
     private fun prefs(context: Context) =
@@ -325,11 +326,14 @@ object AiraApi {
         }
         val json = request("POST", "/respond", token, body)
         val urgent = json.optJSONObject("urgent_help")
-        val cards = mutableListOf<String>()
+        val cards = mutableListOf<ActionCard>()
         json.optJSONArray("cards")?.let { arr ->
             for (i in 0 until arr.length()) {
-                arr.optJSONObject(i)?.optString("title")?.takeIf { it.isNotBlank() }
-                    ?.let(cards::add)
+                val c = arr.optJSONObject(i) ?: continue
+                val title = c.optString("title")
+                if (title.isNotBlank()) {
+                    cards.add(ActionCard(c.optString("type"), title, c.optString("subtitle")))
+                }
             }
         }
         Turn(
@@ -339,7 +343,7 @@ object AiraApi {
             urgentHeadline = urgent?.optString("headline"),
             urgentBody = urgent?.optString("body"),
             message = json.optString("message").takeIf { it.isNotBlank() },
-            cardTitles = cards,
+            cards = cards,
         )
     }
 }
