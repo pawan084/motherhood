@@ -117,11 +117,20 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         runCatching { AiraApi.setOnboarded(appContext) }
+        // Turn on a gentle default care reminder (one nudge at 09:00) the first
+        // time onboarding finishes; fully adjustable/removable in Settings.
+        runCatching { com.aira.companion.notify.CareReminders.applyOnboardingDefault(appContext) }
         viewModelScope.launch {
             runCatching { pushCareContext(state) }
                 .onFailure {
                     notify("Couldn't sync your context yet — Aira will still chat, and you can retry from You.")
                 }
+            // Re-load Me now that the care context exists. The initial load on
+            // entering Main can race ahead of this sync, leaving the journey
+            // hero and today's video empty until a manual refresh; force = true
+            // because that initial load may still be in flight. Safe to run
+            // twice — refreshMe only overwrites fields with non-null results.
+            refreshMe(force = true)
         }
     }
 
@@ -174,8 +183,8 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
     // ── Me / Videos data (loaders fired from LaunchedEffect in MainExperience,
     // never from selectDestination — state transitions stay pure for tests) ──
 
-    fun refreshMe() {
-        if (_uiState.value.meLoading) return
+    fun refreshMe(force: Boolean = false) {
+        if (!force && _uiState.value.meLoading) return
         _uiState.update { it.copy(meLoading = true) }
         viewModelScope.launch {
             // Individually runCatching: one failed fetch must not blank the rest.
@@ -235,6 +244,9 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     .putInt("widget_day", feed?.dayInWeek ?: -1)
                     .putInt("widget_water", water?.ticksToday ?: -1)
                     .putInt("widget_target", water?.targetPerDay ?: -1)
+                    // The widget's "Log water" button ticks this id in the
+                    // background (WidgetActionReceiver) without opening the app.
+                    .putString("widget_water_id", water?.id ?: "")
                     .apply()
                 com.aira.companion.widget.AiraWidgetProvider.pushUpdate(appContext)
             }

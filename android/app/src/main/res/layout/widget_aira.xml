@@ -23,4 +23,16 @@
         android:layout_marginTop="2dp"
         android:textSize="13sp"
         android:textColor="#6E6376" />
+
+    <TextView
+        android:id="@+id/widget_action"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:textColor="#2D2430"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:background="@drawable/widget_button" />
 </LinearLayout>

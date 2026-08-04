@@ -1,8 +1,10 @@
 package com.aira.companion.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,14 +15,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.DirectionsWalk
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Medication
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentSatisfied
+import androidx.compose.material.icons.outlined.SentimentVerySatisfied
+import androidx.compose.material.icons.outlined.Sick
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -42,9 +51,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.aira.companion.model.AiraUiState
 import com.aira.companion.model.DetailPage
 import com.aira.companion.model.Reminder
@@ -55,6 +69,9 @@ import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.GradientHeroSurface
 import com.aira.companion.ui.components.RemoteImage
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.theme.HeroAccent
+import com.aira.companion.ui.theme.HeroInk
+import com.aira.companion.ui.theme.HeroInkMuted
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Lilac
@@ -79,7 +96,7 @@ private fun journeyNext(state: AiraUiState): String? {
         next.week - week == 1 -> "next week"
         else -> "${next.week - week} weeks away"
     }
-    return "${next.emoji} ${next.label} · Week ${next.week} · $distance"
+    return "${next.label} · Week ${next.week} · $distance"
 }
 
 /** Nudges never duplicated on Me: each one's control is already on this
@@ -93,6 +110,16 @@ fun expectedWaterByNow(target: Int): Int {
     if (hour < 7) return 0
     return Math.round(target * minOf(1f, (hour - 7) / 14f))
 }
+
+/** Refined mood glyphs (replacing emoji): outline Material symbols so the
+ * check-in reads calm and grown-up rather than playful. */
+private val moodIcon: Map<String, ImageVector> = mapOf(
+    "great" to Icons.Outlined.SentimentVerySatisfied,
+    "okay" to Icons.Outlined.SentimentSatisfied,
+    "tired" to Icons.Outlined.Bedtime,
+    "low" to Icons.Outlined.SentimentDissatisfied,
+    "unwell" to Icons.Outlined.Sick,
+)
 
 private fun stageLabel(stage: String): String = when (stage) {
     "pregnant" -> "Pregnant"
@@ -199,30 +226,50 @@ fun MeScreen(
                     Text(
                         text = if (care.displayName.isNotBlank()) "$greeting, ${care.displayName}" else greeting,
                         style = MaterialTheme.typography.titleMedium,
-                        color = InkMuted,
+                        color = HeroInkMuted,
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = care.week?.let { week ->
-                                state.todayFeed?.dayInWeek?.let { d -> "Week $week · Day $d" }
-                                    ?: "Week $week"
-                            } ?: stageLabel(care.stage),
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = Ink,
-                            modifier = Modifier.weight(1f),
-                        )
-                        state.journeyContent?.sizeEmoji?.let { emoji ->
+                    Spacer(Modifier.height(10.dp))
+                    // The week as the page's one big, confident number — an
+                    // editorial serif numeral on the dark panel, with a stacked
+                    // WEEK / Day eyebrow. This is the hero's whole job.
+                    val week = care.week
+                    if (week != null) {
+                        Row(verticalAlignment = Alignment.Bottom) {
                             Text(
-                                emoji,
-                                style = MaterialTheme.typography.headlineLarge,
-                                modifier = Modifier.semantics {
-                                    contentDescription = state.journeyContent?.sizeLabel
-                                        ?.let { "Baby is about the size of $it" } ?: ""
-                                },
+                                text = week.toString(),
+                                style = TextStyle(
+                                    fontFamily = FontFamily.Serif,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 64.sp,
+                                    lineHeight = 62.sp,
+                                    letterSpacing = (-2).sp,
+                                ),
+                                color = HeroInk,
                             )
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.padding(bottom = 10.dp)) {
+                                Text(
+                                    text = if (care.stage == "postpartum") "PP WEEK" else "WEEK",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = HeroAccent,
+                                )
+                                state.todayFeed?.dayInWeek?.let { d ->
+                                    Text(
+                                        text = "Day $d",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = HeroInk,
+                                    )
+                                }
+                            }
                         }
+                    } else {
+                        Text(
+                            text = stageLabel(care.stage),
+                            style = MaterialTheme.typography.headlineLarge,
+                            color = HeroInk,
+                        )
                     }
+                    Spacer(Modifier.height(8.dp))
                     Text(
                         text = listOfNotNull(
                             state.journeyContent?.title,
@@ -236,35 +283,64 @@ fun MeScreen(
                             },
                         ).joinToString(" · ").ifBlank { stageLabel(care.stage) },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = InkMuted,
+                        color = HeroInkMuted,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    // The journey CTA doubles as the next-milestone preview —
-                    // one journey surface on Me, not two.
+                    // Signature: a slim progress bar filling across the 40 weeks
+                    // toward the due date — the journey made tangible.
+                    if (week != null && care.stage == "pregnant") {
+                        Spacer(Modifier.height(16.dp))
+                        val frac = (week.toFloat() / 40f).coerceIn(0.03f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(5.dp)
+                                .clip(CircleShape)
+                                .background(HeroInk.copy(alpha = 0.18f)),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(frac)
+                                    .height(5.dp)
+                                    .clip(CircleShape)
+                                    .background(HeroAccent),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(18.dp))
+                    // The journey CTA doubles as the next-milestone preview — a
+                    // soft pill so it reads as the tappable way into the path
+                    // (the whole hero opens it; this is the visible affordance).
                     val next = journeyNext(state)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            text = next ?: androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_weekly_guide),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Plum,
-                        )
-                        Icon(
-                            Icons.Filled.ChevronRight, null,
-                            tint = Plum, modifier = Modifier.size(16.dp),
-                        )
+                    Box(
+                        modifier = Modifier
+                            .background(HeroInk.copy(alpha = 0.12f), CircleShape)
+                            .padding(start = 15.dp, end = 9.dp, top = 9.dp, bottom = 9.dp),
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = next ?: androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_weekly_guide),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = HeroInk,
+                            )
+                            Spacer(Modifier.width(5.dp))
+                            Icon(
+                                Icons.Filled.ChevronRight, null,
+                                tint = HeroAccent, modifier = Modifier.size(18.dp),
+                            )
+                        }
                     }
                 } else {
                     Text(
                         text = "Your journey, your pace",
                         style = MaterialTheme.typography.headlineMedium,
-                        color = Ink,
+                        color = HeroInk,
                     )
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         text = if (state.meLoading) "Syncing your care context…"
-                        else "Tell Aira where you are in your journey — just say it in Chat.",
+                        else "Tell Aira where you are — tap to set your stage.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = InkMuted,
+                        color = HeroInkMuted,
                     )
                 }
             }
@@ -391,13 +467,16 @@ fun MeScreen(
                         ),
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
-                            Text(
-                                moodEmoji[mood] ?: "·",
-                                style = MaterialTheme.typography.titleLarge,
+                            Icon(
+                                imageVector = moodIcon[mood] ?: Icons.Outlined.SentimentSatisfied,
+                                contentDescription = null,
+                                tint = if (selected) Paper else Plum,
+                                modifier = Modifier.size(26.dp),
                             )
+                            Spacer(Modifier.height(5.dp))
                             Text(
                                 mood.replaceFirstChar(Char::uppercase),
                                 style = MaterialTheme.typography.labelSmall,
@@ -476,11 +555,18 @@ fun MeScreen(
                     )
                     val streak = state.todayFeed?.streak ?: 0
                     if (streak >= 2) {
-                        Text(
-                            "🔥 $streak-day streak",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Plum,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Outlined.LocalFireDepartment, null,
+                                tint = Plum, modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                "$streak-day streak",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Plum,
+                            )
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -529,7 +615,7 @@ fun MeScreen(
         // Deliberately BELOW mood/care: act before browse — the surfaces a
         // user touches several times a day outrank read-only content. ─────
         if (state.todayFeed?.tipText != null || state.suggestedVideo != null) {
-            AiraCard(containerColor = SageMist) {
+            AiraCard {
                 SectionLabel(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_daily_header))
                 state.todayFeed?.tipText?.let { tip ->
                     Spacer(Modifier.height(6.dp))

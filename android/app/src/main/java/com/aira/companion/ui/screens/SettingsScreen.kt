@@ -281,60 +281,132 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // ── Daily care reminder (review #18): opt-in, one nudge at 3 PM ────
+        // ── Care reminders: on by default from onboarding; the user controls
+        //    how often (1–3×/day) and at what times. Local AlarmManager. ─────
         AiraCard {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val context = androidx.compose.ui.platform.LocalContext.current
-                var remindersOn by remember {
-                    mutableStateOf(
-                        com.aira.companion.notify.CareReminders.isEnabled(context),
-                    )
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val reminders = com.aira.companion.notify.CareReminders
+            var on by remember { mutableStateOf(reminders.isEnabled(context)) }
+            var times by remember { mutableStateOf(reminders.times(context)) }
+            val permissionLauncher =
+                androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts
+                        .RequestPermission(),
+                ) { granted ->
+                    if (granted) { reminders.setEnabled(context, true); on = true }
                 }
-                val permissionLauncher =
-                    androidx.activity.compose.rememberLauncherForActivityResult(
-                        androidx.activity.result.contract.ActivityResultContracts
-                            .RequestPermission(),
-                    ) { granted ->
-                        if (granted) {
-                            com.aira.companion.notify.CareReminders
-                                .setEnabled(context, true)
-                            remindersOn = true
-                        }
-                    }
+            fun turnOn() {
+                if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    context.checkSelfPermission(
+                        android.Manifest.permission.POST_NOTIFICATIONS,
+                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                ) {
+                    permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                } else {
+                    reminders.setEnabled(context, true); on = true
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Daily care reminder",
+                        text = "Care reminders",
                         style = MaterialTheme.typography.titleSmall,
                         color = Ink,
                     )
                     Text(
-                        text = "One gentle nudge at 3 PM · off by default",
+                        text = if (on) {
+                            "${times.size}× a day · " + times.joinToString(", ") { reminders.fmt(it) }
+                        } else {
+                            "Gentle nudges for your care routine"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = InkMuted,
                     )
                 }
                 Switch(
-                    checked = remindersOn,
-                    onCheckedChange = { on ->
-                        if (!on) {
-                            com.aira.companion.notify.CareReminders
-                                .setEnabled(context, false)
-                            remindersOn = false
-                        } else if (android.os.Build.VERSION.SDK_INT >= 33 &&
-                            context.checkSelfPermission(
-                                android.Manifest.permission.POST_NOTIFICATIONS,
-                            ) != android.content.pm.PackageManager.PERMISSION_GRANTED
-                        ) {
-                            permissionLauncher.launch(
-                                android.Manifest.permission.POST_NOTIFICATIONS,
-                            )
-                        } else {
-                            com.aira.companion.notify.CareReminders
-                                .setEnabled(context, true)
-                            remindersOn = true
-                        }
+                    checked = on,
+                    onCheckedChange = { want ->
+                        if (!want) { reminders.setEnabled(context, false); on = false } else turnOn()
                     },
                 )
+            }
+            if (on) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "How often",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(
+                        1 to listOf(9 * 60),
+                        2 to listOf(9 * 60, 20 * 60),
+                        3 to listOf(9 * 60, 14 * 60, 20 * 60),
+                    ).forEach { (count, defaults) ->
+                        val selected = times.size == count
+                        Surface(
+                            onClick = { times = defaults; reminders.setTimes(context, defaults) },
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (selected) Plum else Paper,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, if (selected) Plum else OutlineSoft,
+                            ),
+                        ) {
+                            Text(
+                                text = "${count}× a day",
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (selected) Paper else Ink,
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "At",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                times.forEachIndexed { index, minutes ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = "Reminder ${index + 1}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Ink,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Surface(
+                            onClick = {
+                                android.app.TimePickerDialog(
+                                    context,
+                                    { _, hour, minute ->
+                                        val updated = times.toMutableList()
+                                            .also { it[index] = hour * 60 + minute }
+                                            .distinct().sorted()
+                                        times = updated
+                                        reminders.setTimes(context, updated)
+                                    },
+                                    minutes / 60, minutes % 60, false,
+                                ).show()
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            color = Paper,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+                        ) {
+                            Text(
+                                text = reminders.fmt(minutes),
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Ink,
+                            )
+                        }
+                    }
+                }
             }
         }
 

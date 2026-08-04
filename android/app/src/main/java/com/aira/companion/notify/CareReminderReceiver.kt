@@ -9,8 +9,8 @@ import android.content.Intent
 import com.aira.companion.MainActivity
 import com.aira.companion.R
 
-/** Posts the daily nudge; tapping opens the app on the Me tab (the app's
- * default landing for returning users). Content is deliberately generic —
+/** Fires for each scheduled care-reminder time; tapping opens the app on Me
+ * (the default landing for returning users). Content is deliberately generic —
  * no health details on the lock screen. */
 class CareReminderReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -19,8 +19,10 @@ class CareReminderReceiver : BroadcastReceiver() {
     }
 }
 
-/** Shared by the daily alarm and the enable-time preview — one posting path,
- * so what the user sees at 3 PM is exactly what they saw when opting in. */
+/** Shared by every scheduled alarm and the enable-time preview — one posting
+ * path, so what the user sees on schedule is exactly what they saw when opting
+ * in. The line is lightly personalised from the widget cache (no network here):
+ * if water is behind target it nudges that, otherwise it stays generic. */
 fun postNudge(context: Context) {
     CareReminders.ensureChannel(context)
     val open = PendingIntent.getActivity(
@@ -30,13 +32,21 @@ fun postNudge(context: Context) {
         },
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
+    val prefs = context.getSharedPreferences("aira_net", Context.MODE_PRIVATE)
+    val water = prefs.getInt("widget_water", -1)
+    val target = prefs.getInt("widget_target", -1)
+    val text = if (water in 0 until target) {
+        "💧 $water of $target today — a good moment for a glass of water."
+    } else {
+        "How's today going? Your care check-ins are waiting."
+    }
     val notification = Notification.Builder(context, CareReminders.CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_notification)
         .setContentTitle("A moment for you")
-        .setContentText("How's today going? Your care check-ins are waiting.")
+        .setContentText(text)
         .setContentIntent(open)
         .setAutoCancel(true)
         .build()
     context.getSystemService(NotificationManager::class.java)
-        .notify(4201, notification)
+        .notify(CareReminders.NOTIFICATION_ID, notification)
 }

@@ -37,3 +37,14 @@ val Urgent: Color get() = c(0xFFCC3D36, 0xFFE57A72)
 val UrgentMist: Color get() = c(0xFFFFE9E6, 0xFF3A2422)
 val Amber: Color get() = c(0xFFAE7423, 0xFFE0A65A)
 val AmberMist: Color get() = c(0xFFFFF1D8, 0xFF352A18)
+
+// ── Hero panel ──────────────────────────────────────────────────────────────
+// The journey hero is the page's one bold moment: a deep aubergine anchor (dark
+// in BOTH themes) with cream text, so it dominates instead of blending into the
+// pastel cards. Color earns its keep here rather than being spread thin as flat
+// card fills everywhere else.
+val HeroTop: Color get() = c(0xFF4A234B, 0xFF3A1C3C)
+val HeroBottom: Color get() = c(0xFF2B1230, 0xFF1F0D25)
+val HeroInk: Color get() = c(0xFFF7EFF7, 0xFFF2E7F3)
+val HeroInkMuted: Color get() = c(0xFFCBB1CD, 0xFFBBA1BE)
+val HeroAccent: Color get() = c(0xFFE8CBEC, 0xFFE7C9ED)

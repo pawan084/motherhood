@@ -51,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.MainDestination
+import com.aira.companion.ui.theme.HeroBottom
+import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -421,19 +423,10 @@ fun GradientHeroSurface(
                 .background(
                     brush =
                         Brush.linearGradient(
-                            colors =
-                                listOf(
-                                    LilacMist,
-                                    Paper,
-                                    SageMist.copy(alpha = 0.72f),
-                                ),
+                            colors = listOf(HeroTop, HeroBottom),
                         ),
-                    shape = RoundedCornerShape(30.dp),
-                ).border(
-                    width = 1.dp,
-                    color = Color.White.copy(alpha = 0.75f),
-                    shape = RoundedCornerShape(30.dp),
-                ).padding(22.dp),
+                    shape = RoundedCornerShape(28.dp),
+                ).padding(horizontal = 22.dp, vertical = 24.dp),
         content = content,
     )
 }

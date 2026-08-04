@@ -47,6 +47,12 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_aira_info" />
         </receiver>
+
+        <!-- Home-screen quick action: tick water via a background broadcast
+             (triggered by our own explicit PendingIntent, so not exported). -->
+        <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

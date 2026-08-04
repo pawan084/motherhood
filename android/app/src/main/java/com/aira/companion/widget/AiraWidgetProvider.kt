@@ -52,10 +52,10 @@ class AiraWidgetProvider : AppWidgetProvider() {
                     else -> "Aira"
                 },
             )
+            val hasWater = water >= 0 && target > 0
             views.setTextViewText(
                 R.id.widget_subtitle,
-                if (water >= 0 && target > 0) "💧 $water of $target today"
-                else "Open to check in",
+                if (hasWater) "💧 $water of $target today" else "Open to check in",
             )
             views.setOnClickPendingIntent(
                 R.id.widget_root,
@@ -65,6 +65,34 @@ class AiraWidgetProvider : AppWidgetProvider() {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
                 ),
             )
+            // Quick action: tick water straight from the home screen. Only a
+            // broadcast (no app open) when there's a cached reminder to tick;
+            // otherwise the button opens the app so one can be established.
+            if (hasWater && water < target) {
+                views.setTextViewText(R.id.widget_action, "💧  Log water")
+                views.setOnClickPendingIntent(
+                    R.id.widget_action,
+                    PendingIntent.getBroadcast(
+                        context, 4300,
+                        Intent(context, WidgetActionReceiver::class.java)
+                            .setAction(WidgetActionReceiver.ACTION_TICK_WATER),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+            } else {
+                views.setTextViewText(
+                    R.id.widget_action,
+                    if (hasWater) "✓ Water done" else "Open Aira",
+                )
+                views.setOnClickPendingIntent(
+                    R.id.widget_action,
+                    PendingIntent.getActivity(
+                        context, 4301,
+                        Intent(context, MainActivity::class.java),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                    ),
+                )
+            }
             return views
         }
     }
