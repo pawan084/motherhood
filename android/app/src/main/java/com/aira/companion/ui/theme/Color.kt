@@ -39,16 +39,20 @@ val Amber: Color get() = c(0xFFAE7423, 0xFFE0A65A)
 val AmberMist: Color get() = c(0xFFFFF1D8, 0xFF352A18)
 
 // ── Hero panel ──────────────────────────────────────────────────────────────
-// The journey hero is the page's one bold moment: a deep aubergine anchor (dark
-// in BOTH themes) with cream text, so it dominates instead of blending into the
-// pastel cards. Color earns its keep here rather than being spread thin as flat
-// card fills everywhere else.
-val HeroTop: Color get() = c(0xFF4A234B, 0xFF3A1C3C)
-val HeroBottom: Color get() = c(0xFF2B1230, 0xFF1F0D25)
-val HeroInk: Color get() = c(0xFFF7EFF7, 0xFFF2E7F3)
-val HeroInkMuted: Color get() = c(0xFFCBB1CD, 0xFFBBA1BE)
-val HeroAccent: Color get() = c(0xFFE8CBEC, 0xFFE7C9ED)
+// Dawn redesign (docs/design/redesign.html, move 1): in the light theme the
+// hero is a sunrise gradient (peach → lilac) with plum ink — the page's one
+// bold moment now glows instead of anchoring dark. The dark theme keeps its
+// deep aubergine hero: at 3 AM a glowing peach panel would be the wrong call.
+val HeroTop: Color get() = c(0xFFFBE3D3, 0xFF3A1C3C)
+val HeroBottom: Color get() = c(0xFFE2CFEF, 0xFF1F0D25)
+val HeroInk: Color get() = c(0xFF3B1C3F, 0xFFF2E7F3)
+val HeroInkMuted: Color get() = c(0xFF7A5680, 0xFFBBA1BE)
+val HeroAccent: Color get() = c(0xFF5A2B5C, 0xFFE7C9ED)
 
 // ── Floating bottom-nav pill (dark capsule; active tab is a lighter capsule) ──
+// Nav ink is its own pair — it must read against NavPill/NavActive, not the
+// hero (the dawn hero flipped light while the pill stayed dark).
 val NavPill: Color get() = c(0xFF2A1330, 0xFF130F19)
 val NavActive: Color get() = c(0xFF5A3A5C, 0xFF453450)
+val NavInk: Color get() = c(0xFFF7EFF7, 0xFFF2E7F3)
+val NavInkMuted: Color get() = c(0xFFCBB1CD, 0xFFBBA1BE)

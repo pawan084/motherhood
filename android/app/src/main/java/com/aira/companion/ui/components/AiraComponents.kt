@@ -53,11 +53,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.theme.HeroBottom
-import com.aira.companion.ui.theme.HeroInk
-import com.aira.companion.ui.theme.HeroInkMuted
 import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.NavActive
+import com.aira.companion.ui.theme.NavInk
+import com.aira.companion.ui.theme.NavInkMuted
 import com.aira.companion.ui.theme.NavPill
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -404,7 +404,7 @@ fun AiraBottomNavigation(
                     Surface(
                         onClick = { onSelect(destination) },
                         color = if (active) NavActive else Color.Transparent,
-                        contentColor = if (active) HeroInk else HeroInkMuted,
+                        contentColor = if (active) NavInk else NavInkMuted,
                         shape = CircleShape,
                     ) {
                         Row(
