@@ -26,19 +26,25 @@ type Message =
   | { kind: "aira"; text: string; label?: string; decision?: string; cards?: Card[] }
   | { kind: "notice"; text: string };
 
-const STAGES = [
-  { value: "trying_to_conceive", title: "Trying to conceive", detail: "Planning and preconception support" },
-  { value: "pregnant", title: "Pregnant", detail: "Week-by-week support" },
-  { value: "postpartum", title: "Postpartum", detail: "Recovery and newborn rhythm" },
-] as const;
+// Offline-only fallbacks: /config is the single source for these catalogs
+// (see backend config.LANGUAGE_OPTIONS / STAGE_OPTIONS); these render only
+// when the backend never answered.
+const FALLBACK_STAGES = [
+  { key: "trying_to_conceive", label: "Trying to conceive", helper: "Planning and preconception support" },
+  { key: "pregnant", label: "Pregnant", helper: "Week-by-week support" },
+  { key: "postpartum", label: "Postpartum", helper: "Recovery and newborn rhythm" },
+];
 
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "हिन्दी" },
-  { value: "hi-Latn", label: "Hinglish" },
+const FALLBACK_LANGUAGES = [
+  { code: "en", label: "English", helper: "Continue in English" },
+  { code: "hi", label: "Hindi", helper: "हिंदी में बातचीत" },
+  { code: "hi-Latn", label: "Hinglish", helper: "A natural mix of Hindi and English" },
 ];
 
 function OnboardingFlow({ onDone }: { onDone: (ctx: CareContext) => void }) {
+  const { config } = useApp();
+  const stages = config?.stage_options ?? FALLBACK_STAGES;
+  const languages = config?.language_options ?? FALLBACK_LANGUAGES;
   const [step, setStep] = useState(0);
   const [stage, setStage] = useState<string>("");
   const [date, setDate] = useState("");
@@ -74,17 +80,17 @@ function OnboardingFlow({ onDone }: { onDone: (ctx: CareContext) => void }) {
         <h2>Where are you right now?</h2>
         <p>Choose a starting point. Nothing here is a diagnosis.</p>
         <div className="option-list">
-          {STAGES.map((s) => (
+          {stages.map((s) => (
             <button
-              key={s.value}
+              key={s.key}
               onClick={() => {
-                setStage(s.value);
+                setStage(s.key);
                 setStep(1);
               }}
             >
               <span>
-                <strong>{s.title}</strong>
-                <small>{s.detail}</small>
+                <strong>{s.label}</strong>
+                <small>{s.helper}</small>
               </span>
               <ArrowRight size={16} />
             </button>
@@ -128,8 +134,8 @@ function OnboardingFlow({ onDone }: { onDone: (ctx: CareContext) => void }) {
       <label className="field">
         <span>Preferred language</span>
         <select value={language} onChange={(e) => setLanguage(e.target.value)}>
-          {LANGUAGES.map((l) => (
-            <option key={l.value} value={l.value}>
+          {languages.map((l) => (
+            <option key={l.code} value={l.code}>
               {l.label}
             </option>
           ))}

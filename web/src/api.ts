@@ -26,9 +26,14 @@ export type CareContext = {
   week: number | null;
 };
 
+export type LanguageOption = { code: string; label: string; helper: string };
+export type StageOption = { key: string; label: string; helper: string };
+
 export type AppConfig = {
   journey_stages: string[];
   languages: string[];
+  language_options: LanguageOption[];
+  stage_options: StageOption[];
   card_types: string[];
   safety_gate_enabled: boolean;
   ai_disclaimer: string;

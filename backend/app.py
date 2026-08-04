@@ -120,6 +120,10 @@ def get_config() -> dict:
     return {
         "journey_stages": list(config.JOURNEY_STAGES),
         "languages": list(config.SUPPORTED_LANGUAGES),
+        # Labeled variants: what pickers render. The bare lists above stay for
+        # validation and back-compat; these carry display label + helper text.
+        "language_options": [dict(o) for o in config.LANGUAGE_OPTIONS],
+        "stage_options": [dict(o) for o in config.STAGE_OPTIONS],
         "card_types": list(prompts.CARD_TYPES),
         "safety_gate_enabled": True,
         # Aira gives no diagnosis. Clients surface this next to AI replies.

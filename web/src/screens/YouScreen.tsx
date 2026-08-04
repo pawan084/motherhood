@@ -20,13 +20,16 @@ import {
 } from "../api";
 import { useApp } from "../state";
 
-const LANGUAGES = [
-  { value: "en", label: "English" },
-  { value: "hi", label: "हिन्दी" },
-  { value: "hi-Latn", label: "Hinglish" },
+// Offline-only fallbacks — /config's language_options / stage_options are the
+// single source for these catalogs (sayli's mirrors drifted; see backend
+// config.py).
+const FALLBACK_LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "hi", label: "Hindi" },
+  { code: "hi-Latn", label: "Hinglish" },
 ];
 
-const STAGE_TITLES: Record<string, string> = {
+const FALLBACK_STAGE_TITLES: Record<string, string> = {
   trying_to_conceive: "Trying to conceive",
   pregnant: "Pregnant",
   postpartum: "Postpartum",
@@ -174,10 +177,15 @@ function PrivacyControls() {
 }
 
 export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) {
-  const { context, setContext } = useApp();
+  const { context, setContext, config } = useApp();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   if (!context) return null;
+
+  const languages = config?.language_options ?? FALLBACK_LANGUAGES;
+  const stageTitle =
+    config?.stage_options.find((s) => s.key === context.stage)?.label ??
+    FALLBACK_STAGE_TITLES[context.stage];
 
   const changeLanguage = async (language: string) => {
     setSaving(true);
@@ -204,7 +212,7 @@ export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) 
         <div>
           <h1>{context.display_name || "Your profile"}</h1>
           <p>
-            {STAGE_TITLES[context.stage]}
+            {stageTitle}
             {context.week !== null && ` · Week ${context.week}`}
           </p>
         </div>
@@ -214,8 +222,8 @@ export default function YouScreen({ onRedoSetup }: { onRedoSetup: () => void }) 
         <label className="field">
           <span>Language {saving ? "· saving…" : saved ? "· saved" : ""}</span>
           <select value={context.language} onChange={(e) => void changeLanguage(e.target.value)} disabled={saving}>
-            {LANGUAGES.map((l) => (
-              <option key={l.value} value={l.value}>
+            {languages.map((l) => (
+              <option key={l.code} value={l.code}>
                 {l.label}
               </option>
             ))}

@@ -48,8 +48,26 @@ TRANSCRIBE_TIMEOUT_MS = int(os.environ.get("TRANSCRIBE_TIMEOUT_MS", "20000"))
 # ── Observability ────────────────────────────────────────────────────────────
 SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
 
-SUPPORTED_LANGUAGES = ("en", "hi", "hi-Latn")  # English, Hindi, Hinglish
-JOURNEY_STAGES = ("trying_to_conceive", "pregnant", "postpartum")
+# ── Shared client-facing catalogs ────────────────────────────────────────────
+# /config serves these; clients must not keep their own label mirrors (sayli's
+# admin languages.ts drifted the day a language was added). Add a language or
+# stage HERE and every client's picker gets it.
+LANGUAGE_OPTIONS = (
+    {"code": "en", "label": "English", "helper": "Continue in English"},
+    {"code": "hi", "label": "Hindi", "helper": "हिंदी में बातचीत"},
+    {"code": "hi-Latn", "label": "Hinglish",
+     "helper": "A natural mix of Hindi and English"},
+)
+STAGE_OPTIONS = (
+    {"key": "trying_to_conceive", "label": "Trying to conceive",
+     "helper": "Cycle-aware wellness and preparation"},
+    {"key": "pregnant", "label": "Pregnant",
+     "helper": "Week-by-week guidance and care planning"},
+    {"key": "postpartum", "label": "Postpartum",
+     "helper": "Recovery, feeding and emotional support"},
+)
+SUPPORTED_LANGUAGES = tuple(o["code"] for o in LANGUAGE_OPTIONS)
+JOURNEY_STAGES = tuple(o["key"] for o in STAGE_OPTIONS)
 
 
 class ConfigError(RuntimeError):

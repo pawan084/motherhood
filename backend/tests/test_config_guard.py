@@ -87,3 +87,20 @@ def test_device_token_secret_falls_back_to_session_secret(monkeypatch):
         monkeypatch, ENV="development", APP_SESSION_SECRET="shared-secret"
     )
     assert cfg.DEVICE_TOKEN_SECRET == "shared-secret"
+
+
+# ── /config shared catalogs ──────────────────────────────────────────────────
+# Sayli's trap #3: hardcoded catalog mirrors drift. The labeled options are the
+# single source every picker renders, so their shape is a contract.
+
+def test_config_endpoint_serves_labeled_catalogs(client):
+    body = client.get("/config").json()
+    langs = body["language_options"]
+    stages = body["stage_options"]
+    # Labeled and bare lists must never disagree — they derive from one tuple.
+    assert [o["code"] for o in langs] == body["languages"]
+    assert [o["key"] for o in stages] == body["journey_stages"]
+    for o in langs:
+        assert o["label"] and o["helper"]
+    for o in stages:
+        assert o["label"] and o["helper"]
