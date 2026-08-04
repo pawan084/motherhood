@@ -376,6 +376,22 @@ fun MeScreen(
             }
         }
 
+        // Change your stage any time without re-onboarding (the picker is
+        // otherwise only reachable from the empty hero) — fixes being stuck on
+        // the wrong stage.
+        if (state.careSummary != null) {
+            TextButton(
+                onClick = { showStagePicker = true },
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) {
+                Text(
+                    "Change your journey stage",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = InkMuted,
+                )
+            }
+        }
+
         // ── Week-flip celebration: shown once per new week (review #8) ─────
         state.weekJustFlipped?.let { newWeek ->
             AiraCard(containerColor = LilacMist) {
