@@ -38,6 +38,12 @@ val UrgentMist: Color get() = c(0xFFFFE9E6, 0xFF3A2422)
 val Amber: Color get() = c(0xFFAE7423, 0xFFE0A65A)
 val AmberMist: Color get() = c(0xFFFFF1D8, 0xFF352A18)
 
+// ── Rose second accent (Dawn move 3) ────────────────────────────────────────
+// A warm counterpoint to plum: section eyebrows, tool tiles, category chips.
+// Rose is flavour, never status — sage keeps meaning "done / safe".
+val Rose: Color get() = c(0xFFB4596B, 0xFFDD93A3)
+val RoseMist: Color get() = c(0xFFFAE9EA, 0xFF39222B)
+
 // ── Hero panel ──────────────────────────────────────────────────────────────
 // Dawn redesign (docs/design/redesign.html, move 1): in the light theme the
 // hero is a sunrise gradient (peach → lilac) with plum ink — the page's one

@@ -58,6 +58,8 @@ import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Lilac
 import com.aira.companion.ui.theme.LilacMist
+import com.aira.companion.ui.theme.Rose
+import com.aira.companion.ui.theme.RoseMist
 import com.aira.companion.ui.theme.Plum
 
 /** Play a catalog entry: own hosted videos open the IN-APP player overlay
@@ -278,13 +280,13 @@ fun VideosScreen(
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         )
                         Spacer(Modifier.height(5.dp))
-                        Surface(color = LilacMist, shape = CircleShape) {
+                        Surface(color = RoseMist, shape = CircleShape) {
                             Text(
                                 text = video.topic.takeIf { it.isNotBlank() }
                                     ?: stageLabel(video.stage),
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Plum,
+                                color = Rose,
                                 maxLines = 1,
                                 softWrap = false,
                             )

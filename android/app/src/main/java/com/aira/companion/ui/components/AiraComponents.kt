@@ -71,6 +71,7 @@ import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.PlumSoft
+import com.aira.companion.ui.theme.Rose
 import com.aira.companion.ui.theme.PlumDeep
 import com.aira.companion.ui.theme.Sage
 import com.aira.companion.ui.theme.SageDeep
@@ -357,7 +358,7 @@ fun SectionLabel(
         text = text.uppercase(),
         modifier = modifier,
         style = MaterialTheme.typography.labelSmall,
-        color = PlumSoft,
+        color = Rose,
     )
 }
 

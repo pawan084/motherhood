@@ -125,6 +125,8 @@ import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.PlumSoft
+import com.aira.companion.ui.theme.Rose
+import com.aira.companion.ui.theme.RoseMist
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
@@ -203,13 +205,13 @@ fun ToolTraySheet(
                                 modifier =
                                     Modifier
                                         .size(38.dp)
-                                        .background(LilacMist, RoundedCornerShape(12.dp)),
+                                        .background(RoseMist, CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
                                     item.icon,
                                     contentDescription = null,
-                                    tint = Plum,
+                                    tint = Rose,
                                     modifier = Modifier.size(19.dp),
                                 )
                             }
