@@ -55,10 +55,11 @@ val HeroInk: Color get() = c(0xFF3B1C3F, 0xFFF2E7F3)
 val HeroInkMuted: Color get() = c(0xFF7A5680, 0xFFBBA1BE)
 val HeroAccent: Color get() = c(0xFF5A2B5C, 0xFFE7C9ED)
 
-// ── Floating bottom-nav pill (dark capsule; active tab is a lighter capsule) ──
-// Nav ink is its own pair — it must read against NavPill/NavActive, not the
-// hero (the dawn hero flipped light while the pill stayed dark).
-val NavPill: Color get() = c(0xFF2A1330, 0xFF130F19)
-val NavActive: Color get() = c(0xFF5A3A5C, 0xFF453450)
-val NavInk: Color get() = c(0xFFF7EFF7, 0xFFF2E7F3)
-val NavInkMuted: Color get() = c(0xFFCBB1CD, 0xFFBBA1BE)
+// ── Floating bottom-nav pill ────────────────────────────────────────────────
+// Dawn move 4: light theme goes frosted — translucent white capsule, solid
+// plum active tab, content glowing through beneath. Dark theme keeps its
+// dark capsule. Nav ink is its own pair so it always reads against the pill.
+val NavPill: Color get() = c(0xF2FFFFFF, 0xFF130F19)
+val NavActive: Color get() = c(0xFF5A2B5C, 0xFF453450)
+val NavInk: Color get() = c(0xFFFFFCF8, 0xFFF2E7F3)
+val NavInkMuted: Color get() = c(0xFF8A6390, 0xFFBBA1BE)

@@ -408,9 +408,10 @@ fun AiraBottomNavigation(
     onSelect: (MainDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Floating dark capsule: the active tab is a lighter icon+label pill, the
-    // rest are muted labels. Transparent around it so the warm page shows
-    // through — it reads as one confident control, not a heavy bar.
+    // Floating capsule: frosted white in the light theme (Dawn move 4), dark
+    // in the dark theme; the active tab is a solid plum icon+label pill.
+    // Transparent around it so the page shows through — it reads as one
+    // confident control, not a heavy bar.
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -422,6 +423,12 @@ fun AiraBottomNavigation(
             color = NavPill,
             shape = CircleShape,
             shadowElevation = 12.dp,
+            border =
+                if (AiraPalette.dark) {
+                    null
+                } else {
+                    androidx.compose.foundation.BorderStroke(1.dp, Color.White)
+                },
         ) {
             Row(
                 modifier = Modifier.padding(6.dp),
