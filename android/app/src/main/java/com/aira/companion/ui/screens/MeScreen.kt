@@ -526,11 +526,8 @@ fun MeScreen(
                         modifier = Modifier
                             .weight(1f)
                             .semantics { contentDescription = "Feeling ${m.label}" },
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (selected) m.color else Paper,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, if (selected) m.color else OutlineSoft,
-                        ),
+                        shape = CircleShape,
+                        color = if (selected) m.color else LilacMist,
                     ) {
                         Column(
                             modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
@@ -947,12 +944,9 @@ private fun ReminderRow(
                     )
                     if (reminder.doneToday) onUntick(reminder) else onTick(reminder)
                 },
-                shape = RoundedCornerShape(12.dp),
-                color = if (reminder.doneToday) SageMist else Paper,
+                shape = CircleShape,
+                color = if (reminder.doneToday) SageMist else LilacMist,
                 contentColor = if (reminder.doneToday) Sage else Plum,
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp, if (reminder.doneToday) SageMist else OutlineSoft,
-                ),
             ) {
                 Icon(
                     imageVector = Icons.Filled.Check,
@@ -1006,18 +1000,19 @@ private fun StagePickerDialog(
                     Surface(
                         onClick = { stage = key; anchor = null },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
-                        color = if (selected) LilacMist else Paper,
-                        border = androidx.compose.foundation.BorderStroke(
-                            if (selected) 1.5.dp else 1.dp,
-                            if (selected) Plum else OutlineSoft,
-                        ),
+                        shape = CircleShape,
+                        color = if (selected) Plum else Paper,
+                        border = if (selected) {
+                            null
+                        } else {
+                            androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft)
+                        },
                     ) {
                         Text(
                             label,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
                             style = MaterialTheme.typography.titleSmall,
-                            color = Ink,
+                            color = if (selected) Paper else Ink,
                         )
                     }
                     Spacer(Modifier.height(8.dp))

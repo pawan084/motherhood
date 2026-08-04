@@ -532,12 +532,9 @@ fun CareDetailScreen(
                         onClick = {
                             if (reminder.doneToday) onUntick(reminder) else onTick(reminder)
                         },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (reminder.doneToday) SageMist else Paper,
+                        shape = CircleShape,
+                        color = if (reminder.doneToday) SageMist else LilacMist,
                         contentColor = if (reminder.doneToday) Sage else Plum,
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp, if (reminder.doneToday) SageMist else OutlineSoft,
-                        ),
                     ) {
                         Icon(
                             Icons.Filled.Check,

@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +71,7 @@ import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
+import com.aira.companion.ui.theme.PlumGradEnd
 import com.aira.companion.ui.theme.PlumSoft
 import com.aira.companion.ui.theme.Rose
 import com.aira.companion.ui.theme.PlumDeep
@@ -174,19 +176,32 @@ fun PrimaryButton(
     enabled: Boolean = true,
     trailingIcon: ImageVector? = Icons.Filled.ChevronRight,
 ) {
+    // Dawn move 6: full pill with a subtle plum gradient. The Button's own
+    // container goes transparent so the brush underneath shows through.
     Button(
         onClick = onClick,
         enabled = enabled,
-        modifier = modifier.height(54.dp),
-        shape = RoundedCornerShape(17.dp),
+        modifier =
+            modifier
+                .height(54.dp)
+                .background(
+                    brush =
+                        if (enabled) {
+                            Brush.linearGradient(listOf(Plum, PlumGradEnd))
+                        } else {
+                            SolidColor(Lilac)
+                        },
+                    shape = CircleShape,
+                ),
+        shape = CircleShape,
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = Plum,
+                containerColor = Color.Transparent,
                 contentColor = Paper,
-                disabledContainerColor = Lilac,
+                disabledContainerColor = Color.Transparent,
                 disabledContentColor = Plum.copy(alpha = 0.52f),
             ),
-        contentPadding = PaddingValues(horizontal = 20.dp),
+        contentPadding = PaddingValues(horizontal = 22.dp),
     ) {
         Text(
             text = label,

@@ -44,6 +44,9 @@ val AmberMist: Color get() = c(0xFFFFF1D8, 0xFF352A18)
 val Rose: Color get() = c(0xFFB4596B, 0xFFDD93A3)
 val RoseMist: Color get() = c(0xFFFAE9EA, 0xFF39222B)
 
+// Gradient tail for the primary button (Dawn move 6): plum → warm plum.
+val PlumGradEnd: Color get() = c(0xFF8A4A78, 0xFFB893C4)
+
 // ── Hero panel ──────────────────────────────────────────────────────────────
 // Dawn redesign (docs/design/redesign.html, move 1): in the light theme the
 // hero is a sunrise gradient (peach → lilac) with plum ink — the page's one

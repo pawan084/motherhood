@@ -262,7 +262,7 @@ fun SettingsScreen(
                         onClick = {
                             com.aira.companion.ui.theme.ThemeMode.save(context, value)
                         },
-                        shape = RoundedCornerShape(14.dp),
+                        shape = CircleShape,
                         color = if (selected) Plum else Paper,
                         border = androidx.compose.foundation.BorderStroke(
                             1.dp,
@@ -348,7 +348,7 @@ fun SettingsScreen(
                         val selected = times.size == count
                         Surface(
                             onClick = { times = defaults; reminders.setTimes(context, defaults) },
-                            shape = RoundedCornerShape(14.dp),
+                            shape = CircleShape,
                             color = if (selected) Plum else Paper,
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp, if (selected) Plum else OutlineSoft,
