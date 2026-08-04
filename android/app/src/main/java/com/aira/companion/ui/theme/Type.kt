@@ -20,11 +20,13 @@ val AiraTypography =
                 letterSpacing = (-1.2).sp,
             ),
         displayMedium =
+            // Dawn move 5: the welcome headline grows a step; italics are
+            // applied per call site (greetings, emphasis words), not here.
             TextStyle(
                 fontFamily = Editorial,
                 fontWeight = FontWeight.Normal,
-                fontSize = 38.sp,
-                lineHeight = 42.sp,
+                fontSize = 40.sp,
+                lineHeight = 44.sp,
                 letterSpacing = (-0.8).sp,
             ),
         headlineLarge =

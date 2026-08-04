@@ -35,12 +35,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
 import com.aira.companion.ui.theme.Ink
+import com.aira.companion.ui.theme.Rose
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.LilacMist
@@ -113,7 +118,15 @@ fun WelcomeScreen(
             Spacer(modifier = Modifier.height(38.dp))
 
             Text(
-                text = "Your private AI companion for motherhood.",
+                // Dawn move 5: the emphasis word carries the voice — italic
+                // serif in rose, the rest stays upright ink.
+                text = buildAnnotatedString {
+                    append("Your private AI companion for ")
+                    withStyle(SpanStyle(fontStyle = FontStyle.Italic, color = Rose)) {
+                        append("motherhood")
+                    }
+                    append(".")
+                },
                 style = MaterialTheme.typography.displayMedium,
                 color = Ink,
             )
