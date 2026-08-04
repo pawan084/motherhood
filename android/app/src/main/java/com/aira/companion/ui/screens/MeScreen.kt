@@ -819,7 +819,7 @@ fun MeScreen(
             )
         }
 
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(96.dp)) // clearance for the floating nav pill
     }
     }
 }

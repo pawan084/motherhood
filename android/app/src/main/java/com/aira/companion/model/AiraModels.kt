@@ -110,6 +110,7 @@ data class VideoItem(
     val avgStars: Double? = null,
     val ratingCount: Int = 0,
     val myStars: Int? = null,
+    val watched: Boolean = false,      // the caller has watched it — dims the card
     val transcript: String? = null,    // a11y/sound-off reading, when provided
 )
 

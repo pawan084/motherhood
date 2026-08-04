@@ -108,7 +108,7 @@ fun VideosScreen(
     }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 104.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {

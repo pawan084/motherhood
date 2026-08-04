@@ -143,12 +143,6 @@ private fun MainExperience(
                     onUrgentHelp = viewModel::openUrgentHelp,
                 )
             },
-            bottomBar = {
-                AiraBottomNavigation(
-                    selected = state.destination,
-                    onSelect = viewModel::selectDestination,
-                )
-            },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
             when (state.destination) {
@@ -193,6 +187,17 @@ private fun MainExperience(
                         modifier = Modifier.padding(padding),
                     )
             }
+        }
+
+        // Floating nav overlays the content (transparent around it, so the page
+        // shows through behind the pill) — only on the main destinations;
+        // detail and player screens draw over it.
+        if (state.detail == null && state.playerVideo == null) {
+            AiraBottomNavigation(
+                selected = state.destination,
+                onSelect = viewModel::selectDestination,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
 
         state.detail?.let { page ->

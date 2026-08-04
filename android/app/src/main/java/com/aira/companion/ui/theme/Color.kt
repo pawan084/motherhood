@@ -48,3 +48,7 @@ val HeroBottom: Color get() = c(0xFF2B1230, 0xFF1F0D25)
 val HeroInk: Color get() = c(0xFFF7EFF7, 0xFFF2E7F3)
 val HeroInkMuted: Color get() = c(0xFFCBB1CD, 0xFFBBA1BE)
 val HeroAccent: Color get() = c(0xFFE8CBEC, 0xFFE7C9ED)
+
+// ── Floating bottom-nav pill (dark capsule; active tab is a lighter capsule) ──
+val NavPill: Color get() = c(0xFF2A1330, 0xFF130F19)
+val NavActive: Color get() = c(0xFF5A3A5C, 0xFF453450)

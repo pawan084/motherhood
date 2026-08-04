@@ -476,6 +476,9 @@ def _video_dict(row, learner_id: str | None = None) -> dict:
             "SELECT stars FROM video_ratings WHERE learner_id=? AND video_id=?",
             (learner_id, vid)).fetchone()
         out["my_stars"] = my[0] if my else None
+        out["my_watched"] = bool(_conn.execute(
+            "SELECT 1 FROM video_watched WHERE learner_id=? AND video_id=?",
+            (learner_id, vid)).fetchone())
     return out
 
 

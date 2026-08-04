@@ -72,7 +72,10 @@ fun AiraChatScreen(
             modifier
                 .fillMaxSize()
                 .background(Ivory)
-                .imePadding(),
+                .imePadding()
+                // Lift the input clear of the floating nav pill + system nav bar
+                // (keyboard closed). Matches the Videos list bottom clearance.
+                .padding(bottom = 104.dp),
     ) {
         LazyColumn(
             modifier =

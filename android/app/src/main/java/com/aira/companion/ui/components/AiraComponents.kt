@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -52,8 +53,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.MainDestination
 import com.aira.companion.ui.theme.HeroBottom
+import com.aira.companion.ui.theme.HeroInk
+import com.aira.companion.ui.theme.HeroInkMuted
 import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
+import com.aira.companion.ui.theme.NavActive
+import com.aira.companion.ui.theme.NavPill
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.Lilac
@@ -374,40 +379,58 @@ fun AiraBottomNavigation(
     onSelect: (MainDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    NavigationBar(
-        modifier = modifier,
-        containerColor = Paper,
-        tonalElevation = 0.dp,
+    // Floating dark capsule: the active tab is a lighter icon+label pill, the
+    // rest are muted labels. Transparent around it so the warm page shows
+    // through — it reads as one confident control, not a heavy bar.
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 12.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        MainDestination.entries.forEach { destination ->
-            val selectedItem = selected == destination
-            val icon = destinationIcons.getValue(destination)
-            NavigationBarItem(
-                selected = selectedItem,
-                onClick = { onSelect(destination) },
-                icon = {
-                    Icon(
-                        imageVector = if (selectedItem) icon.active else icon.inactive,
-                        contentDescription = destination.label,
-                        modifier = Modifier.size(21.dp),
-                    )
-                },
-                label = {
-                    Text(
-                        text = destination.label,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                    )
-                },
-                colors =
-                    NavigationBarItemDefaults.colors(
-                        selectedIconColor = Plum,
-                        selectedTextColor = Plum,
-                        indicatorColor = LilacMist,
-                        unselectedIconColor = InkMuted,
-                        unselectedTextColor = InkMuted,
-                    ),
-            )
+        Surface(
+            color = NavPill,
+            shape = CircleShape,
+            shadowElevation = 12.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                MainDestination.entries.forEach { destination ->
+                    val active = selected == destination
+                    Surface(
+                        onClick = { onSelect(destination) },
+                        color = if (active) NavActive else Color.Transparent,
+                        contentColor = if (active) HeroInk else HeroInkMuted,
+                        shape = CircleShape,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(
+                                horizontal = if (active) 17.dp else 15.dp,
+                                vertical = 12.dp,
+                            ),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        ) {
+                            if (active) {
+                                Icon(
+                                    imageVector = destinationIcons.getValue(destination).active,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+                            Text(
+                                text = destination.label,
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

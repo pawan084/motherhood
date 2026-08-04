@@ -519,6 +519,7 @@ object AiraApi {
         avgStars = if (json.isNull("avg_stars")) null else json.getDouble("avg_stars"),
         ratingCount = json.optInt("rating_count", 0),
         myStars = if (json.isNull("my_stars")) null else json.getInt("my_stars"),
+        watched = json.optBoolean("my_watched", false),
         transcript = json.optString("transcript").takeIf { it.isNotBlank() && it != "null" },
     )
 
