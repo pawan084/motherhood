@@ -209,11 +209,45 @@ h1{font-family:var(--serif);font-weight:500;font-size:40px;letter-spacing:-1px;m
 .tool .ti{width:38px;height:38px;border-radius:12px;background:var(--lilac-mist);display:flex;align-items:center;justify-content:center;color:var(--plum);margin-bottom:11px}
 .tool b{font-size:14px;display:block}
 .tool small{color:var(--ink-muted);font-size:12px}
+
+/* ── Dawn — implemented in the app (redesign commits 1/6–6/6) ────────────────
+   These overrides keep this as-built reference in sync with the shipping
+   Compose UI. redesign.html shows the same moves as before/after pairs. */
+:root{
+  --hero-top:#FBE3D3; --hero-bottom:#E2CFEF; --hero-ink:#3B1C3F;
+  --hero-ink-muted:#7A5680; --hero-accent:#5A2B5C;
+  --nav-pill:#FFFFFF; --nav-active:#5A2B5C;
+  --rose:#B4596B; --rose-mist:#FAE9EA;
+}
+.card,.vcard,.tool,.pnode .lab{border:none;box-shadow:0 10px 26px rgba(90,43,92,.08)}
+.card{border-radius:28px}
+.hero .greet{font-family:var(--serif);font-style:italic;font-size:18px}
+.hero .bar{background:#5a2b5c1f}
+.hero .pill{background:#5a2b5c14;color:var(--hero-ink)}
+.nav .pill{background:#ffffffe0;border:1px solid #fff;box-shadow:0 14px 34px rgba(59,28,63,.22)}
+.nav .tab{color:#8A6390}
+.nav .tab.active{background:#5A2B5C;color:#FFFCF8}
+.eyebrow{color:var(--rose)}
+.checkbtn{border-radius:50%;border:none;background:var(--lilac-mist)}
+.checkbtn.done{background:var(--sage-mist)}
+.mood{border:none;background:var(--lilac-mist);border-radius:99px;padding:12px 2px}
+.bubble.aira{border:none;box-shadow:0 6px 18px rgba(90,43,92,.08)}
+.typing{border:none;box-shadow:0 6px 18px rgba(90,43,92,.08)}
+.btn-primary{border-radius:99px;background:linear-gradient(135deg,#5A2B5C,#8A4A78)}
+.qchip{border:none;box-shadow:0 4px 12px rgba(90,43,92,.08)}
+.inputpill .field{border:none;box-shadow:0 8px 22px rgba(90,43,92,.10)}
+.opt{border-radius:99px}
+.opt.sel{background:var(--plum);color:#fff;border:none}
+.tool{border-radius:24px}
+.tool .ti{border-radius:99px;background:var(--rose-mist);color:var(--rose)}
+.seg .s{border-radius:99px}
+.chip-cat{background:var(--rose-mist);color:var(--rose)}
+.vcard .vi{border-radius:99px;background:var(--rose-mist);color:var(--rose)}
 </style>
 </head>
 <body>
 <h1>Aira — Android screens</h1>
-<p class="sub">A living design reference, generated from the app's Compose UI (<code>android/app/.../ui</code>) and theme (<code>Color.kt</code>, <code>Type.kt</code>). Every colour, type size, and layout below mirrors the shipping Android app. Edit the CSS tokens at the top of this file to re-skin all screens at once. Fonts <code>Fraunces</code>/<code>Inter</code> approximate the app's system serif/sans. For the proposed new direction, see <a href="redesign.html"><b>redesign.html</b></a> — every screen as an as-built / proposed pair.</p>
+<p class="sub">A living design reference, generated from the app's Compose UI (<code>android/app/.../ui</code>) and theme (<code>Color.kt</code>, <code>Type.kt</code>). Every colour, type size, and layout below mirrors the shipping Android app. Edit the CSS tokens at the top of this file to re-skin all screens at once. Fonts <code>Fraunces</code>/<code>Inter</code> approximate the app's system serif/sans. The <b>Dawn</b> direction is implemented in the app — the "Dawn" override block at the end of the styles keeps this reference in sync; <a href="redesign.html"><b>redesign.html</b></a> shows each move as a before/after pair.</p>
 
 <section class="tokens">
   <h2>Palette</h2>
@@ -564,7 +598,7 @@ h1{font-family:var(--serif);font-weight:500;font-size:40px;letter-spacing:-1px;m
 
 <script>
 /* Render the palette + type scale from the CSS tokens so they stay in sync. */
-const COLORS=[["Ivory","--ivory"],["IvoryDeep","--ivory-deep"],["Paper","--paper"],["Plum","--plum"],["PlumDeep","--plum-deep"],["PlumSoft","--plum-soft"],["Lilac","--lilac"],["LilacMist","--lilac-mist"],["Sage","--sage"],["SageDeep","--sage-deep"],["SageMist","--sage-mist"],["Ink","--ink"],["InkMuted","--ink-muted"],["Outline","--outline"],["Urgent","--urgent"],["Amber","--amber"],["HeroTop","--hero-top"],["HeroBottom","--hero-bottom"],["HeroAccent","--hero-accent"],["NavPill","--nav-pill"],["mood/great","--m-great"],["mood/okay","--m-okay"],["mood/tired","--m-tired"],["mood/anxious","--m-anxious"],["mood/low","--m-low"],["mood/unwell","--m-unwell"]];
+const COLORS=[["Ivory","--ivory"],["IvoryDeep","--ivory-deep"],["Paper","--paper"],["Plum","--plum"],["PlumDeep","--plum-deep"],["PlumSoft","--plum-soft"],["Lilac","--lilac"],["LilacMist","--lilac-mist"],["Sage","--sage"],["SageDeep","--sage-deep"],["SageMist","--sage-mist"],["Ink","--ink"],["InkMuted","--ink-muted"],["Outline","--outline"],["Urgent","--urgent"],["Amber","--amber"],["HeroTop","--hero-top"],["HeroBottom","--hero-bottom"],["HeroAccent","--hero-accent"],["NavPill","--nav-pill"],["Rose","--rose"],["RoseMist","--rose-mist"],["mood/great","--m-great"],["mood/okay","--m-okay"],["mood/tired","--m-tired"],["mood/anxious","--m-anxious"],["mood/low","--m-low"],["mood/unwell","--m-unwell"]];
 const cs=getComputedStyle(document.documentElement);
 document.getElementById('sw').innerHTML=COLORS.map(([n,v])=>{const hx=cs.getPropertyValue(v).trim();return `<div class="sw"><div class="chip" style="background:${hx}"></div><div class="nm">${n}</div><div class="hx">${hx}</div></div>`}).join('');
 const TYPE=[["displayLarge",48,"var(--serif)",500,"Fraunces 48"],["headlineLarge",32,"var(--serif)",500,"Fraunces 32"],["headlineSmall",23,"var(--serif)",500,"Fraunces 23"],["titleLarge",20,"var(--sans)",600,"Inter SemiBold 20"],["titleSmall",14,"var(--sans)",600,"Inter SemiBold 14"],["bodyMedium",14,"var(--sans)",400,"Inter 14"],["labelSmall",11,"var(--sans)",600,"Inter SemiBold 11"]];
