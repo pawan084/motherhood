@@ -33,6 +33,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
@@ -278,13 +280,12 @@ fun AiraChatScreen(
         )
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Paper,
-            shadowElevation = 12.dp,
+            color = Ivory,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(start = 6.dp, end = 12.dp, top = 2.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 IconButton(onClick = onOpenTools) {
                     Icon(
@@ -293,33 +294,51 @@ fun AiraChatScreen(
                         tint = Plum,
                     )
                 }
-                OutlinedTextField(
-                    value = state.chatDraft,
-                    onValueChange = onDraftChange,
+                // One soft input pill: a borderless field + the send button
+                // integrated, instead of three floating controls.
+                Surface(
                     modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text("Message Aira…", color = InkMuted)
-                    },
-                    // Multi-line (#11): grows up to a few lines for longer questions.
-                    maxLines = 5,
-                    shape = RoundedCornerShape(20.dp),
-                )
-                FilledIconButton(
-                    onClick = onSend,
-                    enabled = state.chatDraft.isNotBlank(),
-                    colors =
-                        androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
-                            containerColor = Plum,
-                            contentColor = Paper,
-                            disabledContainerColor = SageMist,
-                            disabledContentColor = InkMuted,
-                        ),
+                    shape = RoundedCornerShape(26.dp),
+                    color = Paper,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Send,
-                        contentDescription = "Send message",
-                        modifier = Modifier.size(18.dp),
-                    )
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        OutlinedTextField(
+                            value = state.chatDraft,
+                            onValueChange = onDraftChange,
+                            modifier = Modifier.weight(1f),
+                            placeholder = { Text("Message Aira…", color = InkMuted) },
+                            // Multi-line (#11): grows up to a few lines.
+                            maxLines = 5,
+                            shape = RoundedCornerShape(26.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                            ),
+                        )
+                        FilledIconButton(
+                            onClick = onSend,
+                            enabled = state.chatDraft.isNotBlank(),
+                            modifier = Modifier
+                                .padding(end = 5.dp, bottom = 6.dp)
+                                .size(40.dp),
+                            colors =
+                                androidx.compose.material3.IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = Plum,
+                                    contentColor = Paper,
+                                    disabledContainerColor = LilacMist,
+                                    disabledContentColor = Plum.copy(alpha = 0.4f),
+                                ),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Send,
+                                contentDescription = "Send message",
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
+                    }
                 }
             }
         }

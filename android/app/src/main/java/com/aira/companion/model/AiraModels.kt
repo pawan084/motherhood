@@ -260,6 +260,7 @@ data class AiraUiState(
     val language: String = "English",
     val priority: String = "",
     val companionPreference: String = "Text & voice",
+    val reminderChoice: String = "",   // onboarding: chosen daily reminder time
     val activeTool: AiraTool? = null,
     val toolsOpen: Boolean = false,
     val urgentHelpOpen: Boolean = false,
@@ -347,5 +348,10 @@ val onboardingPrompts =
             question = "How would you like Aira to be present?",
             helper = "Choose a calm interface now; this stays under your control.",
             options = listOf("Text & voice", "Talking avatar", "Chat only"),
+        ),
+        OnboardingPrompt(
+            question = "When should Aira check in with you?",
+            helper = "A gentle daily reminder for your care routine — change the time or turn it off any time in Settings.",
+            options = listOf("Morning · 9 AM", "Afternoon · 3 PM", "Evening · 8 PM", "No reminders"),
         ),
     )

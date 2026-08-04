@@ -93,6 +93,7 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                 1 -> next = next.copy(language = answer)
                 2 -> next = next.copy(priority = answer)
                 3 -> next = next.copy(companionPreference = answer)
+                4 -> next = next.copy(reminderChoice = answer)
                 else -> next = next.copy(anchorChoice = answer)
             }
 
@@ -117,9 +118,22 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
         runCatching { AiraApi.setOnboarded(appContext) }
-        // Turn on a gentle default care reminder (one nudge at 09:00) the first
-        // time onboarding finishes; fully adjustable/removable in Settings.
-        runCatching { com.aira.companion.notify.CareReminders.applyOnboardingDefault(appContext) }
+        // Apply the reminder time the user CONFIRMED in onboarding (or turn it
+        // off) — no longer a silent default. Adjustable any time in Settings.
+        runCatching {
+            val reminders = com.aira.companion.notify.CareReminders
+            if (state.reminderChoice == "No reminders") {
+                reminders.setEnabled(appContext, false)
+            } else {
+                val minutes = when (state.reminderChoice) {
+                    "Afternoon · 3 PM" -> 15 * 60
+                    "Evening · 8 PM" -> 20 * 60
+                    else -> 9 * 60   // "Morning · 9 AM" and the fallback
+                }
+                reminders.setTimes(appContext, listOf(minutes))
+                reminders.setEnabled(appContext, true)
+            }
+        }
         viewModelScope.launch {
             runCatching { pushCareContext(state) }
                 .onFailure {
@@ -173,6 +187,41 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
             // Just exploring: no care context yet — the chat gently asks, and
             // the gate treats an unknown stage by applying every rule.
             else -> Unit
+        }
+    }
+
+    /** Set the care stage directly from the empty-hero picker — writes the
+     * context and reloads Me so the journey / videos / hero populate, no
+     * re-onboarding needed. Anchor is an approximate week / baby age. */
+    fun setStage(stage: String, anchorChoice: String?) {
+        viewModelScope.launch {
+            val today = LocalDate.now()
+            val ok = runCatching {
+                when (stage) {
+                    "pregnant" -> {
+                        val week = when (anchorChoice) {
+                            "~8 weeks" -> 8; "~16 weeks" -> 16; "~32 weeks" -> 32; else -> 24
+                        }
+                        AiraApi.putCareContext(
+                            appContext, "pregnant",
+                            dueDate = today.plusDays(((40 - week) * 7).toLong()).toString(),
+                        )
+                    }
+                    "postpartum" -> {
+                        val daysAgo = when (anchorChoice) {
+                            "Under 2 weeks" -> 7L; "About a month" -> 30L
+                            "2–3 months" -> 75L; else -> 135L
+                        }
+                        AiraApi.putCareContext(
+                            appContext, "postpartum",
+                            birthDate = today.minusDays(daysAgo).toString(),
+                        )
+                    }
+                    else -> AiraApi.putCareContext(appContext, "trying_to_conceive")
+                }
+            }.isSuccess
+            if (ok) refreshMe(force = true)
+            else notify("Couldn't save your journey — try again in a moment.")
         }
     }
 
