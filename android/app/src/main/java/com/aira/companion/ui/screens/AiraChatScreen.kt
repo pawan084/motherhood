@@ -51,6 +51,7 @@ import com.aira.companion.model.toolForCard
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
+import com.aira.companion.ui.components.softSurface
 import com.aira.companion.ui.theme.Amber
 import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
@@ -163,10 +164,11 @@ fun AiraChatScreen(
                             "Open today's care" to { onOpenDetail(DetailPage.Care) }
                     }
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .softSurface(RoundedCornerShape(24.dp), 6.dp),
                         shape = RoundedCornerShape(24.dp),
                         colors = CardDefaults.cardColors(containerColor = LilacMist),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Lilac),
                     ) {
                         Column(modifier = Modifier.padding(18.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -244,9 +246,9 @@ fun AiraChatScreen(
                     }
                     listOf(stageChip, "Set a reminder", "Ask anything").forEach { prompt ->
                         Surface(
+                            modifier = Modifier.softSurface(CircleShape, 3.dp),
                             color = Paper,
                             shape = CircleShape,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                             onClick = {
                                 if (prompt == "Set a reminder") {
                                     onOpenTool(AiraTool.Reminder)
@@ -297,10 +299,11 @@ fun AiraChatScreen(
                 // One soft input pill: a borderless field + the send button
                 // integrated, instead of three floating controls.
                 Surface(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .softSurface(RoundedCornerShape(26.dp), 4.dp),
                     shape = RoundedCornerShape(26.dp),
                     color = Paper,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                 ) {
                     Row(verticalAlignment = Alignment.Bottom) {
                         OutlinedTextField(
@@ -377,13 +380,13 @@ private fun TypingBubble() {
             }
         }
         Spacer(Modifier.width(9.dp))
+        val typingShape = RoundedCornerShape(
+            topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 20.dp,
+        )
         Surface(
+            modifier = Modifier.softSurface(typingShape, 4.dp),
             color = Paper,
-            shape = RoundedCornerShape(
-                topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 20.dp,
-            ),
-            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
-            shadowElevation = 1.dp,
+            shape = typingShape,
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),

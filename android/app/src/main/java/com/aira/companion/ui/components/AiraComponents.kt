@@ -43,15 +43,19 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.MainDestination
+import com.aira.companion.ui.theme.AiraPalette
 import com.aira.companion.ui.theme.HeroBottom
 import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
@@ -71,6 +75,29 @@ import com.aira.companion.ui.theme.PlumDeep
 import com.aira.companion.ui.theme.Sage
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+
+/**
+ * Dawn move 2 (docs/design/redesign.html): in the light theme surfaces float
+ * on a soft plum-tinted shadow instead of a hairline border. The dark theme
+ * keeps the border — shadows disappear against near-black.
+ */
+@Composable
+fun Modifier.softSurface(
+    shape: Shape,
+    elevation: Dp = 8.dp,
+): Modifier =
+    if (AiraPalette.dark) {
+        border(1.dp, OutlineSoft.copy(alpha = 0.8f), shape)
+    } else {
+        shadow(
+            elevation = elevation,
+            shape = shape,
+            ambientColor = ShadowTint,
+            spotColor = ShadowTint,
+        )
+    }
+
+private val ShadowTint = Color(0xFF5A2B5C)
 
 @Composable
 fun BrandOrb(
@@ -182,14 +209,15 @@ fun AiraCard(
     containerColor: Color = Paper,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(28.dp)
     Card(
         modifier =
             modifier
                 .fillMaxWidth()
-                .border(1.dp, OutlineSoft.copy(alpha = 0.8f), RoundedCornerShape(24.dp)),
-        shape = RoundedCornerShape(24.dp),
+                .softSurface(shape),
+        shape = shape,
         colors = CardDefaults.cardColors(containerColor = containerColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -207,19 +235,22 @@ fun ChoiceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedCornerShape(20.dp)
     Surface(
         modifier =
             modifier
                 .fillMaxWidth()
+                .then(if (selected) Modifier else Modifier.softSurface(shape, 4.dp))
                 .clickable(role = Role.RadioButton, onClick = onClick),
         color = if (selected) LilacMist else Paper,
         contentColor = Ink,
-        shape = RoundedCornerShape(18.dp),
+        shape = shape,
         border =
-            androidx.compose.foundation.BorderStroke(
-                width = if (selected) 1.5.dp else 1.dp,
-                color = if (selected) Plum.copy(alpha = 0.54f) else OutlineSoft,
-            ),
+            if (selected) {
+                androidx.compose.foundation.BorderStroke(1.5.dp, Plum.copy(alpha = 0.54f))
+            } else {
+                null
+            },
         shadowElevation = if (selected) 2.dp else 0.dp,
     ) {
         Row(
@@ -292,24 +323,21 @@ fun ChatBubble(
             }
             Spacer(modifier = Modifier.width(9.dp))
         }
+        val bubbleShape =
+            RoundedCornerShape(
+                topStart = 20.dp,
+                topEnd = 20.dp,
+                bottomStart = if (fromAira) 6.dp else 20.dp,
+                bottomEnd = if (fromAira) 20.dp else 6.dp,
+            )
         Surface(
-            modifier = Modifier.fillMaxWidth(0.82f),
+            modifier =
+                Modifier
+                    .fillMaxWidth(0.82f)
+                    .then(if (fromAira) Modifier.softSurface(bubbleShape, 4.dp) else Modifier),
             color = if (fromAira) Paper else Plum,
             contentColor = if (fromAira) Ink else Paper,
-            shape =
-                RoundedCornerShape(
-                    topStart = 20.dp,
-                    topEnd = 20.dp,
-                    bottomStart = if (fromAira) 6.dp else 20.dp,
-                    bottomEnd = if (fromAira) 20.dp else 6.dp,
-                ),
-            border =
-                if (fromAira) {
-                    androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft)
-                } else {
-                    null
-                },
-            shadowElevation = if (fromAira) 1.dp else 0.dp,
+            shape = bubbleShape,
         ) {
             Text(
                 text = text,

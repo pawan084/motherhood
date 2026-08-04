@@ -113,6 +113,7 @@ import com.aira.companion.ui.components.ChoiceCard
 import com.aira.companion.ui.components.ChoiceChips
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.softSurface
 import com.aira.companion.ui.theme.Amber
 import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
@@ -192,10 +193,10 @@ fun ToolTraySheet(
                             Modifier
                                 .weight(1f)
                                 .heightIn(min = 112.dp)
+                                .softSurface(RoundedCornerShape(24.dp), 4.dp)
                                 .clickable(role = Role.Button) { onOpenTool(item.tool) },
                         color = Paper,
-                        shape = RoundedCornerShape(20.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+                        shape = RoundedCornerShape(24.dp),
                     ) {
                         Column(modifier = Modifier.padding(15.dp)) {
                             Box(
@@ -1121,10 +1122,11 @@ private fun MemoryTool(
             InfoBanner(Icons.Outlined.Memory, "Aira is not currently remembering any care context.", SageMist)
         else -> items.forEach { item ->
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .softSurface(RoundedCornerShape(16.dp), 3.dp),
                 color = Paper,
                 shape = RoundedCornerShape(16.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
             ) {
                 Row(
                     modifier = Modifier.padding(start = 14.dp, top = 7.dp, bottom = 7.dp),
@@ -1294,10 +1296,12 @@ private fun CalmMatchTool(onCalmDone: (String) -> Unit) {
                     onClick = {
                         if (!faceUp && revealed.size < 2) revealed = revealed + i
                     },
-                    modifier = Modifier.weight(1f).height(72.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(72.dp)
+                        .softSurface(RoundedCornerShape(16.dp), 3.dp),
                     shape = RoundedCornerShape(16.dp),
                     color = if (i in matched) SageMist else if (faceUp) LilacMist else Paper,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(

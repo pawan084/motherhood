@@ -58,6 +58,7 @@ import com.aira.companion.ui.components.moodStyle
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.softSurface
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Lilac
@@ -439,8 +440,8 @@ private fun ReminderNotifyEditor(
                 }
             }
             Surface(
+                modifier = Modifier.softSurface(CircleShape, 3.dp),
                 shape = CircleShape, color = Paper,
-                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                 onClick = {
                     android.app.TimePickerDialog(
                         context,

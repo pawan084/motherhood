@@ -48,6 +48,7 @@ import com.aira.companion.model.CareSummary
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.ToolListRow
+import com.aira.companion.ui.components.softSurface
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.OutlineSoft
@@ -394,9 +395,9 @@ fun SettingsScreen(
                                     minutes / 60, minutes % 60, false,
                                 ).show()
                             },
+                            modifier = Modifier.softSurface(RoundedCornerShape(12.dp), 3.dp),
                             shape = RoundedCornerShape(12.dp),
                             color = Paper,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
                         ) {
                             Text(
                                 text = reminders.fmt(minutes),

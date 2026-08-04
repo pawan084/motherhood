@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.aira.companion.ui.components.softSurface
 import com.aira.companion.model.Milestone
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
@@ -141,19 +142,19 @@ fun JourneyPathTimeline(
 
             // Label card on the opposite side of the ribbon.
             val cardWidth = width * 0.42f
+            val labelShape = RoundedCornerShape(16.dp)
             Surface(
                 onClick = { onSelect(node.week) },
-                shape = RoundedCornerShape(14.dp),
+                shape = labelShape,
                 color = if (node.isHere) Plum else Paper,
                 contentColor = if (node.isHere) Paper else Ink,
-                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
-                shadowElevation = 1.dp,
                 modifier = Modifier
                     .offset(
                         x = if (onLeft) width - cardWidth - 8.dp else 8.dp,
                         y = rowHeight * i + (rowHeight - 64.dp) / 2,
                     )
-                    .width(cardWidth),
+                    .width(cardWidth)
+                    .softSurface(labelShape, 4.dp),
             ) {
                 Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp)) {
                     Text(
