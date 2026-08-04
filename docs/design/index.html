@@ -197,11 +197,23 @@ h1{font-family:var(--serif);font-weight:500;font-size:40px;letter-spacing:-1px;m
 .switch::after{content:"";position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff}
 .switch.off{background:#cfc8c0}.switch.off::after{left:3px;right:auto}
 .timechip{display:inline-flex;align-items:center;gap:6px;background:var(--lilac-mist);color:var(--plum);border-radius:99px;padding:7px 12px;font-size:12px;font-weight:600}
+
+/* onboarding progress */
+.obprog{height:4px;background:var(--lilac-mist);flex:none}
+.obprog i{display:block;height:100%;background:var(--plum)}
+
+/* chat tools bottom sheet */
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--ivory);border-radius:28px 28px 0 0;padding:18px 20px 26px;box-shadow:0 -12px 40px rgba(20,10,25,.25)}
+.toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.tool{background:var(--paper);border:1px solid var(--outline);border-radius:20px;padding:15px;min-height:104px}
+.tool .ti{width:38px;height:38px;border-radius:12px;background:var(--lilac-mist);display:flex;align-items:center;justify-content:center;color:var(--plum);margin-bottom:11px}
+.tool b{font-size:14px;display:block}
+.tool small{color:var(--ink-muted);font-size:12px}
 </style>
 </head>
 <body>
 <h1>Aira — Android screens</h1>
-<p class="sub">A living design reference, generated from the app's Compose UI (<code>android/app/.../ui</code>) and theme (<code>Color.kt</code>, <code>Type.kt</code>). Every colour, type size, and layout below mirrors the shipping Android app. Edit the CSS tokens at the top of this file to re-skin all screens at once. Fonts <code>Fraunces</code>/<code>Inter</code> approximate the app's system serif/sans.</p>
+<p class="sub">A living design reference, generated from the app's Compose UI (<code>android/app/.../ui</code>) and theme (<code>Color.kt</code>, <code>Type.kt</code>). Every colour, type size, and layout below mirrors the shipping Android app. Edit the CSS tokens at the top of this file to re-skin all screens at once. Fonts <code>Fraunces</code>/<code>Inter</code> approximate the app's system serif/sans. For the proposed new direction, see <a href="redesign.html"><b>redesign.html</b></a> — every screen as an as-built / proposed pair.</p>
 
 <section class="tokens">
   <h2>Palette</h2>
@@ -481,6 +493,69 @@ h1{font-family:var(--serif);font-weight:500;font-size:40px;letter-spacing:-1px;m
         <button class="btn-primary" style="background:var(--urgent);margin-bottom:12px">📞 Call care team</button>
         <button class="btn-primary" style="background:#fff;color:var(--urgent);border:1px solid #e6b3ae;margin-bottom:12px">Open emergency profile</button>
         <button style="background:none;border:none;color:#7a2b26;font-family:var(--sans);font-size:14px;font-weight:600;padding:10px">I'm safe for now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ONBOARDING CHAT ────────────────────────────────────────────────── -->
+  <div class="frame">
+    <div class="cap">Onboarding (chat-style)<small>Four questions asked inside the conversation — thin progress bar, choice cards with helper text (OnboardingChatScreen.kt).</small></div>
+    <div class="phone">
+      <div class="status"><span>14:12</span><span>▮▮▮ 88</span></div>
+      <div class="appbar"><div class="orb"></div><div class="t"><b>Aira</b><span>Getting to know you</span></div><span class="safety">⛨ Safety checked</span></div>
+      <div class="obprog"><i style="width:25%"></i></div>
+      <div class="scroll"><div class="body" style="padding-bottom:24px">
+        <div class="row" style="align-items:flex-end;gap:9px"><div class="avatar">A</div><div class="bubble aira">Hi, I'm Aira. I'll keep this simple—four short questions, all inside our conversation.</div></div>
+        <div class="row" style="align-items:flex-end;gap:9px;margin-top:8px"><div class="avatar">A</div><div class="bubble aira">Where are you in your journey?</div></div>
+        <div class="bubble me" style="margin-top:8px">Pregnant</div>
+        <div class="row" style="align-items:flex-end;gap:9px;margin-top:8px"><div class="avatar">A</div><div class="bubble aira">Which language feels most natural?</div></div>
+        <div class="muted" style="font-size:12px;margin:4px 0 10px 39px">You can switch anytime</div>
+        <div class="vcard"><div class="vi">🌐</div><div><b>English</b><br><small>Continue in English</small></div></div>
+        <div class="vcard"><div class="vi">🌐</div><div><b>Hindi</b><br><small>हिंदी में बातचीत</small></div></div>
+        <div class="vcard"><div class="vi">🌐</div><div><b>Hinglish</b><br><small>A natural mix of Hindi and English</small></div></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ── CHAT TOOLS (BOTTOM SHEET) ──────────────────────────────────────── -->
+  <div class="frame">
+    <div class="cap">Chat tools (bottom sheet)<small>The "＋" tray: seven real tools available inside the conversation (ToolSheets.kt).</small></div>
+    <div class="phone">
+      <div class="status"><span>15:18</span><span>▮▮▮ 83</span></div>
+      <div class="appbar"><div class="orb"></div><div class="t"><b>Aira</b><span>Your care companion</span></div><div class="iconbtn">⚙</div><div class="iconbtn shield">⛨</div></div>
+      <div class="scroll" style="filter:blur(1px);opacity:.5"><div class="body">
+        <div class="row" style="align-items:flex-end;gap:9px"><div class="avatar">A</div><div class="bubble aira">Welcome back. How are you feeling today?</div></div>
+      </div></div>
+      <div class="dim" style="align-items:flex-end;padding:0">
+        <div class="sheet">
+          <div class="row spread"><div><div class="eyebrow">Tools in this conversation</div><div style="font-family:var(--serif);font-weight:500;font-size:24px">What would help now?</div></div><span style="font-size:17px;color:var(--ink-muted)">✕</span></div>
+          <div class="toolgrid">
+            <div class="tool"><div class="ti">♡</div><b>Check in</b><small>Mood, energy &amp; sleep</small></div>
+            <div class="tool"><div class="ti">⏰</div><b>Reminder</b><small>Medicine or care task</small></div>
+            <div class="tool"><div class="ti">🗂</div><b>Care Vault</b><small>Prescription or report</small></div>
+            <div class="tool"><div class="ti">〰</div><b>Reset</b><small>Two calm minutes</small></div>
+            <div class="tool"><div class="ti">◎</div><b>Track</b><small>Log a change</small></div>
+            <div class="tool"><div class="ti">🎙</div><b>Companion</b><small>Voice or avatar mode</small></div>
+            <div class="tool"><div class="ti">☺</div><b>Calm match</b><small>A quiet minute of play</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VIDEO PLAYER ───────────────────────────────────────────────────── -->
+  <div class="frame">
+    <div class="cap">Video player<small>Own-hosted stream: like + star row write real aggregates, transcript toggle, completion marks watched (VideoPlayerScreen.kt).</small></div>
+    <div class="phone" style="background:#000">
+      <div class="status" style="color:#fff;opacity:.8"><span>15:47</span><span>▮▮▮ 79</span></div>
+      <div style="display:flex;flex-direction:column;height:100%;color:#fff;min-height:0">
+        <div class="row" style="padding:10px 14px;gap:12px;flex:none"><span style="font-size:18px">←</span><b style="font-size:15px">Five things to have ready</b></div>
+        <div style="flex:1;background:linear-gradient(160deg,#2b2030,#101014);display:flex;align-items:center;justify-content:center;position:relative;min-height:0">
+          <div style="width:54px;height:54px;background:#ffffff22;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px">▶</div>
+          <div style="position:absolute;left:14px;right:14px;bottom:12px;height:4px;border-radius:99px;background:#ffffff33"><i style="display:block;height:100%;width:35%;border-radius:99px;background:#fff"></i></div>
+        </div>
+        <div class="row" style="padding:12px 16px;gap:8px;flex:none"><span style="color:#E57387;font-size:19px">♥</span><span style="font-size:12px;font-weight:600">3</span><span style="width:10px"></span><span style="color:#F2C14E;letter-spacing:2px;font-size:15px">★★★★</span><span style="color:var(--lilac);font-size:15px">☆</span><span style="margin-left:auto;font-size:12px;opacity:.85">★ 4.0 (3)</span></div>
+        <div style="text-align:center;font-size:13px;font-weight:600;padding:6px 0 14px;flex:none">Show transcript</div>
       </div>
     </div>
   </div>
