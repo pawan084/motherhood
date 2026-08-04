@@ -36,7 +36,7 @@ router = APIRouter(tags=["wellness"])
 
 _conn = None
 
-MOODS = ("great", "okay", "tired", "low", "unwell")
+MOODS = ("great", "okay", "tired", "anxious", "low", "unwell")
 REMINDER_KINDS = ("water", "exercise", "custom")
 
 # Per-learner defaults, seeded on first list. Stable seeding-per-learner lets

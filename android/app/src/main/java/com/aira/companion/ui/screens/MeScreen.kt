@@ -69,6 +69,10 @@ import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.GradientHeroSurface
 import com.aira.companion.ui.components.RemoteImage
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.moodStyle
+import com.aira.companion.ui.components.moodStyles
+import com.aira.companion.ui.theme.Amber
+import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.HeroAccent
 import com.aira.companion.ui.theme.HeroInk
 import com.aira.companion.ui.theme.HeroInkMuted
@@ -451,46 +455,101 @@ fun MeScreen(
                     Text(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_history), style = MaterialTheme.typography.labelMedium, color = Plum)
                 }
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(8.dp))
+            // Mood picker: a refined icon + a calm colour per feeling (#2/#14).
+            // The selected chip fills with its own colour; each carries a spoken
+            // label so a screen reader announces the feeling, not just its shape
+            // (#18), and a tap gives a small haptic (#15).
+            val moodHaptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                moodOptions.forEach { mood ->
-                    val selected = mood == todayMood
+                moodStyles.forEach { m ->
+                    val selected = m.key == todayMood
                     Surface(
-                        onClick = { onSetMood(mood) },
-                        shape = RoundedCornerShape(14.dp),
-                        color = if (selected) Plum else Paper,
+                        onClick = {
+                            moodHaptics.performHapticFeedback(
+                                androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress,
+                            )
+                            onSetMood(m.key)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .semantics { contentDescription = "Feeling ${m.label}" },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) m.color else Paper,
                         border = androidx.compose.foundation.BorderStroke(
-                            1.dp, if (selected) Plum else OutlineSoft,
+                            1.dp, if (selected) m.color else OutlineSoft,
                         ),
                     ) {
                         Column(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+                            modifier = Modifier.padding(vertical = 10.dp, horizontal = 2.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                         ) {
                             Icon(
-                                imageVector = moodIcon[mood] ?: Icons.Outlined.SentimentSatisfied,
+                                imageVector = m.icon,
                                 contentDescription = null,
-                                tint = if (selected) Paper else Plum,
-                                modifier = Modifier.size(26.dp),
+                                tint = if (selected) Paper else m.color,
+                                modifier = Modifier.size(24.dp),
                             )
                             Spacer(Modifier.height(5.dp))
                             Text(
-                                mood.replaceFirstChar(Char::uppercase),
-                                style = MaterialTheme.typography.labelSmall,
+                                m.label,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp, letterSpacing = 0.sp,
+                                ),
                                 color = if (selected) Paper else InkMuted,
+                                maxLines = 1,
+                                softWrap = false,
                             )
                         }
                     }
                 }
             }
-            // A note is where the real signal lives (review #20): optional,
-            // shown once today's mood exists; posts via the same upsert.
+
+            // 7-day mood strip (#11): the check-in visibly builds a picture — a
+            // coloured dot per day (grey = not logged); tap opens the history.
+            Spacer(Modifier.height(14.dp))
+            val stripToday = LocalDate.now()
+            val moodByDay = state.moods.associateBy { it.day }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOpenDetail(DetailPage.Moods) },
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                for (i in 6 downTo 0) {
+                    val day = stripToday.minusDays(i.toLong())
+                    val mood = moodByDay[day.toString()]?.mood
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (mood != null) moodStyle(mood).color
+                                    else OutlineSoft.copy(alpha = 0.7f),
+                                ),
+                        )
+                        Spacer(Modifier.height(5.dp))
+                        Text(
+                            day.dayOfWeek.getDisplayName(
+                                java.time.format.TextStyle.NARROW,
+                                java.util.Locale.getDefault(),
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (i == 0) Plum else InkMuted,
+                        )
+                    }
+                }
+            }
+
+            // A note is where the real signal lives: optional, private.
             if (todayMood != null) {
                 var noteOpen by remember { mutableStateOf(false) }
                 var noteText by remember { mutableStateOf("") }
+                Spacer(Modifier.height(6.dp))
                 if (!noteOpen) {
                     TextButton(onClick = { noteOpen = true }) {
                         Text(androidx.compose.ui.res.stringResource(com.aira.companion.R.string.me_add_note), style = MaterialTheme.typography.labelMedium, color = Plum)
@@ -514,19 +573,60 @@ fun MeScreen(
                         },
                     )
                 }
-                // The page answers a hard day (review #21) instead of
-                // carrying on as if nothing was said.
-                if (todayMood == "low" || todayMood == "unwell") {
+                // Mood-specific follow-up (#3) + time-aware (#4): meet the
+                // feeling with the right words and the right next step, instead
+                // of one generic line for every hard day.
+                val hourNow = java.time.LocalTime.now().hour
+                data class FollowUp(val line: String, val action: String, val symptom: Boolean = false)
+                val followUp = when (todayMood) {
+                    "anxious" -> FollowUp("A racing mind is common right now — a slow minute of breathing can steady it.", "Talk to Aira")
+                    "low" -> FollowUp(
+                        if (hourNow < 5) "The night feeds are hard. Be gentle with yourself." else "Be gentle with yourself today.",
+                        "Talk to Aira",
+                    )
+                    "unwell" -> FollowUp("Sorry you're not feeling well. If anything worries you, tell your care team.", "Log a symptom", symptom = true)
+                    "tired" -> FollowUp("Rest counts as care — even ten minutes helps.", "Talk to Aira")
+                    else -> null
+                }
+                followUp?.let { fu ->
+                    Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            "Be gentle with yourself today.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = InkMuted,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = onTalkToAira) {
-                            Text("Talk to Aira", color = Plum)
+                        Text(fu.line, style = MaterialTheme.typography.bodySmall, color = InkMuted, modifier = Modifier.weight(1f))
+                        TextButton(onClick = {
+                            if (fu.symptom) onOpenTool(com.aira.companion.model.AiraTool.Symptom) else onTalkToAira()
+                        }) { Text(fu.action, color = Plum) }
+                    }
+                }
+            }
+
+            // Trend escalation (#5): several tender days (anxious/low/unwell) in
+            // a week surface a gentle, non-alarming check-in with a path to the
+            // care team. Read from the mood history — never a diagnosis.
+            val weekAgo = LocalDate.now().minusDays(6).toString()
+            val tenderCount = state.moods.count {
+                it.day >= weekAgo && it.mood in com.aira.companion.model.tenderMoods
+            }
+            if (tenderCount >= 4) {
+                Spacer(Modifier.height(12.dp))
+                Surface(
+                    color = AmberMist,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("A harder stretch", style = MaterialTheme.typography.titleSmall, color = Ink)
+                            Text(
+                                "You've logged several harder days this week. That matters — your care team is there for the low weeks too.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
                         }
+                        Spacer(Modifier.width(10.dp))
+                        TextButton(onClick = onTalkToAira) { Text("Reach out", color = Amber) }
                     }
                 }
             }

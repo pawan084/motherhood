@@ -113,14 +113,18 @@ data class VideoItem(
     val transcript: String? = null,    // a11y/sound-off reading, when provided
 )
 
-val moodOptions = listOf("great", "okay", "tired", "low", "unwell")
+val moodOptions = listOf("great", "okay", "tired", "anxious", "low", "unwell")
 
-/** Display metadata for the mood picker + history (emoji render via the
- * system emoji font). */
+/** Legacy emoji map (share card / fallback only). The in-app picker + history
+ * now render refined icons + colours via ui.components.MoodStyle. */
 val moodEmoji = mapOf(
     "great" to "😊", "okay" to "🙂", "tired" to "😴",
-    "low" to "😔", "unwell" to "🤒",
+    "anxious" to "😰", "low" to "😔", "unwell" to "🤒",
 )
+
+/** Moods that warrant a gentler, more attentive response (mood-specific
+ * follow-ups on Me; the trend check watches a run of these). */
+val tenderMoods = setOf("anxious", "low", "unwell")
 
 data class Milestone(val week: Int, val label: String, val emoji: String)
 

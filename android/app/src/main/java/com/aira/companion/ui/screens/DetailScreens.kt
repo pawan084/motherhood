@@ -50,7 +50,7 @@ import com.aira.companion.model.JourneyContent
 import com.aira.companion.model.MoodEntry
 import com.aira.companion.model.Reminder
 import com.aira.companion.model.WellnessReport
-import com.aira.companion.model.moodEmoji
+import com.aira.companion.ui.components.moodStyle
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
@@ -257,16 +257,21 @@ fun MoodDetailScreen(
                         Spacer(Modifier.height(4.dp))
                         Surface(
                             shape = CircleShape,
-                            color = if (entry != null) LilacMist else Paper,
+                            color = if (entry != null) moodStyle(entry.mood).color.copy(alpha = 0.16f) else Paper,
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp, if (back == 0) Plum else OutlineSoft,
                             ),
                         ) {
-                            Text(
-                                text = entry?.let { moodEmoji[it.mood] } ?: " · ",
-                                modifier = Modifier.padding(7.dp),
-                                style = MaterialTheme.typography.titleMedium,
-                            )
+                            if (entry != null) {
+                                Icon(
+                                    moodStyle(entry.mood).icon,
+                                    contentDescription = moodStyle(entry.mood).label,
+                                    tint = moodStyle(entry.mood).color,
+                                    modifier = Modifier.padding(7.dp).size(18.dp),
+                                )
+                            } else {
+                                Spacer(Modifier.padding(7.dp).size(18.dp))
+                            }
                         }
                     }
                 }
@@ -284,9 +289,11 @@ fun MoodDetailScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(vertical = 5.dp),
                 ) {
-                    Text(
-                        moodEmoji[mood] ?: "·",
-                        style = MaterialTheme.typography.titleMedium,
+                    Icon(
+                        moodStyle(mood).icon,
+                        contentDescription = null,
+                        tint = moodStyle(mood).color,
+                        modifier = Modifier.size(18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
@@ -297,7 +304,7 @@ fun MoodDetailScreen(
                     )
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = Lilac,
+                        color = moodStyle(mood).color.copy(alpha = 0.75f),
                         modifier = Modifier
                             .weight(count.toFloat() / max)
                             .height(14.dp),
@@ -325,9 +332,11 @@ fun MoodDetailScreen(
                     .padding(vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    moodEmoji[entry.mood] ?: "·",
-                    style = MaterialTheme.typography.titleLarge,
+                Icon(
+                    moodStyle(entry.mood).icon,
+                    contentDescription = moodStyle(entry.mood).label,
+                    tint = moodStyle(entry.mood).color,
+                    modifier = Modifier.size(24.dp),
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
