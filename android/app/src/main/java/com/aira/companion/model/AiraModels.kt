@@ -95,6 +95,8 @@ data class Reminder(
     val ticksToday: Int,
     val doneToday: Boolean,
     val detail: String? = null,        // medicines: "dose · time"
+    val notifyEnabled: Boolean = false,
+    val notifyTimes: List<String> = emptyList(),   // "HH:mm" schedule
 )
 
 data class VideoItem(

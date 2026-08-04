@@ -299,6 +299,23 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                     .apply()
                 com.aira.companion.widget.AiraWidgetProvider.pushUpdate(appContext)
             }
+            // Per-event reminder notifications: re-arm from the fresh list
+            // (alarms don't survive a reboot, so we sync on every Me refresh).
+            runCatching {
+                com.aira.companion.notify.ReminderScheduler.sync(
+                    appContext, reminders ?: _uiState.value.reminders,
+                )
+            }
+        }
+    }
+
+    /** Set a reminder's notification schedule (Care detail bell editor), then
+     * reload so the on-device scheduler re-arms with the new times. */
+    fun setReminderNotify(reminder: Reminder, enabled: Boolean, times: List<String>) {
+        viewModelScope.launch {
+            runCatching { AiraApi.setReminderNotify(appContext, reminder.id, enabled, times) }
+                .onSuccess { refreshMe(force = true) }
+                .onFailure { notify("Couldn't update the reminder — try again in a moment.") }
         }
     }
 

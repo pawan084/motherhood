@@ -177,6 +177,10 @@ object AiraApi {
         ticksToday = json.optInt("ticks_today", 0),
         doneToday = json.optBoolean("done_today", false),
         detail = json.optString("detail").takeIf { it.isNotBlank() },
+        notifyEnabled = json.optBoolean("notify_enabled", false),
+        notifyTimes = json.optJSONArray("notify_times")?.let { a ->
+            (0 until a.length()).mapNotNull { a.optString(it).takeIf { s -> s.isNotBlank() } }
+        } ?: emptyList(),
     )
 
     suspend fun getReminders(context: Context): List<Reminder> = withContext(Dispatchers.IO) {
@@ -205,6 +209,21 @@ object AiraApi {
                 JSONObject().put("target_per_day", target),
             )
         }
+
+    /** Set a reminder's per-event notification schedule (on/off + "HH:mm" list). */
+    suspend fun setReminderNotify(
+        context: Context,
+        id: String,
+        enabled: Boolean,
+        times: List<String>,
+    ) = withContext(Dispatchers.IO) {
+        request(
+            "POST", "/reminders/$id/notify", ensureDeviceToken(context),
+            JSONObject()
+                .put("enabled", enabled)
+                .put("times", JSONArray(times)),
+        )
+    }
 
     /** Name-only context update — PUT would need the anchor dates resent. */
     suspend fun setDisplayName(context: Context, name: String) = withContext(Dispatchers.IO) {

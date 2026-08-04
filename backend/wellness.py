@@ -69,7 +69,18 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS reminders ("
               " id TEXT PRIMARY KEY, learner_id TEXT NOT NULL,"
               " title TEXT NOT NULL, kind TEXT NOT NULL,"
-              " target_per_day INTEGER DEFAULT 1, created REAL)")
+              " target_per_day INTEGER DEFAULT 1, created REAL,"
+              " notify_enabled INTEGER DEFAULT 0, notify_times TEXT DEFAULT '')")
+    # Guarded ALTERs for reminders created before per-event notifications.
+    # notify_times is a CSV of "HH:mm"; empty = no scheduled notification.
+    for col, decl in (("notify_enabled", "INTEGER DEFAULT 0"),
+                      ("notify_times", "TEXT DEFAULT ''")):
+        try:
+            c.execute(f"ALTER TABLE reminders ADD COLUMN {col} {decl}")
+        except Exception as e:  # pragma: no cover
+            msg = str(e).lower()
+            if "duplicate column" not in msg and "already exists" not in msg:
+                raise
     c.execute("CREATE TABLE IF NOT EXISTS reminder_ticks ("
               " reminder_id TEXT NOT NULL, day TEXT NOT NULL,"
               " ticks INTEGER DEFAULT 0, ts REAL,"
@@ -283,12 +294,14 @@ def list_reminders(include_medicines: bool = Query(default=False),
     today = date.today().isoformat()
     rows = _conn.execute(
         "SELECT r.id, r.title, r.kind, r.target_per_day,"
-        " COALESCE(t.ticks, 0)"
+        " COALESCE(t.ticks, 0), r.notify_enabled, r.notify_times"
         " FROM reminders r LEFT JOIN reminder_ticks t"
         " ON t.reminder_id = r.id AND t.day = ?"
         " WHERE r.learner_id=? ORDER BY r.created", (today, learner_id)).fetchall()
     out = [{"id": r[0], "title": r[1], "kind": r[2], "target_per_day": r[3],
-            "ticks_today": r[4], "done_today": r[4] >= r[3]} for r in rows]
+            "ticks_today": r[4], "done_today": r[4] >= r[3],
+            "notify_enabled": bool(r[5]),
+            "notify_times": [x for x in (r[6] or "").split(",") if x]} for r in rows]
     if include_medicines:
         import care  # local import: avoids a cycle at module load
         meds = care._conn.execute(
@@ -298,11 +311,52 @@ def list_reminders(include_medicines: bool = Query(default=False),
             " ON t.medicine_id = m.id AND t.day = ?"
             " WHERE m.learner_id=? ORDER BY m.time_of_day, m.created",
             (today, learner_id)).fetchall()
+        # Medicines carry their own time_of_day; derive a notify time so they
+        # remind at the right slot without a separate editor (Phase 1).
         out += [{"id": m[0], "title": m[1],
                  "detail": " · ".join(x for x in (m[3], m[2]) if x),
                  "kind": "medicine", "target_per_day": 1,
-                 "ticks_today": m[4], "done_today": bool(m[4])} for m in meds]
+                 "ticks_today": m[4], "done_today": bool(m[4]),
+                 "notify_enabled": True,
+                 "notify_times": _MED_NOTIFY.get((m[2] or "").strip().lower(), ["09:00"])}
+                for m in meds]
     return {"reminders": out}
+
+
+# Medicine time_of_day → a concrete notify time (Phase 1: derived, read-only).
+_MED_NOTIFY = {
+    "morning": ["09:00"], "afternoon": ["14:00"],
+    "evening": ["20:00"], "night": ["21:00"], "": ["09:00"],
+}
+
+
+class NotifyIn(BaseModel):
+    enabled: bool
+    times: list[str] = []
+
+
+@router.post("/reminders/{reminder_id}/notify")
+def set_reminder_notify(reminder_id: str, body: NotifyIn,
+                        learner_id: str = Depends(resolve_learner)):
+    """Set a reminder's notification schedule: on/off + a list of "HH:mm"."""
+    row = _conn.execute(
+        "SELECT 1 FROM reminders WHERE id=? AND learner_id=?",
+        (reminder_id, learner_id)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    clean = []
+    for t in body.times:
+        parts = str(t).strip().split(":")
+        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+            h, mi = int(parts[0]), int(parts[1])
+            if 0 <= h < 24 and 0 <= mi < 60:
+                clean.append(f"{h:02d}:{mi:02d}")
+    clean = sorted(set(clean))[:6]
+    _conn.execute(
+        "UPDATE reminders SET notify_enabled=?, notify_times=? WHERE id=? AND learner_id=?",
+        (1 if body.enabled else 0, ",".join(clean), reminder_id, learner_id))
+    _conn.commit()
+    return {"notify_enabled": body.enabled, "notify_times": clean}
 
 
 @router.post("/reminders")

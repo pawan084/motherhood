@@ -21,6 +21,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DirectionsWalk
@@ -33,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -370,6 +374,97 @@ private fun formatDay(iso: String): String = runCatching {
 
 // ── Care ─────────────────────────────────────────────────────────────────────
 
+/** Per-reminder notification schedule (Phase 1): a toggle + editable times
+ * ("HH:mm") for water/exercise/custom; medicines show their derived time
+ * read-only (they're managed in the Medicines sheet). */
+@Composable
+private fun ReminderNotifyEditor(
+    reminder: Reminder,
+    onSetNotify: (Reminder, Boolean, List<String>) -> Unit,
+) {
+    Spacer(Modifier.height(10.dp))
+    HorizontalDivider(color = OutlineSoft)
+    Spacer(Modifier.height(8.dp))
+    if (reminder.kind == "medicine") {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Notifications, null, tint = Plum, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = "Reminds you at " +
+                    reminder.notifyTimes.joinToString(", ").ifBlank { "its scheduled time" },
+                style = MaterialTheme.typography.bodySmall, color = InkMuted,
+            )
+        }
+        return
+    }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Outlined.Notifications, null,
+            tint = if (reminder.notifyEnabled) Plum else InkMuted,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            "Reminders",
+            style = MaterialTheme.typography.titleSmall, color = Ink,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(
+            checked = reminder.notifyEnabled,
+            onCheckedChange = { on ->
+                onSetNotify(reminder, on, reminder.notifyTimes.ifEmpty { listOf("10:00") })
+            },
+        )
+    }
+    if (reminder.notifyEnabled) {
+        Spacer(Modifier.height(8.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            reminder.notifyTimes.forEach { t ->
+                Surface(
+                    shape = CircleShape, color = LilacMist,
+                    onClick = { onSetNotify(reminder, true, reminder.notifyTimes - t) },
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(t, style = MaterialTheme.typography.labelMedium, color = Plum)
+                        Spacer(Modifier.width(5.dp))
+                        Icon(Icons.Filled.Close, "Remove $t", tint = Plum, modifier = Modifier.size(13.dp))
+                    }
+                }
+            }
+            Surface(
+                shape = CircleShape, color = Paper,
+                border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+                onClick = {
+                    android.app.TimePickerDialog(
+                        context,
+                        { _, h, m ->
+                            val nt = String.format("%02d:%02d", h, m)
+                            onSetNotify(reminder, true, (reminder.notifyTimes + nt).distinct().sorted())
+                        },
+                        10, 0, false,
+                    ).show()
+                },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Filled.Add, null, tint = Plum, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Add time", style = MaterialTheme.typography.labelMedium, color = Plum)
+                }
+            }
+        }
+    }
+}
+
 /** Today's care in full: water droplet progress, every reminder with its
  * graphic, add-a-reminder, and delete (never for medicine rows — those are
  * managed in the Medicines sheet). */
@@ -382,6 +477,7 @@ fun CareDetailScreen(
     onSetTarget: (Reminder, Int) -> Unit,
     onAdd: (String, String, Int) -> Unit,
     onDelete: (Reminder) -> Unit,
+    onSetNotify: (Reminder, Boolean, List<String>) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -510,6 +606,7 @@ fun CareDetailScreen(
                         style = MaterialTheme.typography.bodySmall, color = InkMuted,
                     )
                 }
+                ReminderNotifyEditor(reminder, onSetNotify)
             }
             Spacer(Modifier.height(10.dp))
         }

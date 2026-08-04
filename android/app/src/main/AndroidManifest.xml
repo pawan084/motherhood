@@ -37,6 +37,12 @@
             android:name=".notify.CareReminderReceiver"
             android:exported="false" />
 
+        <!-- Per-event care reminders (medicine/water/etc.), fired by
+             ReminderScheduler via our own explicit alarms. -->
+        <receiver
+            android:name=".notify.ReminderNotifyReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".widget.AiraWidgetProvider"
             android:exported="true">

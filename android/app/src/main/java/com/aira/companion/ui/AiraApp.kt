@@ -227,6 +227,7 @@ private fun MainExperience(
                             onSetTarget = viewModel::setReminderTarget,
                             onAdd = viewModel::addReminder,
                             onDelete = viewModel::deleteReminder,
+                            onSetNotify = viewModel::setReminderNotify,
                             onClose = viewModel::closeDetail,
                             modifier = Modifier.statusBarsPadding(),
                         )
