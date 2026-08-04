@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Aira — Project Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+@page{size:A4;margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ivory:#FBF4EE;--paper:#fff;--plum:#5A2B5C;--plum-deep:#3B1C3F;--plum-soft:#8A6390;
+  --lilac-mist:#F6EFF8;--sage:#7FA083;--sage-deep:#44604B;--sage-mist:#EAF2E7;
+  --ink:#2E1F2C;--ink-muted:#7d707a;--rose:#B4596B;--rose-mist:#FAE9EA;
+  --urgent:#C43D33;--urgent-mist:#FDEAE6;
+  --serif:'Fraunces','Georgia',serif;--sans:'Inter',system-ui,sans-serif;
+}
+body{font-family:var(--sans);color:var(--ink);font-size:10.5pt;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;min-height:297mm;padding:16mm 17mm;page-break-after:always;background:#fff;position:relative}
+.page:last-child{page-break-after:auto}
+
+/* cover */
+.cover{background:linear-gradient(155deg,#FBE3D3 0%,#EFD9EA 55%,#E2CFEF 100%);display:flex;flex-direction:column}
+.cover .brand{display:flex;align-items:center;gap:10px}
+.orb{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 42% 40%,#FDF4FD,#E9DDEA 55%,#D6C1DE);position:relative}
+.orb::after{content:"";position:absolute;inset:0;margin:auto;width:12px;height:12px;border-radius:50%;background:var(--plum);box-shadow:0 0 0 4px #ffffffaa}
+.cover .brand b{font-family:var(--serif);font-weight:500;font-size:20pt;color:var(--plum-deep)}
+.cover h1{font-family:var(--serif);font-weight:500;font-size:34pt;line-height:1.12;letter-spacing:-.5pt;color:var(--plum-deep);margin-top:34mm;max-width:150mm}
+.cover h1 em{font-style:italic;color:var(--rose)}
+.cover .lede{font-size:12.5pt;color:#6d4a72;margin-top:8mm;max-width:130mm;line-height:1.6}
+.factrow{display:flex;gap:6mm;margin-top:16mm}
+.fact{background:#ffffffb8;border-radius:14px;padding:11px 16px;flex:1}
+.fact b{font-family:var(--serif);font-weight:500;font-size:16pt;display:block;color:var(--plum-deep)}
+.fact span{font-size:8.5pt;color:#6d4a72;font-weight:500}
+.cover .foot{margin-top:auto;display:flex;justify-content:space-between;font-size:9pt;color:#6d4a72;font-weight:500}
+
+/* content pages */
+h2{font-family:var(--serif);font-weight:500;font-size:17pt;color:var(--plum-deep);margin:0 0 4mm}
+h2 small{font-size:9pt;color:var(--ink-muted);font-family:var(--sans);font-weight:400;margin-left:8px}
+h3{font-size:10.5pt;font-weight:600;color:var(--plum);margin:0 0 2mm}
+p{margin-bottom:3mm}
+.muted{color:var(--ink-muted)}
+.eyebrow{font-size:8pt;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--rose);margin-bottom:2mm}
+.rule{height:1px;background:#eee2d9;margin:6mm 0}
+.cols{display:flex;gap:8mm}
+.cols>div{flex:1}
+.card{background:var(--paper);border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(90,43,92,.08);margin-bottom:5mm;page-break-inside:avoid}
+.card.tint{background:var(--lilac-mist);box-shadow:none}
+.card.sage{background:var(--sage-mist);box-shadow:none}
+.card.urgentc{background:var(--urgent-mist);box-shadow:none}
+ul{list-style:none}
+ul li{padding-left:14px;position:relative;margin-bottom:1.6mm}
+ul li::before{content:"";position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--rose)}
+ul.sagelist li::before{background:var(--sage)}
+li b{color:var(--plum-deep)}
+.contentpage{background:var(--ivory)}
+.pill{display:inline-block;background:var(--lilac-mist);color:var(--plum);border-radius:99px;padding:2px 10px;font-size:8.5pt;font-weight:600;margin:0 4px 4px 0}
+.arch{display:flex;align-items:stretch;gap:5mm;margin:4mm 0 5mm}
+.node{background:#fff;border-radius:12px;padding:10px 12px;box-shadow:0 4px 12px rgba(90,43,92,.08);flex:1;text-align:center}
+.node b{display:block;font-size:9.5pt;color:var(--plum-deep)}
+.node span{font-size:8pt;color:var(--ink-muted)}
+.node.gate{background:var(--plum);color:#fff}
+.node.gate b{color:#fff}.node.gate span{color:#E8CBEC}
+.arrow{align-self:center;color:var(--plum-soft);font-size:12pt}
+.pagenum{position:absolute;bottom:9mm;right:17mm;font-size:8pt;color:var(--ink-muted)}
+.pagehead{display:flex;justify-content:space-between;align-items:center;margin-bottom:7mm;font-size:8.5pt;color:var(--ink-muted)}
+.pagehead .b{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--plum-deep)}
+.pagehead .b .orb{width:16px;height:16px}.pagehead .b .orb::after{width:5px;height:5px;box-shadow:0 0 0 2px #ffffffaa}
+table{width:100%;border-collapse:collapse;font-size:9.5pt}
+td,th{text-align:left;padding:5px 8px;border-bottom:1px solid #eee2d9;vertical-align:top}
+th{font-size:8pt;text-transform:uppercase;letter-spacing:.5px;color:var(--ink-muted)}
+.movegrid{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+.move{background:#fff;border-radius:12px;padding:10px 13px;box-shadow:0 4px 12px rgba(90,43,92,.07)}
+.move b{font-size:9.5pt;color:var(--plum-deep)}
+.move p{font-size:8.8pt;color:var(--ink-muted);margin:1mm 0 0}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ COVER ═══════════ -->
+<div class="page cover">
+  <div class="brand"><div class="orb"></div><b>Aira</b></div>
+  <h1>Your private AI companion for <em>motherhood</em>.</h1>
+  <div class="lede">One calm conversation for trying to conceive, pregnancy, postpartum, and everything between — chat-first, with a hard clinical safety gate on every input and visible consent and privacy controls.</div>
+  <div class="factrow">
+    <div class="fact"><b>3</b><span>Surfaces — Android, Web SPA, Admin console</span></div>
+    <div class="fact"><b>213</b><span>Backend tests passing (18 files, 97% coverage)</span></div>
+    <div class="fact"><b>20/20</b><span>Safety evals on first run, zero critical failures</span></div>
+    <div class="fact"><b>0</b><span>Third-party Android dependencies</span></div>
+  </div>
+  <div class="foot"><span>Project overview &amp; features</span><span>August 2026</span></div>
+</div>
+
+<!-- ═══════════ PAGE 2: WHAT + ARCHITECTURE + NON-NEGOTIABLES ═══════════ -->
+<div class="page contentpage">
+  <div class="pagehead"><div class="b"><div class="orb"></div>Aira — Project overview</div><span>What it is</span></div>
+
+  <h2>What Aira is</h2>
+  <p>Aira is an AI maternal-wellness companion. A learner tells Aira where she is in her journey — trying to conceive, pregnant, or postpartum — and Aira shapes a proactive daily home, a gated AI conversation, week-by-week journey guidance, care reminders, and short own-hosted videos around that stage, in <b>English, Hindi, or Hinglish</b>. It offers wellness support, never diagnosis; anything that looks like a danger sign escalates to a human pathway instead of an AI answer.</p>
+
+  <div class="arch">
+    <div class="node"><b>Android app</b><span>Kotlin / Compose<br>Me · Chat · Videos</span></div>
+    <div class="node"><b>Web SPA</b><span>React 19 · Vite<br>5 tabs + admin console</span></div>
+    <div class="arrow">→</div>
+    <div class="node gate"><b>Safety gate</b><span>screens every input<br>fail-closed</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>FastAPI backend</b><span>Python 3.12 · SQLite→Postgres<br>owner-scoped data</span></div>
+    <div class="arrow">→</div>
+    <div class="node"><b>Providers</b><span>Gemini (LLM + STT)<br>ElevenLabs (TTS)</span></div>
+  </div>
+  <p class="muted" style="font-size:9pt">Two clients, one backend. The web SPA is the reference implementation; Android is the lead client, verified on hardware, built with zero third-party dependencies (framework HTTP, JSON, VideoView, AlarmManager, RemoteViews throughout).</p>
+
+  <div class="rule"></div>
+
+  <h2>Non-negotiables</h2>
+  <div class="cols">
+    <div>
+      <div class="card urgentc">
+        <h3 style="color:var(--urgent)">Safety gate on every input</h3>
+        <p style="font-size:9.3pt;margin:0">The server-side gate screens <b>every</b> chat input before any reply exists — typed or spoken. It is fail-closed: if the gate errors, no AI reply may be generated. A red-flag input gets no AI answer at all — only the full-screen Urgent Help handoff with pathways to human care.</p>
+      </div>
+      <div class="card sage">
+        <h3 style="color:var(--sage-deep)">Honest UI</h3>
+        <p style="font-size:9.3pt;margin:0">No fake data anywhere. Trust labels reflect real gate results; star ratings are real aggregates; a video with no file shows an honest empty state rather than pretending to be playable.</p>
+      </div>
+    </div>
+    <div>
+      <div class="card tint">
+        <h3>Learner data is owner-scoped</h3>
+        <p style="font-size:9.3pt;margin:0">Every table is owned by the learner: exported on request, deletable, and merged when a guest signs in. Every new resource must wire into merge / erase / export before it ships. The aggregate metrics table has no learner column by construction.</p>
+      </div>
+      <div class="card tint">
+        <h3>Never used for advertising</h3>
+        <p style="font-size:9.3pt;margin:0">Sensitive health data is not an ad product. AI personalisation is a consent with real effect: switched off, no memories enter prompts and no extraction runs.</p>
+      </div>
+    </div>
+  </div>
+  <div class="pagenum">2</div>
+</div>
+
+<!-- ═══════════ PAGE 3: FEATURES I ═══════════ -->
+<div class="page contentpage">
+  <div class="pagehead"><div class="b"><div class="orb"></div>Aira — Project overview</div><span>Features</span></div>
+
+  <h2>Features <small>— safety, conversation, and the proactive home</small></h2>
+
+  <div class="cols">
+    <div>
+      <div class="eyebrow">Safety &amp; trust</div>
+      <ul>
+        <li><b>Clinical safety gate</b> screening every turn (Gemini safety model), fail-closed with an honest "safety check unavailable" state</li>
+        <li><b>Urgent Help takeover</b> — full-screen escalation, call pathways, emergency profile, "I'm safe for now"</li>
+        <li><b>Per-message safety chip</b> reflecting the real gate decision</li>
+        <li><b>Safety evals suite</b> — 20/20 on first run: typos, Hinglish, Hindi negation, third-party reports, idioms; p95 gate latency 1.7&nbsp;s</li>
+        <li><b>Admin safety review queue</b> — filterable, paginated, append-only gate record, every action logged</li>
+        <li><b>AI disclaimer</b> served by the backend and surfaced beside AI replies</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">Chat &amp; AI</div>
+      <ul>
+        <li><b>Gated AI turns</b> with empathy-first replies and typed content cards</li>
+        <li><b>SSE streaming</b> on web; blocking <span style="font-family:monospace;font-size:8.5pt">POST /respond</span> on Android</li>
+        <li><b>Three languages</b> — English, Hindi, Hinglish — served from one backend catalog (<span style="font-family:monospace;font-size:8.5pt">/config</span>), including Hinglish cards</li>
+        <li><b>Voice loop</b> — speech → Gemini STT → the same gated spine → ElevenLabs TTS reply, LRU-cached; silence and STT failures degrade honestly</li>
+        <li><b>Memory extraction</b> with a review surface — the learner sees and controls what Aira remembers</li>
+        <li><b>Next-best-action card</b> based on the learner's actual day</li>
+        <li><b>Typing indicator, multi-line input, quick chips</b>, onboarding that happens inside the conversation</li>
+      </ul>
+    </div>
+    <div>
+      <div class="eyebrow">Me — the proactive home</div>
+      <ul>
+        <li><b>Time-aware hero</b> — Week · Day, baby size (emoji + ~cm), days/weeks to go, journey progress bar, next-milestone pill</li>
+        <li><b>Mood check-in</b> — six moods with per-mood colour and icon, notes, 7-day strip, monthly breakdown, trend escalation, postpartum AM/PM slots</li>
+        <li><b>Today's care</b> — water droplets with an editable goal, tick/untick with undo, per-event reminder times</li>
+        <li><b>Daily tip</b> — rotating, language-aware with English fallback, thumbs feedback</li>
+        <li><b>Learned nudge ranking</b> — server-ranked focus nudges that learn from taps; a nudge never duplicates a control already on screen</li>
+        <li><b>Streaks, Sunday recap, week-flip celebration</b>, name prompt, pull-to-refresh, offline banner</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">In-chat tools <span style="text-transform:none;letter-spacing:0">(all on real endpoints)</span></div>
+      <div style="margin-bottom:2mm">
+        <span class="pill">Check-in</span><span class="pill">Reminders</span><span class="pill">Care Vault uploads</span><span class="pill">Reset (2 calm minutes)</span><span class="pill">Symptom tracking</span><span class="pill">Medicines</span><span class="pill">Visit copilot + calendar</span><span class="pill">Care plan</span><span class="pill">Memory review</span><span class="pill">Companion mode</span><span class="pill">Emergency profile</span><span class="pill">Calm-match game</span>
+      </div>
+      <p class="muted" style="font-size:9pt">The "+" tray in chat opens seven everyday tools; the rest are reachable from Me and Settings.</p>
+    </div>
+  </div>
+  <div class="pagenum">3</div>
+</div>
+
+<!-- ═══════════ PAGE 4: FEATURES II ═══════════ -->
+<div class="page contentpage">
+  <div class="pagehead"><div class="b"><div class="orb"></div>Aira — Project overview</div><span>Features</span></div>
+
+  <h2>Features <small>— journey, videos, care, privacy, platform</small></h2>
+
+  <div class="cols">
+    <div>
+      <div class="eyebrow">Journey</div>
+      <ul>
+        <li><b>Week-by-week guide</b> — editorial sections (your body, prepare for your visit), size comparisons, browsing weeks without mutating the care context</li>
+        <li><b>Milestone path timeline</b> — a Duolingo-style path with "you are here"</li>
+        <li><b>Change stage anytime</b> — two-tap stage picker, no re-onboarding</li>
+        <li><b>Journey CMS</b> — admin edits reach learners immediately</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">Videos</div>
+      <ul>
+        <li><b>Own-hosted short videos</b> streamed with HTTP Range support (seekable), portrait + landscape variants</li>
+        <li><b>Stage-aware catalog</b> with search, category chips, duration badges</li>
+        <li><b>Likes and 1–5 star ratings</b> — real aggregates only</li>
+        <li><b>In-app player</b> — completion marks watched and drives unwatched-first rotation; transcript toggle for sound-off and screen-reader use</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">Care</div>
+      <ul>
+        <li><b>Reminders</b> with progress, undo, editable targets, and per-event notification times (bell editor)</li>
+        <li><b>Medicines</b> — doses, schedules, taken-today state</li>
+        <li><b>Visit copilot</b> — appointments, questions and notes, add-to-calendar</li>
+        <li><b>Care Vault</b> — prescription and report uploads</li>
+        <li><b>Wellness reports</b> — monthly done-day summaries</li>
+      </ul>
+    </div>
+    <div>
+      <div class="eyebrow">Privacy &amp; accounts</div>
+      <ul>
+        <li><b>AI-personalisation consent with real effect</b> — off means no memories in prompts and no extraction</li>
+        <li><b>Export and erase</b> — learner data leaves or disappears on request</li>
+        <li><b>Guest-first</b> — device tokens; sign-in merges the guest history</li>
+        <li><b>Owner-scoped tables</b> throughout; aggregate metrics carry no learner column</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">Platform &amp; system surfaces</div>
+      <ul>
+        <li><b>Dark mode</b> — a switchable palette where every colour resolves through a state getter; System / Light / Dark picker</li>
+        <li><b>Opt-in daily notification</b> (3 PM, AlarmManager) with enable-time preview</li>
+        <li><b>Home-screen widget</b> fed from a local cache, with a quick action</li>
+        <li><b>Share card</b> — image render of the week</li>
+        <li><b>Admin console</b> — owner/support/content roles, PBKDF2 passwords, HMAC admin tokens disjoint from learner tokens</li>
+        <li><b>Deploy hardening</b> — Dockerfile, smoke test, rate limiting, history sanitisation</li>
+      </ul>
+
+      <div class="eyebrow" style="margin-top:5mm">Quality</div>
+      <ul class="sagelist">
+        <li><b>213 backend tests</b> across 18 files; ~97% coverage</li>
+        <li><b>Live-verified loops</b> — chat, voice, admin review; real bugs found live were fixed with regression tests</li>
+        <li><b>Device-verified</b> Android on hardware; zero third-party dependencies</li>
+      </ul>
+    </div>
+  </div>
+  <div class="pagenum">4</div>
+</div>
+
+<!-- ═══════════ PAGE 5: DESIGN + STATUS ═══════════ -->
+<div class="page contentpage">
+  <div class="pagehead"><div class="b"><div class="orb"></div>Aira — Project overview</div><span>Design &amp; status</span></div>
+
+  <h2>Design system <small>— the "Dawn" direction, shipped</small></h2>
+  <p style="font-size:9.5pt">Aira's visual language pairs an editorial serif (Fraunces-class) with a calm plum/lilac/sage palette. The <b>Dawn redesign</b> — proposed in an HTML before/after kit and then implemented move by move in the Compose app — made six moves:</p>
+  <div class="movegrid">
+    <div class="move"><b>1 · Twilight → Dawn</b><p>The dark hero becomes a light sunrise gradient (peach → lilac) with plum ink; the dark theme keeps its dark hero for 3&nbsp;AM feeds.</p></div>
+    <div class="move"><b>2 · Shadows replace borders</b><p>Cards, bubbles, and tiles drop 1px outlines for soft plum-tinted shadows and larger radii.</p></div>
+    <div class="move"><b>3 · A warm second accent</b><p>Rose joins plum on eyebrows, tool tiles, and category chips; sage keeps meaning "done / safe".</p></div>
+    <div class="move"><b>4 · Frosted nav</b><p>The floating nav pill goes translucent white with a solid plum active tab.</p></div>
+    <div class="move"><b>5 · Editorial serif</b><p>Italics for greetings and emphasis words; the welcome headline grows. Companion voice, not system chrome.</p></div>
+    <div class="move"><b>6 · Rounder controls</b><p>Buttons, options, segments, mood chips, and check buttons go full-pill or circle; the primary button gains a plum gradient.</p></div>
+  </div>
+  <p class="muted" style="font-size:9pt;margin-top:3mm">The design team works from <span style="font-family:monospace;font-size:8.5pt">docs/design/index.html</span> (all 13 screens as living HTML, token-driven) and <span style="font-family:monospace;font-size:8.5pt">docs/design/redesign.html</span> (before/after pairs) — editing one CSS token block re-skins every screen.</p>
+
+  <div class="rule"></div>
+
+  <h2>Current status &amp; launch gates</h2>
+  <div class="cols">
+    <div>
+      <div class="card sage" style="margin-bottom:4mm">
+        <h3 style="color:var(--sage-deep)">Complete</h3>
+        <p style="font-size:9.3pt;margin:0">All build phases (P0–P11), the 55-point world-class home review, the Dawn redesign, admin + deploy hardening, and the voice loop — with the full product loop, voice loop, and admin review loop verified live.</p>
+      </div>
+      <table>
+        <tr><th>Component</th><th>State</th></tr>
+        <tr><td><b>Backend</b> (FastAPI)</td><td>213 tests green; Docker + smoke test</td></tr>
+        <tr><td><b>Android</b> (Compose)</td><td>Lead client, device-verified, Dawn shipped</td></tr>
+        <tr><td><b>Web</b> (React 19)</td><td>Reference client + admin console</td></tr>
+        <tr><td><b>Design kit</b> (HTML)</td><td>13 screens, token-driven, in sync</td></tr>
+      </table>
+    </div>
+    <div>
+      <div class="card tint">
+        <h3>Human-gated before launch</h3>
+        <ul style="margin:0">
+          <li><b>Clinician review</b> of the safety taxonomy, seeded journey content, and videos</li>
+          <li><b>Privacy / jurisdiction legal review</b></li>
+          <li><b>Production infrastructure</b> — Postgres, Redis, object storage</li>
+        </ul>
+        <p class="muted" style="font-size:8.8pt;margin:2mm 0 0">Tracked with lead times in TODO.md. These are deliberate human gates, not engineering gaps.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="pagenum">5</div>
+</div>
+
+</body>
+</html>
