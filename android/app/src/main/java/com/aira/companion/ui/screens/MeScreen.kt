@@ -774,13 +774,14 @@ fun MeScreen(
                             .clickable { playVideo(context, video, onOpenPlayer) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        RemoteImage(
+                        VideoThumb(
                             url = videoThumbUrl(video) ?: "",
                             contentDescription = video.title,
+                            durationMinutes = video.durationMinutes,
+                            watched = video.watched,
                             modifier = Modifier
                                 .width(108.dp)
-                                .height(61.dp)
-                                .clip(RoundedCornerShape(12.dp)),
+                                .height(61.dp),
                         )
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
