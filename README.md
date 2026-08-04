@@ -18,9 +18,16 @@ input and visible consent and privacy controls.
 ```
 aira/
 ├── backend/     FastAPI API + safety gate + SQLite/Postgres   (Python 3.12)
-├── web/         React 19 client                               (TypeScript)
+├── web/         React 19 SPA — Today · Aira · Journey · Care · You, + admin console
+├── android/     Kotlin/Compose — Me · Chat · Videos (+ Settings); zero 3rd-party deps
 └── ref/         reference material — see below
 ```
+
+Two clients, one backend. The **web** SPA is the reference implementation (the
+full five-tab product plus the admin console). **Android** is the lead client the
+product is verified on — restructured to Me · Chat · Videos with a Settings
+overlay, and the only client with the videos player, dark mode, the daily
+notification, and the home-screen widget. Both talk to the same API.
 
 `ref/` is the spec and the architecture donor, not shipped code:
 
@@ -50,6 +57,9 @@ uv pip install -r requirements.txt --python .venv/bin/python
 cp .env.example .env          # fill GEMINI_API_KEY and ELEVENLABS_API_KEY
 .venv/bin/python -m uvicorn app:app --reload --port 8001
 ```
+
+On Windows the venv interpreter is `.venv\Scripts\python` instead of
+`.venv/bin/python`; everything else is identical.
 
 Sanity check:
 
@@ -82,13 +92,41 @@ First run creates `backend/aira.db` (SQLite, gitignored). **That file will hold
 health data** — it is excluded from git deliberately, along with
 `backend/uploads/`.
 
+The web client has no videos UI, dark mode, or sign-in — those live only on
+Android today; the web app is guest-only (device token) and its five tabs unlock
+once a care context exists.
+
+## Run the Android client
+
+Kotlin + Jetpack Compose, **zero third-party dependencies** (HttpURLConnection,
+`org.json`, and framework `VideoView`/`AlarmManager`/`RemoteViews` throughout).
+Needs JDK 17 and the Android SDK (compile/target 36, min 26). Easiest path: open
+`android/` in Android Studio Otter+ and run the `app` configuration.
+
+The backend base URL is compiled into `BuildConfig.AIRA_BACKEND_URL`; debug
+builds default to `http://10.0.2.2:8001` (the emulator's alias for the host
+loopback). For a physical device, tunnel over USB and override the URL:
+
+```bash
+cd android
+adb reverse tcp:8001 tcp:8001
+./gradlew :app:installDebug -PAIRA_DEV_BACKEND_URL=http://127.0.0.1:8001
+```
+
+Debug builds allow cleartext (dev LAN only); release pins an invalid URL until a
+production API exists. Chat is `POST /respond` (blocking; no SSE or voice on
+Android yet) — the server-side gate still decides every turn, and `urgent` opens
+the full-screen Urgent Help handoff. See [`android/README.md`](./android/README.md).
+
 ---
 
 ## Current state
 
 **All build phases (P0–P11) complete, plus the world-class home-page sprint
-(2026-08-03/04). ~200 backend tests.** Android is the lead client: Me / Chat
-/ Videos tabs, all on real endpoints, device-verified on hardware.
+(2026-08-03/04). 204 backend tests across 18 files.** Android is the lead client:
+Me / Chat / Videos tabs, all on real endpoints, device-verified on hardware. The
+web SPA is the reference client (five tabs + admin console; text chat over SSE,
+voice, no videos UI).
 
 The 55-point Me review is fully implemented — highlights:
 

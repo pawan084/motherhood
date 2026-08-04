@@ -9,6 +9,11 @@ gate on every input and visible consent/privacy controls.
 | Decision | Choice | Why |
 |---|---|---|
 | First client | **Web** | A React prototype already exists; no device/toolchain friction; becomes the reference implementation native clients port from. |
+
+> *As built:* Web landed first (P8) and remains the reference implementation. During
+> the post-P10 home sprint the **Android** client (Me · Chat · Videos) became the
+> lead surface — it is the one verified on real hardware — while the web SPA keeps
+> the full five-tab layout and the admin console.
 | Scope | **Production-track** | Real auth, consent records, safety audit log, Postgres path, admin console, deploy. Nothing built to be thrown away. |
 | Backend | **FastAPI (Python 3.12)** | Ports ~7.2k lines of proven modules from `ref/sayli/backend`. |
 | LLM / voice | **Gemini** (LLM + multimodal/STT), **ElevenLabs** (TTS) | Same split as sayli, which shipped it end to end. |
@@ -32,26 +37,36 @@ All substance comes from sayli's patterns.
 
 ## Module map
 
+Planned at P0; below is the map **as built** (it drifted from the initial sketch —
+there is no `analytics_store.py`/`legal.py`/`documents.py`, and prompts stayed in
+code rather than a DB registry).
+
 ```
 backend/
-  app.py             routes                          ← port (sayli app.py)
-  db.py              SQLite -> Postgres              ← port
+  app.py             routes + /health + /config      ← port (sayli app.py)
+  config.py          env config + prod startup guard ← NEW
+  db.py              SQLite -> Postgres adapter       ← port
+  security.py        shared-secret auth, rate limit   ← port
   device_auth.py     guest device tokens             ← port
-  accounts.py        sign-in, sessions               ← port
-  security.py        secrets guard, rate limiting    ← port
-  memory.py          per-turn enrichment             ← port (sayli learner memory)
-  prompts.py         DB-backed prompt registry       ← port
-  services.py        Gemini / ElevenLabs glue        ← port
-  admin.py           admin API                       ← port
-  analytics_store.py events                          ← port
-  legal.py           privacy / terms pages           ← port
+  accounts.py        sign-in, HMAC sessions           ← port
+  care_context.py    stage, week index, facts         ← NEW
+  safety.py          clinical red-flag triage gate    ← NEW
+  safety_taxonomy.py the red-flag taxonomy as data    ← NEW
+  chat.py            /respond (+ SSE) + voice turns   ← NEW
+  prompts.py         prompt constants (code, not DB)  ← NEW
+  services.py        Gemini glue (reply + cards)      ← port
+  memory.py          "what Aira remembers"            ← port (sayli learner memory)
+  journey.py         week-indexed content             ← NEW
+  care.py            medicines, docs, appts, plan     ← NEW
+  wellness.py        moods, reminders, videos, report ← NEW
+  today.py           the proactive Me / home feed     ← NEW
+  privacy.py         consents, export, deletion       ← NEW
+  admin.py           admin API + safety review queue  ← port
+  demo.py            demo personas (dev only)         ← NEW
+  seed_*.py          journey / tips / videos seeds    ← NEW
 
-  safety.py          clinical red-flag triage gate   ← NEW
-  care_context.py    stage, week index, facts        ← NEW
-  journey.py         week-indexed content            ← NEW
-  documents.py       prescription / report upload    ← NEW
-
-web/                 React 19 client                 ← from ref/aira-react-web
+web/                 React 19 SPA (reference client)  ← from ref/aira-react-web
+android/             Kotlin/Compose app (lead client) ← from ref/AiraAndroid
 ```
 
 ---

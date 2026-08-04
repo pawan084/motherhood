@@ -35,8 +35,10 @@ htmlcov/
 backend/uploads/
 
 # Hosted demo media (own videos) — large binaries stay out of git; copy them
-# in from the source folder (see backend/media/README.md).
-backend/media/
+# in from the source folder (see backend/media/README.md). Ignore the directory
+# *contents* (not the directory itself) so the README can be re-included — a
+# `!` under an excluded directory never applies, because git won't descend into it.
+backend/media/*
 !backend/media/README.md
 
 # ── Node / web client ─────────────────────────────────────────────────────────

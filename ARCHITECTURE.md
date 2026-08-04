@@ -8,20 +8,27 @@ filled in as each phase lands rather than after the fact.
 ## 1. Shape
 
 ```
-  web client (React 19)
-        │  HTTPS/JSON + SSE
-        ▼
+  web client (React 19)            android client (Kotlin/Compose)
+   Today·Aira·Journey·Care·You        Me·Chat·Videos (+ Settings)
+        │  HTTPS/JSON + SSE               │  HTTPS/JSON (blocking)
+        └───────────────┬────────────────┘
+                        ▼
   FastAPI  ──► safety gate ──┬─► urgent help  (deterministic + LLM, fails closed)
         │                    └─► Gemini ──► reply + typed action cards
         │                                      │
-        │                                 ElevenLabs TTS (P9)
+        │                                 ElevenLabs TTS (P9, web only)
+        ├─► /media  own-hosted videos (Range-enabled)
         ▼
   SQLite (dev) / Postgres (prod)
 ```
 
-One backend, many clients. The web client is first and becomes the reference
-implementation a native client ports from — the same order sayli used for its
-iOS→Android port, which worked.
+One backend, two clients. The **web** SPA landed first and is the reference
+implementation a native client ports from — the order sayli used for its
+iOS→Android port, which worked. **Android** became the lead surface during the
+home sprint (restructured to Me · Chat · Videos) and is the client verified on
+real hardware. Web has the SSE streaming chat and the voice loop; Android uses
+the blocking `/respond` and carries what web doesn't yet — the videos player,
+dark mode, and the system surfaces (daily notification, home-screen widget).
 
 ## 2. Why FastAPI and not the prototype's Cloudflare/D1 stack
 
@@ -87,7 +94,9 @@ look like over-engineering:
 
 ## 6. Single-sourced catalogs
 
-`/config` serves journey stages, languages, and the disclaimer. Clients do not
+`/config` serves the journey stages, the supported languages, the typed
+`card_types` catalog, the `ai_disclaimer`, and a `safety_gate_enabled` flag (so a
+client can refuse to render chat if the gate is somehow off). Clients do not
 hardcode mirrors. This is a direct response to a sayli bug: the same catalog
 lived in three codebases and drifted the day a new language was added.
 
@@ -372,5 +381,73 @@ live-verified keyless (STT down → honest error; TTS down → 502).
 
 ---
 
+## 18. The proactive home (post-P10)
+
+`today.py` — `GET /today` is the spine of the Me tab: the app opens on a home that
+already knows where the learner is, not an empty prompt. In one call it composes,
+from the care context + the day: a greeting keyed to the local hour, the week and
+day-in-week with a baby-size cue and days/weeks-to-go, a daily rotating tip
+(`seed_tips.py` — stage-aware, language-aware with an English fallback), a
+suggested video, a streak, a Sunday recap, and 0–2 ranked **focus nudges**.
+
+- **Nudges are suggestions, never actions** — they mirror the product's
+  suggest-only posture, and a strict no-duplication rule keeps a nudge from
+  repeating a control already visible on the same screen.
+- **A small learning layer.** `POST /today/focus-tap` records which nudges a
+  learner engages with (a counter keyed by nudge kind — no free-text), and the
+  ranking leans on it over time; `POST /today/tip-feedback` marks a tip
+  helpful/not.
+- Everything is derived at read time from the care context and the wellness
+  tables — nothing about "today" is stored, so it can never go stale (the same
+  reasoning as the read-time week index, §9).
+
+## 19. Wellness: moods, reminders, symptoms (post-P10)
+
+`wellness.py` — the day-to-day tracking the Me tab and its detail screens read and
+write. Four owner-scoped resources plus a report:
+
+- **Moods** (`GET/POST /moods`): latest-wins per day (optional note; postpartum
+  gets AM/PM slots), so the 7-day strip shows one entry per day, never duplicates.
+- **Reminders** (`GET/POST /reminders`, `.../tick`, `.../untick`, `.../target`,
+  delete): habit reminders (water, movement, custom) plus medicines surfaced as
+  reminders (`?include_medicines=true`) so "Today's care" is a single list.
+  Seed-once, and a **deletion sticks** — the same lesson as Journey (§13).
+- **Symptoms** (`GET/POST/DELETE /symptoms`): a simple owner-scoped log.
+- **Report** (`GET /report?days=N`): the mood series + reminder ticks + medicine
+  log behind the Moods and Care detail screens.
+- **Metrics** (`POST /metrics`): coarse aggregate counters (screen opens, taps).
+  By construction it carries **no free-text and no health content** — the
+  analytics constraint from §5, enforced in the schema rather than by policy.
+
+## 20. Videos (post-P10)
+
+`wellness.py` (routes) + `seed_videos.py` (catalog). A small library of short,
+own-hosted explainer videos, chosen for where the learner is.
+
+- **Own-hosted, not embeds.** Files stream from the `/media` mount, which honours
+  Range headers so the player can seek. The directory is gitignored (large
+  binaries); `backend/media/README.md` documents populating it. A row also carries
+  an optional `youtube_id` fallback and a `transcript` field.
+- **Stage- and week-aware.** `GET /videos` is the catalog (stage-first ordering,
+  searched client-side); `GET /videos/suggested` returns one daily pick,
+  **unwatched-first**, so the Me tab keeps moving through the set.
+- **Real engagement only.** `like` (toggle + count), `rate` (1–5 stars → your
+  stars, the average, the count), `watched` (drives the unwatched-first rotation).
+  Aggregates are computed from real rows — nothing is invented. There is
+  deliberately **no review/publish gate and no "saved" list**: the catalog ships as
+  content, served read-only apart from those three per-learner signals.
+- Seeded small (six videos across the three stages) and seed-once, so admin
+  edits/deletes survive restarts.
+
+## 21. Demo personas (dev only)
+
+`demo.py` — `POST /demo/{persona}` sets up a fully-populated learner for a stage in
+one call (care context plus a few meds / reminders / moods), so the product can be
+shown end to end without manual onboarding. It is mounted **only where dev login is
+allowed** and re-checks it is not production — demo data never exists on a
+production instance.
+
+---
+
 ## Filled in as phases land
-*(all phases landed — P0-P10)*
+*(P0–P10 landed; §18–§21 cover the post-P10 home / wellness / videos sprint.)*

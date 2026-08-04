@@ -4,32 +4,44 @@ Aira is a private, AI-first maternal wellness companion built natively with Kotl
 
 ## What is implemented
 
-- Premium warm-ivory, aubergine, sage and lilac Material 3 design system
-- Chat-first onboarding for trying to conceive, pregnancy, postpartum and exploration
-- English, Hindi and Hinglish preference capture
-- Five quiet destinations: Today, Aira, Journey, Care and You
-- Today view with current context and one meaningful next action
-- Aira command-centre chat with text, voice affordance and contextual tool tray
-- Native document picker for prescriptions, reports and scans
-- Medicine reminders, daily check-ins, symptom tracking and appointment copilot
-- Animated two-minute wellness reset
-- Talking-avatar preference and consent-safe future-baby story flow
-- Native image pickers for both participant photos
-- Care plan, Care Vault, care-team support and partner task controls
-- Privacy centre, data export affordance, selective deletion and AI-memory review
-- Full-screen urgent-care handoff with native phone dialer
-- Offline emergency-profile prototype
-- ViewModel state tests for onboarding, tool exclusivity and urgent routing
+- Warm-ivory / aubergine / sage / lilac Material 3 design system, with a
+  System · Light · Dark appearance picker
+- Chat-first onboarding for trying to conceive, pregnancy, and postpartum, with an
+  English / Hindi / Hinglish preference; returning users skip straight to Me
+- **Three destinations — Me · Chat · Videos** — with Settings behind the top-bar
+  gear (a full-screen overlay that absorbs the old You tab and the care tools)
+- **Me**: a proactive home driven by `GET /today` — week/day hero with baby size,
+  streaks, a mood check-in (7-day strip), Today's care check-offs, a daily tip and
+  a suggested video
+- **Chat**: every turn is `POST /respond` behind the server-side safety gate;
+  `urgent` opens the full-screen handoff with a native dialer
+- **Videos**: stage-aware catalog with search, likes, 1–5 star ratings, an in-app
+  VideoView player, and unwatched-first rotation
+- Wired care tools (tool sheets): medicines, reminders, appointments, care plan,
+  symptom log, and the AI-memory review — all on real endpoints
+- Opt-in daily notification (AlarmManager) and a home-screen widget fed from a
+  local cache; pull-to-refresh and an offline staleness banner
+- Full-screen urgent-care handoff, an offline emergency-profile stub, and ViewModel
+  state tests for onboarding, tool exclusivity, and urgent routing
+
+Still prototype (honest placeholders, no fake data): Care Vault OCR, the wellness
+Reset animation, the talking-avatar / companion flow, on-device voice, partner
+tasks, and the privacy toggles. The sprint notes at the end of this file spell out
+exactly what is and isn't wired.
 
 ## Open in Android Studio
 
-1. Extract this ZIP.
-2. Open the `AiraAndroid` folder in Android Studio Otter or newer.
-3. Allow Gradle sync to finish.
-4. Select an Android 8.0+ emulator or device.
-5. Run the `app` configuration.
+1. Open the `android/` folder in Android Studio Otter or newer.
+2. Let Gradle sync finish.
+3. Select an Android 8.0+ emulator or device.
+4. Run the `app` configuration.
 
-The project targets Android API 36, uses Java 17, Kotlin 2.3.21, Android Gradle Plugin 8.13.2 and Compose BOM 2026.06.00.
+The project targets Android API 36 (min 26), uses Java 17, Kotlin 2.3.21, Android
+Gradle Plugin 8.13.2 and Compose BOM 2026.06.00. It has **zero third-party
+dependencies** — HttpURLConnection, `org.json`, and framework
+VideoView/AlarmManager/RemoteViews/Canvas throughout. The backend base URL is
+`BuildConfig.AIRA_BACKEND_URL` (debug default `http://10.0.2.2:8001`); override for
+a physical device with `-PAIRA_DEV_BACKEND_URL=http://<host>:8001`.
 
 ## Architecture
 
@@ -37,26 +49,24 @@ The project targets Android API 36, uses Java 17, Kotlin 2.3.21, Android Gradle 
 app/src/main/java/com/aira/companion/
 ├── MainActivity.kt
 ├── model/
-│   └── AiraModels.kt
+│   └── AiraModels.kt          state + pure reducers (optimistic updates)
+├── net/
+│   └── AiraApi.kt             the backend client (HttpURLConnection, org.json)
+├── notify/
+│   ├── CareReminders.kt       opt-in daily notification (AlarmManager)
+│   └── CareReminderReceiver.kt
+├── widget/
+│   └── AiraWidgetProvider.kt  home-screen widget (RemoteViews, prefs cache)
+├── util/
+│   └── ShareCard.kt           image share card (Canvas)
 └── ui/
-    ├── AiraApp.kt
+    ├── AiraApp.kt             the three destinations + Settings overlay
     ├── AiraViewModel.kt
-    ├── components/
-    │   └── AiraComponents.kt
-    ├── screens/
-    │   ├── WelcomeScreen.kt
-    │   ├── OnboardingChatScreen.kt
-    │   ├── TodayScreen.kt
-    │   ├── AiraChatScreen.kt
-    │   ├── JourneyScreen.kt
-    │   ├── CareScreen.kt
-    │   ├── YouScreen.kt
-    │   ├── ToolSheets.kt
-    │   └── UrgentHelpDialog.kt
-    └── theme/
-        ├── Color.kt
-        ├── Theme.kt
-        └── Type.kt
+    ├── components/            AiraComponents.kt, RemoteImage.kt
+    ├── screens/               Welcome, OnboardingChat, Me, AiraChat, Videos,
+    │                          VideoPlayer, Settings, DetailScreens, JourneyPath,
+    │                          ToolSheets, UrgentHelpDialog
+    └── theme/                 Color.kt, Theme.kt, Type.kt
 ```
 
 ## Production integration points
