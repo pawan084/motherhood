@@ -165,6 +165,7 @@ private fun MainExperience(
                         onSaveName = viewModel::updateDisplayName,
                         onDismissName = viewModel::dismissNamePrompt,
                         onRefresh = viewModel::refreshMe,
+                        onSetStage = viewModel::setStage,
                         modifier = Modifier.padding(padding),
                     )
                 MainDestination.Chat ->

@@ -3,6 +3,7 @@ package com.aira.companion.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -154,11 +155,19 @@ fun MeScreen(
     onSaveName: (String) -> Unit,
     onDismissName: () -> Unit,
     onRefresh: () -> Unit,
+    onSetStage: (String, String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val today = LocalDate.now().toString()
     val todayMood = state.moods.lastOrNull { it.day == today }?.mood
+    var showStagePicker by remember { mutableStateOf(false) }
+    if (showStagePicker) {
+        StagePickerDialog(
+            onDismiss = { showStagePicker = false },
+            onSave = { stage, anchor -> onSetStage(stage, anchor); showStagePicker = false },
+        )
+    }
 
     androidx.compose.material3.pulltorefresh.PullToRefreshBox(
         isRefreshing = state.meLoading,
@@ -192,7 +201,10 @@ fun MeScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .combinedClickable(
-                    onClick = { onOpenDetail(DetailPage.Journey) },
+                    onClick = {
+                        if (state.careSummary == null) showStagePicker = true
+                        else onOpenDetail(DetailPage.Journey)
+                    },
                     onLongClick = {
                         // Share the week (review #36) as a drawn image card —
                         // the system sheet lets the user pick the destination.
@@ -342,10 +354,24 @@ fun MeScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         text = if (state.meLoading) "Syncing your care context…"
-                        else "Tell Aira where you are — tap to set your stage.",
+                        else "Set where you are and Aira shapes your week, videos, and guidance.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = HeroInkMuted,
                     )
+                    if (!state.meLoading) {
+                        Spacer(Modifier.height(14.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = "Set your journey",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = HeroAccent,
+                            )
+                            Icon(
+                                Icons.Filled.ChevronRight, null,
+                                tint = HeroAccent, modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -920,6 +946,107 @@ private fun ReminderRow(
                 reminder.ticksToday, reminder.targetPerDay,
                 expectedNow = expectedWaterByNow(reminder.targetPerDay),
             )
+        }
+    }
+}
+
+/** Empty-hero stage picker: set the care stage (and an approximate anchor) in
+ * two taps, no re-onboarding — so no one gets stranded without a journey. */
+@Composable
+private fun StagePickerDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, String?) -> Unit,
+) {
+    var stage by remember { mutableStateOf<String?>(null) }
+    var anchor by remember { mutableStateOf<String?>(null) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(24.dp), color = Paper) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    "Where are you in your journey?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Ink,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    "Aira uses this to shape your week, videos, and guidance.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(Modifier.height(14.dp))
+                listOf(
+                    "pregnant" to "Pregnant",
+                    "postpartum" to "Postpartum",
+                    "trying_to_conceive" to "Trying to conceive",
+                ).forEach { (key, label) ->
+                    val selected = stage == key
+                    Surface(
+                        onClick = { stage = key; anchor = null },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (selected) LilacMist else Paper,
+                        border = androidx.compose.foundation.BorderStroke(
+                            if (selected) 1.5.dp else 1.dp,
+                            if (selected) Plum else OutlineSoft,
+                        ),
+                    ) {
+                        Text(
+                            label,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Ink,
+                        )
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                val anchors = when (stage) {
+                    "pregnant" -> listOf("~8 weeks", "~16 weeks", "~24 weeks", "~32 weeks")
+                    "postpartum" -> listOf("Under 2 weeks", "About a month", "2–3 months", "4+ months")
+                    else -> emptyList()
+                }
+                if (anchors.isNotEmpty()) {
+                    Text(
+                        text = if (stage == "pregnant") "About how far along?" else "How old is your baby?",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = InkMuted,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        anchors.forEach { option ->
+                            val sel = anchor == option
+                            Surface(
+                                onClick = { anchor = option },
+                                shape = CircleShape,
+                                color = if (sel) Plum else Paper,
+                                border = androidx.compose.foundation.BorderStroke(
+                                    1.dp, if (sel) Plum else OutlineSoft,
+                                ),
+                            ) {
+                                Text(
+                                    option,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (sel) Paper else Ink,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = onDismiss) { Text("Cancel", color = InkMuted) }
+                    Spacer(Modifier.weight(1f))
+                    val ready = stage != null && (anchors.isEmpty() || anchor != null)
+                    TextButton(
+                        onClick = { stage?.let { onSave(it, anchor) } },
+                        enabled = ready,
+                    ) { Text("Save", color = if (ready) Plum else InkMuted) }
+                }
+            }
         }
     }
 }

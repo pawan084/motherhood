@@ -104,9 +104,16 @@ fun JourneyDetailScreen(
     DetailScaffold(title = "Your journey", onClose = onClose, modifier = modifier) {
         if (content == null) {
             Text(
-                "Loading this week's guide…",
+                "Set your journey to see your weekly guide",
+                style = MaterialTheme.typography.titleMedium, color = Ink,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Tell Aira your stage on the Me tab, and your week-by-week path appears here.",
                 style = MaterialTheme.typography.bodyMedium, color = InkMuted,
             )
+            Spacer(Modifier.height(12.dp))
+            TextButton(onClick = onClose) { Text("Back to Me", color = Plum) }
             return@DetailScaffold
         }
         val shown = content.shownWeek
