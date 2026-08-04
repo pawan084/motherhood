@@ -53,6 +53,9 @@ data class ChatMessage(
     val text: String,
     // Typed action cards the backend suggested for this turn (0-3).
     val cards: List<ActionCard> = emptyList(),
+    // The gate decision for an Aira reply (ok / caution / error / urgent) — drives
+    // the per-message safety chip so trust is shown per turn, not once at the top.
+    val decision: String? = null,
 )
 
 /** A per-turn suggestion from POST /respond's card model. */

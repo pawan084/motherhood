@@ -768,27 +768,34 @@ class AiraViewModel(application: Application) : AndroidViewModel(application) {
                 }
             when (turn.decision) {
                 "urgent" -> {
-                    appendAira(turn.urgentHeadline ?: "Please contact your care team now.")
+                    appendAira(turn.urgentHeadline ?: "Please contact your care team now.", decision = "urgent")
                     _uiState.update { it.copy(urgentHelpOpen = true, sending = false) }
                 }
                 "error" -> {
-                    appendAira(turn.message ?: "Aira can't safely respond right now.")
+                    appendAira(turn.message ?: "Aira can't safely respond right now.", decision = "error")
                     _uiState.update { it.copy(sending = false) }
                 }
                 else -> {
-                    appendAira(turn.reply ?: "", turn.cards)
+                    appendAira(turn.reply ?: "", turn.cards, decision = turn.decision)
                     _uiState.update { it.copy(sending = false) }
                 }
             }
         }
     }
 
-    private fun appendAira(text: String, cards: List<com.aira.companion.model.ActionCard> = emptyList()) {
+    private fun appendAira(
+        text: String,
+        cards: List<com.aira.companion.model.ActionCard> = emptyList(),
+        decision: String? = null,
+    ) {
         if (text.isBlank()) return
         _uiState.update { state ->
             state.copy(
                 messages = state.messages +
-                    ChatMessage(id = System.nanoTime(), fromAira = true, text = text, cards = cards),
+                    ChatMessage(
+                        id = System.nanoTime(), fromAira = true, text = text,
+                        cards = cards, decision = decision,
+                    ),
             )
         }
     }

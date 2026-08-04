@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,8 +37,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AiraUiState
@@ -46,6 +49,8 @@ import com.aira.companion.model.toolForCard
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
+import com.aira.companion.ui.theme.Amber
+import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -54,6 +59,7 @@ import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
+import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
 
 @Composable
@@ -67,6 +73,11 @@ fun AiraChatScreen(
     onOpenDetail: (DetailPage) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+    // Keep the thread following the newest turn (message + typing bubble).
+    LaunchedEffect(state.messages.size, state.sending) {
+        runCatching { listState.animateScrollToItem(state.messages.size) }
+    }
     Column(
         modifier =
             modifier
@@ -78,6 +89,7 @@ fun AiraChatScreen(
                 .padding(bottom = 104.dp),
     ) {
         LazyColumn(
+            state = listState,
             modifier =
                 Modifier
                     .weight(1f)
@@ -91,18 +103,20 @@ fun AiraChatScreen(
                 ),
             verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
-            item {
-                Box(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SafetyBadge()
-                }
-            }
-
             items(state.messages, key = { it.id }) { message ->
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.animateItem(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     ChatBubble(text = message.text, fromAira = message.fromAira)
+                    // Per-turn safety state (#8): trust shown on the reply itself,
+                    // not once at the top of the screen. Urgent turns hand off to
+                    // the takeover, so they don't get a chip here.
+                    if (message.fromAira && message.decision != null &&
+                        message.decision != "urgent"
+                    ) {
+                        SafetyChip(message.decision)
+                    }
                     // The turn's typed suggestions (0-3) as tappable cards.
                     message.cards.forEach { card ->
                         Surface(
@@ -127,6 +141,11 @@ fun AiraChatScreen(
                         }
                     }
                 }
+            }
+
+            // Typing indicator while Aira composes a reply (#4).
+            if (state.sending) {
+                item { TypingBubble() }
             }
 
             state.todayFeed?.focus?.firstOrNull()?.let { focus ->
@@ -246,6 +265,17 @@ fun AiraChatScreen(
             }
         }
 
+        // Gentle, ever-present disclaimer (#19): support, not medical advice.
+        Text(
+            text = "Aira offers general support, not medical advice.",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = InkMuted,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = Paper,
@@ -253,7 +283,7 @@ fun AiraChatScreen(
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
                 IconButton(onClick = onOpenTools) {
@@ -270,16 +300,10 @@ fun AiraChatScreen(
                     placeholder = {
                         Text("Message Aira…", color = InkMuted)
                     },
-                    singleLine = true,
+                    // Multi-line (#11): grows up to a few lines for longer questions.
+                    maxLines = 5,
                     shape = RoundedCornerShape(20.dp),
                 )
-                IconButton(onClick = { onQuickMessage("Start a voice conversation") }) {
-                    Icon(
-                        imageVector = Icons.Outlined.Mic,
-                        contentDescription = "Start voice conversation",
-                        tint = Plum,
-                    )
-                }
                 FilledIconButton(
                     onClick = onSend,
                     enabled = state.chatDraft.isNotBlank(),
@@ -295,6 +319,63 @@ fun AiraChatScreen(
                         imageVector = Icons.Filled.Send,
                         contentDescription = "Send message",
                         modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Per-reply trust chip (#8): honest about each turn's gate result. */
+@Composable
+private fun SafetyChip(decision: String) {
+    val error = decision == "error"
+    Surface(
+        color = if (error) AmberMist else SageMist,
+        contentColor = if (error) Amber else SageDeep,
+        shape = CircleShape,
+    ) {
+        Text(
+            text = if (error) "Safety check unavailable" else "Safety checked",
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+        )
+    }
+}
+
+/** "Aira is thinking" bubble (#4) shown while a reply is on its way. */
+@Composable
+private fun TypingBubble() {
+    Row(verticalAlignment = Alignment.Bottom) {
+        Surface(
+            modifier = Modifier.size(30.dp),
+            color = Plum,
+            contentColor = Paper,
+            shape = CircleShape,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("A", style = MaterialTheme.typography.labelSmall)
+            }
+        }
+        Spacer(Modifier.width(9.dp))
+        Surface(
+            color = Paper,
+            shape = RoundedCornerShape(
+                topStart = 20.dp, topEnd = 20.dp, bottomStart = 6.dp, bottomEnd = 20.dp,
+            ),
+            border = androidx.compose.foundation.BorderStroke(1.dp, OutlineSoft),
+            shadowElevation = 1.dp,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 15.dp),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(InkMuted.copy(alpha = 0.55f)),
                     )
                 }
             }
