@@ -1,6 +1,7 @@
 package com.aira.companion
 
 import androidx.compose.ui.graphics.Color
+import com.aira.companion.ui.components.moodStyles
 import com.aira.companion.ui.theme.AiraColors
 import com.aira.companion.ui.theme.DarkAiraColors
 import com.aira.companion.ui.theme.LightAiraColors
@@ -11,18 +12,21 @@ import org.junit.Test
 /**
  * Both themes, held to a contrast minimum — but not the same one.
  *
- * The dark palette clears 4.5:1 on every pair the app renders and is held to
- * exactly that. The light palette cannot: adopting the Dawn reference palette
- * from ref/complete.html verbatim put eight pairs between 3.54:1 and 4.48:1.
- * Three of those were previously passing on darkened values (#6A636A, #B7332D,
- * #8E5C1D) and regressed when the reference won; the other five arrived with
- * the reference's new rose accent and hero gradient.
+ * The dark palette clears 4.5:1 on every pair the app renders, including the
+ * four semantic colours the reference never defined for dark, and is held to
+ * exactly that with no exemptions.
  *
- * Those eight are listed in [lightThemeExemptions] with their measured ratios
- * rather than deleted from [pairs]. An exemption you can read is worth more
- * than a check that quietly disappeared, and it makes the cost of matching the
- * reference legible to whoever reads this next. They are still held to a 3:1
- * floor by [theExemptedPairsAreStillHeldToAFloor], so they cannot drift further.
+ * The light palette cannot. Adopting Bloom 2.0 from ref/complete.html verbatim
+ * put six text pairs between 3.59:1 and 4.39:1 — most notably the section
+ * labels, where the reference's #9567D4 on white manages only 3.91:1. Those are
+ * listed in [lightThemeExemptions] with their measured ratios rather than
+ * deleted from [pairs]: an exemption you can read is worth more than a check
+ * that quietly disappeared, and it keeps the cost of matching the reference
+ * legible to whoever reads this next.
+ *
+ * The mood spectrum is checked separately in [theMoodSpectrumIsNeverTheOnlySignal],
+ * because two of its six colours fall below even the 3:1 non-text floor and the
+ * mitigation there is a design rule, not a number.
  */
 class AiraColorsTest {
 
@@ -70,22 +74,26 @@ class AiraColorsTest {
         Triple("section eyebrow", c.rose, c.ivory),
         Triple("section eyebrow on a card", c.rose, c.paper),
         Triple("tool tile label", c.rose, c.roseMist),
+        // Bloom 2.0's semantic set. The reference defines these for light only;
+        // the dark values are derived, which is exactly why they need checking.
+        Triple("destructive action", c.destructive, c.destructiveMist),
+        Triple("info note", c.info, c.infoMist),
+        Triple("success note", c.success, c.successMist),
     )
 
     /**
-     * Light-theme pairs the Dawn reference puts below 4.5:1, with the ratio each
-     * measures today. The dark palette clears all of them and is granted no
-     * exemptions at all.
+     * Light-theme pairs Bloom 2.0 puts below 4.5:1, with the ratio each measures
+     * today. The dark palette clears all of them and is granted no exemptions.
      */
     private val lightThemeExemptions = mapOf(
-        "supporting text on sage" to 4.39,
-        "urgent pill" to 4.21,
-        "urgent text on the page" to 4.47,
-        "offline notice" to 3.54,
-        "hero supporting text at the gradient's far end" to 4.15,
-        "section eyebrow" to 4.18,
-        "section eyebrow on a card" to 4.48,
-        "tool tile label" to 3.91,
+        "supporting text on lilac" to 4.39,
+        // Lands at 4.4995 — displays as "4.50" at two decimals but is genuinely
+        // under the line. Recorded rather than rounded up, because a threshold
+        // you round toward is a threshold you eventually round through.
+        "supporting text on sage" to 4.50,
+        "section labels" to 3.91,
+        "section labels on lilac" to 3.59,
+        "offline notice" to 4.10,
     )
 
     private fun assertAllPass(name: String, c: AiraColors, exempt: Set<String>) {
@@ -158,6 +166,29 @@ class AiraColorsTest {
                 }
             }
         assertTrue("exemption ratios are out of date — ${drifted.joinToString()}", drifted.isEmpty())
+    }
+
+    @Test
+    fun theMoodSpectrumIsNeverTheOnlySignal() {
+        // Bloom 2.0's mood colours are chosen for calm, not for contrast: on a
+        // white card "great" measures 2.78:1 and "anxious" 2.92:1, below the 3:1
+        // WCAG floor for non-text contrast. Lifting them would break the
+        // reference, so the mitigation is structural instead — a mood is always
+        // carried by a distinct icon and a spoken label as well as a hue.
+        //
+        // This test pins the structural part, which is the part that can
+        // regress silently: colour can be a redundant cue, never the only one.
+        val keys = moodStyles.map { it.key }
+        assertTrue("mood keys must be unique", keys.size == keys.toSet().size)
+
+        val labels = moodStyles.map { it.label }
+        assertTrue("every mood needs a spoken label", labels.none { it.isBlank() })
+        assertTrue("mood labels must be distinguishable", labels.size == labels.toSet().size)
+
+        // Distinct icons are what a user who cannot separate the hues actually
+        // reads, so two moods sharing a glyph would collapse the distinction.
+        val icons = moodStyles.map { it.icon }
+        assertTrue("every mood needs its own icon", icons.size == icons.toSet().size)
     }
 
     @Test

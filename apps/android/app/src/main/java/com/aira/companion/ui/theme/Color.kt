@@ -18,12 +18,26 @@ import androidx.compose.ui.graphics.Color
  * whichever palette is in scope. The screens didn't change; the decision lives
  * in one file.
  *
+ * ── Which layer of the reference this is ────────────────────────────────────
+ *
+ * ref/complete.html defines its tokens three times, all on a bare `:root` at
+ * equal specificity, so the LAST one is what the file actually renders:
+ *
+ *   1. line  15  the original aubergine palette (--plum:#4A234B)
+ *   2. line 328  "Dawn" — a peach/lilac re-skin, marked as already shipped
+ *   3. line 455  "Aira Bloom 2.0 — unified production design direction",
+ *                explicitly annotated "intentionally redesign every screen"
+ *
+ * This file is layer 3. Layers 1 and 2 are dead in the reference and are not
+ * reproduced here — Dawn's peach hero and aubergine plum are what the other
+ * codebase shipped, and adopting them would match a design the reference has
+ * since replaced. The whole system is brighter and violet now: plum is #7527F5
+ * rather than #4A234B, and paper is pure white rather than warm ivory.
+ *
  * The dark palette is not an inversion. Pure black with white text is harsh at
  * 3am, which is a normal hour for this app, so the surfaces are warm near-blacks
- * carrying the same plum cast as the light theme. The accents are lifted rather
- * than reused: a plum that reads as considered on ivory reads as mud on
- * charcoal. Every foreground/background pair is held to the same 4.5:1 minimum
- * as the light theme — see AiraColorsTest.
+ * carrying the same violet cast as the light theme. Contrast is checked on every
+ * pair the app actually renders — see AiraColorsTest.
  */
 class AiraColors(
     val ivory: Color,
@@ -44,10 +58,16 @@ class AiraColors(
     val urgentMist: Color,
     val amber: Color,
     val amberMist: Color,
-    // ── Dawn redesign tokens (ref/complete.html, moves 1–6) ──────────────────
+    // ── Bloom 2.0 adds a full semantic set beside the existing accents ───────
+    val destructive: Color,
+    val destructiveMist: Color,
+    val info: Color,
+    val infoMist: Color,
+    val success: Color,
+    val successMist: Color,
+    val focus: Color,
     val rose: Color,
     val roseMist: Color,
-    val plumGradEnd: Color,
     val heroTop: Color,
     val heroBottom: Color,
     val heroInk: Color,
@@ -61,49 +81,46 @@ class AiraColors(
 )
 
 val LightAiraColors = AiraColors(
-    ivory = Color(0xFFF8F4EE),
-    ivoryDeep = Color(0xFFF0EAE2),
-    paper = Color(0xFFFFFCF8),
-    plum = Color(0xFF4A234B),
-    plumDeep = Color(0xFF311733),
-    plumSoft = Color(0xFF755176),
-    lilac = Color(0xFFE9DDEA),
-    lilacMist = Color(0xFFF3ECF3),
-    sage = Color(0xFF8FA58E),
-    sageDeep = Color(0xFF49634F),
-    sageMist = Color(0xFFE5EDE3),
-    ink = Color(0xFF211D20),
-    // These three carry a known, deliberate contrast cost. Each was previously
-    // darkened to clear 4.5:1 (#6A636A / #B7332D / #8E5C1D); the design
-    // reference in ref/complete.html specifies the lighter values below and the
-    // reference won. They are the only pairs AiraColorsTest exempts, and it
-    // still holds them to 3:1 so they cannot quietly get worse:
-    //   inkMuted on sageMist 4.39:1 · urgent on urgentMist 4.21:1
-    //   amber on amberMist 3.54:1
-    inkMuted = Color(0xFF716A70),
-    outlineSoft = Color(0xFFE4DDD7),
-    urgent = Color(0xFFCC3D36),
-    urgentMist = Color(0xFFFFE9E6),
-    amber = Color(0xFFAE7423),
-    amberMist = Color(0xFFFFF1D8),
-    // Rose is flavour, never status — sage keeps meaning "done / safe".
-    rose = Color(0xFFB4596B),
-    roseMist = Color(0xFFFAE9EA),
-    plumGradEnd = Color(0xFF8A4A78),
-    // The hero is a sunrise gradient in light: peach → lilac under plum ink,
-    // the one bold moment on the page. Dark keeps a deep aubergine instead —
-    // at 3am a glowing peach panel would be the wrong call.
-    heroTop = Color(0xFFFBE3D3),
-    heroBottom = Color(0xFFE2CFEF),
-    heroInk = Color(0xFF3B1C3F),
-    heroInkMuted = Color(0xFF7A5680),
-    heroAccent = Color(0xFF5A2B5C),
-    // Frosted nav: a translucent white capsule (0xF2 alpha, content glowing
-    // through) with a solid plum active tab.
-    navPill = Color(0xF2FFFFFF),
-    navActive = Color(0xFF5A2B5C),
-    navInk = Color(0xFFFFFCF8),
-    navInkMuted = Color(0xFF8A6390),
+    ivory = Color(0xFFFBFAFF),
+    ivoryDeep = Color(0xFFF4F0FB),
+    paper = Color(0xFFFFFFFF),
+    plum = Color(0xFF7527F5),
+    plumDeep = Color(0xFF4C13B8),
+    plumSoft = Color(0xFF9567D4),
+    lilac = Color(0xFFDDC7FF),
+    lilacMist = Color(0xFFF5EEFF),
+    sage = Color(0xFF75AD86),
+    sageDeep = Color(0xFF35704A),
+    sageMist = Color(0xFFEAF7EE),
+    ink = Color(0xFF25212B),
+    inkMuted = Color(0xFF746D7E),
+    outlineSoft = Color(0xFFEAE2F6),
+    urgent = Color(0xFFC93842),
+    urgentMist = Color(0xFFFFF0F1),
+    amber = Color(0xFFA76A16),
+    amberMist = Color(0xFFFFF5DD),
+    destructive = Color(0xFF9D2852),
+    destructiveMist = Color(0xFFFDEEF4),
+    info = Color(0xFF315DAD),
+    infoMist = Color(0xFFEDF4FF),
+    success = Color(0xFF35704A),
+    successMist = Color(0xFFEAF7EE),
+    focus = Color(0xFF6B18EE),
+    rose = Color(0xFFA9448B),
+    roseMist = Color(0xFFFCECF7),
+    // The hero is a pale violet wash under near-black ink — Bloom 2.0 inverted
+    // Dawn's dark panel, so the ink is the dark element and the panel the light
+    // one. It clears 14:1, the most legible surface in the app.
+    heroTop = Color(0xFFFCE9FF),
+    heroBottom = Color(0xFFEEE0FF),
+    heroInk = Color(0xFF2D163B),
+    heroInkMuted = Color(0xFF725680),
+    heroAccent = Color(0xFF7527F5),
+    // Nav is a pale violet capsule with a solid violet active tab.
+    navPill = Color(0xFFF2E9FF),
+    navActive = Color(0xFF7527F5),
+    navInk = Color(0xFFFFFFFF),
+    navInkMuted = Color(0xFF7B4FA8),
     isDark = false,
 )
 
@@ -111,36 +128,48 @@ val DarkAiraColors = AiraColors(
     // `ivory` is the page and `paper` is the card sitting on it. In the dark
     // theme the card is LIGHTER than the page — that inversion is how elevation
     // reads when there are no usable shadows.
-    ivory = Color(0xFF17141A),
-    ivoryDeep = Color(0xFF120F15),
-    paper = Color(0xFF221E27),
-    plum = Color(0xFFD9BCE0),
-    plumDeep = Color(0xFFEBDCEF),
-    plumSoft = Color(0xFFC0A6C6),
-    lilac = Color(0xFF3A2F42),
-    lilacMist = Color(0xFF2A2431),
-    sage = Color(0xFF9DB79C),
-    sageDeep = Color(0xFFA8C6A9),
-    sageMist = Color(0xFF232C25),
-    ink = Color(0xFFF2EDF2),
-    inkMuted = Color(0xFFB9B0BA),
-    outlineSoft = Color(0xFF3A3340),
-    urgent = Color(0xFFF39189),
-    urgentMist = Color(0xFF3A211F),
-    amber = Color(0xFFE8BC80),
-    amberMist = Color(0xFF33261A),
-    rose = Color(0xFFDD93A3),
-    roseMist = Color(0xFF39222B),
-    plumGradEnd = Color(0xFFB893C4),
-    heroTop = Color(0xFF3A1C3C),
-    heroBottom = Color(0xFF1F0D25),
-    heroInk = Color(0xFFF2E7F3),
-    heroInkMuted = Color(0xFFBBA1BE),
-    heroAccent = Color(0xFFE7C9ED),
-    navPill = Color(0xFF130F19),
-    navActive = Color(0xFF453450),
-    navInk = Color(0xFFF2E7F3),
-    navInkMuted = Color(0xFFBBA1BE),
+    ivory = Color(0xFF201725),
+    ivoryDeep = Color(0xFF170F1B),
+    paper = Color(0xFF2B2033),
+    plum = Color(0xFFBB82FF),
+    plumDeep = Color(0xFFDEC1FF),
+    plumSoft = Color(0xFFC7A2E8),
+    lilac = Color(0xFF4A3752),
+    lilacMist = Color(0xFF382A48),
+    sage = Color(0xFF8FBF8C),
+    sageDeep = Color(0xFFB7DDB4),
+    sageMist = Color(0xFF212B20),
+    ink = Color(0xFFF7F1FA),
+    inkMuted = Color(0xFFC0B1C7),
+    outlineSoft = Color(0xFF493759),
+    urgent = Color(0xFFFF8478),
+    urgentMist = Color(0xFF3A1A17),
+    amber = Color(0xFFE8C989),
+    amberMist = Color(0xFF3A2E17),
+    // The reference's dark block never defines destructive, info, success or
+    // focus — it only re-tints the tokens the older palettes already had. These
+    // four are derived here rather than left at their light values, which would
+    // have put a #9D2852 plum-red on a near-black card at 1.9:1. Each is the
+    // light hue lifted to the same luminance band as its neighbours, and each
+    // is checked by AiraColorsTest like everything else.
+    destructive = Color(0xFFE8899B),
+    destructiveMist = Color(0xFF3A2028),
+    info = Color(0xFF9DBDF0),
+    infoMist = Color(0xFF1E2A3D),
+    success = Color(0xFFB7DDB4),
+    successMist = Color(0xFF212B20),
+    focus = Color(0xFFBB82FF),
+    rose = Color(0xFFE8899B),
+    roseMist = Color(0xFF3A2028),
+    heroTop = Color(0xFF3A1D3D),
+    heroBottom = Color(0xFF1F0F22),
+    heroInk = Color(0xFFF7EFF7),
+    heroInkMuted = Color(0xFFC9A8CC),
+    heroAccent = Color(0xFFE8CBEC),
+    navPill = Color(0xFF2F2239),
+    navActive = Color(0xFF5A3A5C),
+    navInk = Color(0xFFFFFCF8),
+    navInkMuted = Color(0xFFC0B1C7),
     isDark = true,
 )
 
@@ -176,10 +205,16 @@ val UrgentMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.cu
 val Amber: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.amber
 val AmberMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.amberMist
 
-// ── Dawn redesign ────────────────────────────────────────────────────────────
+// ── Bloom 2.0 ────────────────────────────────────────────────────────────────
+val Destructive: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.destructive
+val DestructiveMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.destructiveMist
+val Info: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.info
+val InfoMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.infoMist
+val Success: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.success
+val SuccessMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.successMist
+val Focus: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.focus
 val Rose: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.rose
 val RoseMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.roseMist
-val PlumGradEnd: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.plumGradEnd
 val HeroTop: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroTop
 val HeroBottom: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroBottom
 val HeroInk: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroInk
