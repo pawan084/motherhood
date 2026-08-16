@@ -75,4 +75,22 @@ object AppPrefs {
     fun clearOnboarded(ctx: Context) {
         prefs(ctx).edit().remove(KEY_ONBOARDED).apply()
     }
+
+    /**
+     * How many routine care reminders a day, chosen on the last onboarding step.
+     *
+     * Local like the rest of this file: it decides when this phone buzzes, which
+     * is a property of the phone. Defaults to 2 — the value the reference
+     * pre-selects — so a skipped final step still leaves a working cadence
+     * rather than silence.
+     */
+    fun reminderCadence(ctx: Context): Int =
+        prefs(ctx).getInt(KEY_REMINDER_CADENCE, DEFAULT_REMINDER_CADENCE)
+
+    fun setReminderCadence(ctx: Context, perDay: Int) {
+        prefs(ctx).edit().putInt(KEY_REMINDER_CADENCE, perDay.coerceIn(1, 3)).apply()
+    }
+
+    const val DEFAULT_REMINDER_CADENCE = 2
+    private const val KEY_REMINDER_CADENCE = "reminder_cadence"
 }

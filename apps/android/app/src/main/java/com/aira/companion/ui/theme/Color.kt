@@ -66,6 +66,10 @@ class AiraColors(
     val success: Color,
     val successMist: Color,
     val focus: Color,
+    /** Section eyebrows. Bloom 2.0 sets these to their own violet (#8845C5),
+     *  distinct from both [plum] and [plumSoft], so they get their own token
+     *  rather than being approximated by a neighbour. */
+    val eyebrowInk: Color,
     val rose: Color,
     val roseMist: Color,
     val heroTop: Color,
@@ -106,6 +110,7 @@ val LightAiraColors = AiraColors(
     success = Color(0xFF35704A),
     successMist = Color(0xFFEAF7EE),
     focus = Color(0xFF6B18EE),
+    eyebrowInk = Color(0xFF8845C5),
     rose = Color(0xFFA9448B),
     roseMist = Color(0xFFFCECF7),
     // The hero is a pale violet wash under near-black ink — Bloom 2.0 inverted
@@ -159,6 +164,9 @@ val DarkAiraColors = AiraColors(
     success = Color(0xFFB7DDB4),
     successMist = Color(0xFF212B20),
     focus = Color(0xFFBB82FF),
+    // The reference leaves the eyebrow a literal, so dark needs a lift: #8845C5
+    // on a #2B2033 card is 3.4:1, readable but under the bar for 11sp text.
+    eyebrowInk = Color(0xFFCBA3F2),
     rose = Color(0xFFE8899B),
     roseMist = Color(0xFF3A2028),
     heroTop = Color(0xFF3A1D3D),
@@ -213,6 +221,7 @@ val InfoMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.curr
 val Success: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.success
 val SuccessMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.successMist
 val Focus: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.focus
+val EyebrowInk: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.eyebrowInk
 val Rose: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.rose
 val RoseMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.roseMist
 val HeroTop: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroTop

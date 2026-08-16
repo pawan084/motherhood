@@ -427,6 +427,50 @@ class AiraViewModel(
         }
     }
 
+    /**
+     * Complete the four dedicated onboarding steps in one call.
+     *
+     * The reference replaced the chat transcript with four full screens — stage,
+     * timing, language, reminders — so the answers arrive together rather than
+     * one turn at a time. [answerOnboarding] still exists and still walks
+     * [onboardingPromptsFor] for anything driving the prompt list directly; this
+     * writes the same fields for the flow that already knows all of them.
+     *
+     * Name and priority are not asked by the new flow and are deliberately left
+     * as they are rather than blanked: on a re-run from Settings the user has
+     * already given a name, and clearing it to satisfy a screen that never
+     * mentioned it would be a silent deletion.
+     */
+    fun completeGuidedOnboarding(
+        context: Context?,
+        journey: JourneyType,
+        weeks: Int?,
+        language: String,
+        remindersPerDay: Int,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                journey = journey,
+                // Weeks only mean anything for a pregnancy, and a week carried
+                // over from a changed stage is worse than no week at all.
+                weeks = weeks?.takeIf { journey == JourneyType.Pregnant && it in 1..45 },
+                language = language.ifBlank { state.language },
+                onboardingAnswers = listOf(
+                    OnboardingAnswer("Where are you in your journey?", journey.label),
+                    OnboardingAnswer(
+                        "About how far along?",
+                        weeks?.let { "$it weeks" } ?: "Not sure yet",
+                    ),
+                    OnboardingAnswer("Which language feels most natural?", language),
+                    OnboardingAnswer("How often should we remind you?", "$remindersPerDay× a day"),
+                ),
+                onboardingStep = 0,
+            )
+        }
+        context?.let { AppPrefs.setReminderCadence(it, remindersPerDay) }
+        finishOnboarding(context)
+    }
+
     fun finishOnboarding(context: Context? = null) {
         val snapshot = _uiState.value
         _uiState.update {

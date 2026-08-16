@@ -69,7 +69,7 @@ import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
 import com.aira.companion.ui.screens.JourneySectionSheet
 import com.aira.companion.ui.screens.LearnScreen
-import com.aira.companion.ui.screens.OnboardingChatScreen
+import com.aira.companion.ui.screens.OnboardingScreen
 import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
 import com.aira.companion.ui.screens.ToolTraySheet
@@ -140,10 +140,20 @@ fun AiraApp(viewModel: AiraViewModel = viewModel()) {
                 onClose = viewModel::closeAuth,
             )
         AppStage.Onboarding ->
-            OnboardingChatScreen(
-                state = state,
-                onAnswer = viewModel::answerOnboarding,
-                onFinish = { viewModel.finishOnboarding(context) },
+            // Four dedicated screens rather than the chat transcript this
+            // replaces. OnboardingChatScreen is still in the tree and still
+            // tested; it is no longer the way in.
+            OnboardingScreen(
+                onComplete = { journey, weeks, language, remindersPerDay ->
+                    viewModel.completeGuidedOnboarding(
+                        context = context,
+                        journey = journey,
+                        weeks = weeks,
+                        language = language,
+                        remindersPerDay = remindersPerDay,
+                    )
+                },
+                onExit = viewModel::replayTutorial,
             )
         AppStage.Main -> {
             MainExperience(
