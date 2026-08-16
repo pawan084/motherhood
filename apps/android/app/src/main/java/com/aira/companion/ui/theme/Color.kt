@@ -44,6 +44,19 @@ class AiraColors(
     val urgentMist: Color,
     val amber: Color,
     val amberMist: Color,
+    // ── Dawn redesign tokens (ref/complete.html, moves 1–6) ──────────────────
+    val rose: Color,
+    val roseMist: Color,
+    val plumGradEnd: Color,
+    val heroTop: Color,
+    val heroBottom: Color,
+    val heroInk: Color,
+    val heroInkMuted: Color,
+    val heroAccent: Color,
+    val navPill: Color,
+    val navActive: Color,
+    val navInk: Color,
+    val navInkMuted: Color,
     val isDark: Boolean,
 )
 
@@ -60,19 +73,37 @@ val LightAiraColors = AiraColors(
     sageDeep = Color(0xFF49634F),
     sageMist = Color(0xFFE5EDE3),
     ink = Color(0xFF211D20),
-    // Measured, not eyeballed: #716A70 cleared 4.5:1 on the page and on cards
-    // but managed only 4.39:1 on the sage panels, where a good deal of the
-    // supporting copy sits.
-    inkMuted = Color(0xFF6A636A),
+    // These three carry a known, deliberate contrast cost. Each was previously
+    // darkened to clear 4.5:1 (#6A636A / #B7332D / #8E5C1D); the design
+    // reference in ref/complete.html specifies the lighter values below and the
+    // reference won. They are the only pairs AiraColorsTest exempts, and it
+    // still holds them to 3:1 so they cannot quietly get worse:
+    //   inkMuted on sageMist 4.39:1 · urgent on urgentMist 4.21:1
+    //   amber on amberMist 3.54:1
+    inkMuted = Color(0xFF716A70),
     outlineSoft = Color(0xFFE4DDD7),
-    // #CC3D36 on its own mist was 4.21:1 — the urgent pill, the delete
-    // confirmation and the safety copy.
-    urgent = Color(0xFFB7332D),
+    urgent = Color(0xFFCC3D36),
     urgentMist = Color(0xFFFFE9E6),
-    // #AE7423 on its mist was 3.54:1 — the offline notice, read by someone
-    // already having trouble.
-    amber = Color(0xFF8E5C1D),
+    amber = Color(0xFFAE7423),
     amberMist = Color(0xFFFFF1D8),
+    // Rose is flavour, never status — sage keeps meaning "done / safe".
+    rose = Color(0xFFB4596B),
+    roseMist = Color(0xFFFAE9EA),
+    plumGradEnd = Color(0xFF8A4A78),
+    // The hero is a sunrise gradient in light: peach → lilac under plum ink,
+    // the one bold moment on the page. Dark keeps a deep aubergine instead —
+    // at 3am a glowing peach panel would be the wrong call.
+    heroTop = Color(0xFFFBE3D3),
+    heroBottom = Color(0xFFE2CFEF),
+    heroInk = Color(0xFF3B1C3F),
+    heroInkMuted = Color(0xFF7A5680),
+    heroAccent = Color(0xFF5A2B5C),
+    // Frosted nav: a translucent white capsule (0xF2 alpha, content glowing
+    // through) with a solid plum active tab.
+    navPill = Color(0xF2FFFFFF),
+    navActive = Color(0xFF5A2B5C),
+    navInk = Color(0xFFFFFCF8),
+    navInkMuted = Color(0xFF8A6390),
     isDark = false,
 )
 
@@ -98,6 +129,18 @@ val DarkAiraColors = AiraColors(
     urgentMist = Color(0xFF3A211F),
     amber = Color(0xFFE8BC80),
     amberMist = Color(0xFF33261A),
+    rose = Color(0xFFDD93A3),
+    roseMist = Color(0xFF39222B),
+    plumGradEnd = Color(0xFFB893C4),
+    heroTop = Color(0xFF3A1C3C),
+    heroBottom = Color(0xFF1F0D25),
+    heroInk = Color(0xFFF2E7F3),
+    heroInkMuted = Color(0xFFBBA1BE),
+    heroAccent = Color(0xFFE7C9ED),
+    navPill = Color(0xFF130F19),
+    navActive = Color(0xFF453450),
+    navInk = Color(0xFFF2E7F3),
+    navInkMuted = Color(0xFFBBA1BE),
     isDark = true,
 )
 
@@ -132,3 +175,17 @@ val Urgent: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.curren
 val UrgentMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.urgentMist
 val Amber: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.amber
 val AmberMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.amberMist
+
+// ── Dawn redesign ────────────────────────────────────────────────────────────
+val Rose: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.rose
+val RoseMist: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.roseMist
+val PlumGradEnd: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.plumGradEnd
+val HeroTop: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroTop
+val HeroBottom: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroBottom
+val HeroInk: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroInk
+val HeroInkMuted: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroInkMuted
+val HeroAccent: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.heroAccent
+val NavPill: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.navPill
+val NavActive: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.navActive
+val NavInk: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.navInk
+val NavInkMuted: Color @Composable @ReadOnlyComposable get() = LocalAiraColors.current.navInkMuted
