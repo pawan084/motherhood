@@ -2,11 +2,13 @@
 <!--
   What the FileProvider is allowed to hand out.
 
-  Exactly one directory: the downloaded-documents cache. Deliberately not the
-  whole cache or the app's files dir — a provider's scope is the set of things
-  another app can be granted, and for an app holding someone's medical records
-  that set should be as small as the feature needs.
+  Two directories, each named explicitly: the downloaded-documents cache, and
+  the share cache that the week share-card image is rendered into. Deliberately
+  not the whole cache or the app's files dir — a provider's scope is the set of
+  things another app can be granted, and for an app holding someone's medical
+  records that set should be as small as the feature needs.
 -->
 <paths>
     <cache-path name="documents" path="documents/" />
+    <cache-path name="share" path="share/" />
 </paths>
