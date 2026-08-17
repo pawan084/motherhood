@@ -274,7 +274,14 @@ private fun MainExperience(
                 // then opens Videos.
                 viewModel.loadVideos(context)
             }
-            MainDestination.Aira -> viewModel.loadChatHistory(context)
+            MainDestination.Aira -> {
+                viewModel.loadChatHistory(context)
+                // The memory strip reports what Chat is personalising with, so
+                // it has to be loaded by the screen that makes the claim rather
+                // than only by the tool that edits it.
+                viewModel.loadMemory(context)
+                viewModel.loadEmergencyProfile(context)
+            }
             MainDestination.Journey -> viewModel.loadJourney(context)
             MainDestination.Care -> {
                 viewModel.loadCare(context)
@@ -471,6 +478,23 @@ private fun MainExperience(
                         onOpenTools = viewModel::openTools,
                         onOpenTool = viewModel::openTool,
                         modifier = Modifier,
+                        onCallCareTeam = {
+                            state.careTeamPhone?.let { number ->
+                                haptics.weighty()
+                                // ACTION_DIAL, not ACTION_CALL: it opens the
+                                // dialer with the number filled in and leaves
+                                // the last press to the user. Placing a call
+                                // outright from a card someone may have tapped
+                                // by accident is not a decision to take for them.
+                                context.startActivity(
+                                    Intent(
+                                        Intent.ACTION_DIAL,
+                                        android.net.Uri.parse("tel:$number"),
+                                    ),
+                                )
+                            }
+                        },
+                        onAddCareTeam = { viewModel.openTool(AiraTool.Privacy) },
                     )
                 MainDestination.Journey ->
                     JourneyScreen(

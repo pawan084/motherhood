@@ -186,6 +186,10 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     trailingIcon: ImageVector? = Icons.Filled.ChevronRight,
+    /** Overridden only where the action is not the ordinary primary one — the
+     *  escalation card's call button is urgent, and a plum button there would
+     *  read as the same weight as "Continue". */
+    containerColor: Color = Plum,
 ) {
     Button(
         onClick = onClick,
@@ -197,7 +201,7 @@ fun PrimaryButton(
         shape = RoundedCornerShape(17.dp),
         colors =
             ButtonDefaults.buttonColors(
-                containerColor = Plum,
+                containerColor = containerColor,
                 contentColor = Paper,
                 disabledContainerColor = Lilac,
                 disabledContentColor = Plum.copy(alpha = 0.52f),

@@ -22,6 +22,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
@@ -63,6 +65,8 @@ import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.PlumDeep
+import com.aira.companion.ui.theme.Urgent
+import com.aira.companion.ui.theme.UrgentMist
 
 /**
  * The component vocabulary of ref/complete.html's Bloom 2.0 layer.
@@ -1077,6 +1081,131 @@ data class BloomTab(
     val label: String,
     val icon: ImageVector,
 )
+
+/**
+ * The memory indicator — "Remembering: week 24 · tired lately".
+ *
+ * Personalisation that cannot be seen cannot be refused. Chat uses the week,
+ * recent check-ins and care history to shape replies, and the consent screen
+ * asks permission for exactly that; this is the running receipt for it, with the
+ * route to change it one tap away.
+ *
+ * Shown only when something is actually being remembered. An empty
+ * "Remembering:" would be a claim about personalisation that is not happening.
+ */
+@Composable
+fun MemoryStrip(
+    items: List<String>,
+    onManage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (items.isEmpty()) return
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Surface(
+            modifier = Modifier.weight(1f, fill = false),
+            shape = CircleShape,
+            color = LilacMist,
+            contentColor = Plum,
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "Remembering: " + items.joinToString(" · "),
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            }
+        }
+        Spacer(modifier = Modifier.width(6.dp))
+        TextCta(label = "Manage", onClick = onManage)
+    }
+}
+
+/**
+ * The inline escalation nudge.
+ *
+ * Between an ordinary reply and the full Urgent Help takeover there was nothing,
+ * so language that is concerning but not a red flag — reduced movement, pain
+ * that is worrying rather than emergency — got an ordinary bubble and no route
+ * to care. This is that middle step, and it carries a real next step rather than
+ * advice to "consider contacting" somebody.
+ *
+ * [phone] being null is not hidden. A card that says call your care team and
+ * then has no number is worse than one that says the number is missing and
+ * offers to add it, because the first only fails at the moment it is needed.
+ */
+@Composable
+fun EscalationNudge(
+    title: String,
+    body: String,
+    phone: String?,
+    onCall: () -> Unit,
+    onAddCareTeam: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = UrgentMist,
+        border = BorderStroke(1.5.dp, Urgent),
+    ) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Call,
+                    contentDescription = null,
+                    tint = Urgent,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Urgent,
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall,
+                color = Ink,
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            if (phone != null) {
+                PrimaryButton(
+                    label = "Call care team",
+                    onClick = onCall,
+                    modifier = Modifier.fillMaxWidth(),
+                    containerColor = Urgent,
+                )
+            } else {
+                Text(
+                    text = "No care-team number saved yet.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Urgent,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                SecondaryButton(
+                    label = "Add your care team",
+                    onClick = onAddCareTeam,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
 
 /** `.emptystate` — an honest empty, with a way out of it. */
 @Composable

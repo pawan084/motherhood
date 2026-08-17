@@ -48,6 +48,8 @@ import com.aira.companion.model.AiraUiState
 import com.aira.companion.ui.components.ChatBubble
 import com.aira.companion.ui.components.dayLabel
 import com.aira.companion.ui.components.dayOf
+import com.aira.companion.ui.components.EscalationNudge
+import com.aira.companion.ui.components.MemoryStrip
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SafetyBadge
 import com.aira.companion.ui.components.TypingIndicator
@@ -73,6 +75,10 @@ fun AiraChatScreen(
     onOpenTools: () -> Unit,
     onOpenTool: (AiraTool) -> Unit,
     modifier: Modifier = Modifier,
+    /** Dials the saved care-team number. */
+    onCallCareTeam: () -> Unit = {},
+    /** Opens the emergency profile, where the number is entered. */
+    onAddCareTeam: () -> Unit = {},
 ) {
     Column(
         modifier =
@@ -113,6 +119,19 @@ fun AiraChatScreen(
                         } else {
                             "Every reply is safety checked"
                         },
+                    )
+                }
+            }
+
+            // What Aira is currently using to personalise, and the way to change
+            // it. Only approved memories: an item the user has not approved is
+            // not being used, and listing it would misreport what is happening.
+            val remembered = state.memory.filter { it.approved }.map { it.value }
+            if (remembered.isNotEmpty()) {
+                item {
+                    MemoryStrip(
+                        items = remembered.take(3),
+                        onManage = { onOpenTool(AiraTool.Memory) },
                     )
                 }
             }
@@ -161,6 +180,22 @@ fun AiraChatScreen(
                         ?.let { toolForActionCard(it.tool) }
                         ?.let { tool -> { onOpenTool(tool) } },
                 )
+
+                // The middle step between an ordinary reply and the Urgent Help
+                // takeover. "watchful" is the backend's own screening verdict
+                // for concerning-but-not-red-flag language, and until now it
+                // only tinted a chip — the turn that most needed a route to care
+                // was the one that offered none.
+                if (message.fromAira && message.trustLabel == "watchful") {
+                    EscalationNudge(
+                        title = "Please contact your care team today",
+                        body = "This is worth checking with a professional the same day, " +
+                            "not tomorrow. Aira can't assess it for you.",
+                        phone = state.careTeamPhone,
+                        onCall = onCallCareTeam,
+                        onAddCareTeam = onAddCareTeam,
+                    )
+                }
             }
 
             // Waiting for a reply showed nothing at all — no spinner, no
