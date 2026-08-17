@@ -1207,6 +1207,70 @@ fun EscalationNudge(
     }
 }
 
+/**
+ * `.dialog` — the stage picker.
+ *
+ * A journey stage is not a setting people change idly; it is changed when
+ * something has happened. So every option is reachable in two taps from the
+ * screen that shows the week, rather than buried where somebody would have to
+ * hunt for it on the day they least want to.
+ *
+ * The list is complete on purpose, loss included. A stage picker that omits it
+ * leaves the person it matters most to with no true answer to select, and an app
+ * that keeps counting pregnancy weeks at them because the form had no other box.
+ */
+@Composable
+fun StagePickerDialog(
+    options: List<Pair<String, String>>,
+    selectedLabel: String?,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Paper,
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                Text(
+                    text = "Where are you in your journey?",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = Ink,
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "This changes your week, your videos and how Aira talks " +
+                        "to you. Nothing you've saved is deleted.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                options.forEach { (label, supporting) ->
+                    Column {
+                        ChoicePill(
+                            label = label,
+                            selected = label == selectedLabel,
+                            onClick = { onSelect(label) },
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = supporting,
+                            modifier = Modifier.padding(start = 18.dp, bottom = 8.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextCta(label = "Cancel", onClick = onDismiss, color = InkMuted)
+                }
+            }
+        }
+    }
+}
+
 /** `.emptystate` — an honest empty, with a way out of it. */
 @Composable
 fun EmptyState(

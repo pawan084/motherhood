@@ -61,6 +61,7 @@ import com.aira.companion.ui.components.careProgress
 import com.aira.companion.ui.components.MoodWeek
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.TextCta
 import com.aira.companion.ui.components.WeekHero
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
@@ -119,6 +120,8 @@ fun TodayScreen(
     onPauseReminders: () -> Unit = {},
     /** Opens the moods detail from the card's History link. */
     onOpenMoods: () -> Unit = {},
+    /** Opens the stage picker. */
+    onChangeStage: () -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -290,6 +293,20 @@ fun TodayScreen(
                     onClick = onOpenJourney,
                 ),
         )
+
+        // The reference's `.change-stage` link, directly under the hero. A stage
+        // is changed on the day something has happened, and the hero is where a
+        // person is already looking when it stops matching their life.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            TextCta(
+                label = "Change your journey stage",
+                onClick = onChangeStage,
+                color = InkMuted,
+            )
+        }
 
         // The "6h sleep / Steady mood / None new concern" pills that used to sit
         // here were invented readings — nothing in the app had measured any of

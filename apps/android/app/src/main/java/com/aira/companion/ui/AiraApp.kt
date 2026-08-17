@@ -68,6 +68,7 @@ import com.aira.companion.ui.components.BloomNavPill
 import com.aira.companion.ui.components.rememberVoiceInput
 import com.aira.companion.ui.components.voiceInputAvailable
 import com.aira.companion.ui.components.BloomTab
+import com.aira.companion.ui.components.StagePickerDialog
 import com.aira.companion.ui.components.animationsEnabled
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.rememberAiraHaptics
@@ -256,6 +257,9 @@ private fun MainExperience(
     /** The vault as a screen, reached from Care's documents section. */
     var vaultOpen by remember { mutableStateOf(false) }
 
+    /** The stage picker, from the link under the week hero. */
+    var stagePickerOpen by remember { mutableStateOf(false) }
+
     var snoozedToday by remember {
         mutableStateOf(
             AppPrefs.remindersSnoozedToday(context, java.time.LocalDate.now().toEpochDay()),
@@ -417,6 +421,32 @@ private fun MainExperience(
                 return@Scaffold
             }
 
+            if (stagePickerOpen) {
+                StagePickerDialog(
+                    options = com.aira.companion.model.JourneyType.entries
+                        .map { it.label to it.supportingText },
+                    selectedLabel = state.journey?.label,
+                    onSelect = { label ->
+                        val picked = com.aira.companion.model.JourneyType.entries
+                            .firstOrNull { it.label == label }
+                        stagePickerOpen = false
+                        if (picked != null && picked != state.journey) {
+                            // Name and language are passed through unchanged —
+                            // saveProfile writes all three, and sending blanks
+                            // for the two the picker never asked about would
+                            // erase them as a side effect of changing a stage.
+                            viewModel.saveProfile(
+                                context = context,
+                                name = state.name,
+                                journey = picked,
+                                language = state.language,
+                            )
+                        }
+                    },
+                    onDismiss = { stagePickerOpen = false },
+                )
+            }
+
             if (vaultOpen) {
                 BackHandler(enabled = true) { vaultOpen = false }
                 CareVaultScreen(
@@ -547,6 +577,7 @@ private fun MainExperience(
                         care = state.careData,
                         onOpenCare = { viewModel.selectDestination(MainDestination.Care) },
                         onOpenMoods = { moodsOpen = true },
+                        onChangeStage = { stagePickerOpen = true },
                         weekVideo = state.weekVideo,
                         quietCardDismissed = quietCardDismissedToday,
                         onDismissQuietCard = {
