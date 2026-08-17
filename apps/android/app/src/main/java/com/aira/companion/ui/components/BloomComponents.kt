@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -752,6 +754,164 @@ fun MoodCheckInCard(
                 }
             }
         }
+    }
+}
+
+/**
+ * Today's care, as a one-line summary with a way in.
+ *
+ * The reference draws "1 of 3 complete · View all". When nothing has loaded the
+ * card says so rather than printing "0 of 0", which reads as an achievement.
+ */
+@Composable
+fun TodayCareCard(
+    progress: CareProgress,
+    loaded: Boolean,
+    onViewAll: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Paper,
+        border = BorderStroke(1.dp, OutlineSoft),
+        shadowElevation = 1.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Eyebrow(text = "Today's care")
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = when {
+                        !loaded -> "Not loaded yet."
+                        progress.isEmpty -> "Nothing scheduled today."
+                        progress.allDone -> "All ${progress.total} done."
+                        else -> "${progress.done} of ${progress.total} complete"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+            }
+            TextCta(label = "View all", onClick = onViewAll)
+        }
+    }
+}
+
+/**
+ * `.watch-preview` — the week's video, on the home screen.
+ *
+ * [playable] is load-bearing rather than decorative. No topic in this catalog
+ * has produced media yet, so drawing the reference's play button over every
+ * thumbnail would promise something that does not exist and then do nothing
+ * when tapped. An unplayable topic shows what it is and when it is coming.
+ */
+@Composable
+fun WatchThisWeekCard(
+    categoryLabel: String,
+    title: String,
+    description: String,
+    duration: String?,
+    playable: Boolean,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+    onViewAll: (() -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(role = Role.Button, onClick = onOpen),
+        shape = RoundedCornerShape(24.dp),
+        color = Paper,
+        border = BorderStroke(1.dp, OutlineSoft),
+        shadowElevation = 1.dp,
+    ) {
+        Column(modifier = Modifier.padding(19.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(text = "What to watch this week")
+                Spacer(modifier = Modifier.weight(1f))
+                if (onViewAll != null) {
+                    TextCta(label = "View all", onClick = onViewAll)
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 104.dp, height = 72.dp)
+                        .background(
+                            Brush.linearGradient(listOf(Plum, PlumDeep)),
+                            RoundedCornerShape(12.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (playable) {
+                            Icons.Outlined.PlayCircle
+                        } else {
+                            Icons.Outlined.Schedule
+                        },
+                        contentDescription = null,
+                        tint = Paper,
+                        modifier = Modifier.size(28.dp),
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    CategoryChip(label = categoryLabel)
+                    Spacer(modifier = Modifier.height(7.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                    if (duration != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = duration,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = InkMuted,
+                        )
+                    }
+                }
+            }
+            if (!playable) {
+                Spacer(modifier = Modifier.height(10.dp))
+                StatusNote(
+                    text = "In production — this topic is written and reviewed, " +
+                        "but the video isn't filmed yet.",
+                    icon = Icons.Outlined.Schedule,
+                )
+            }
+        }
+    }
+}
+
+/** `.chip-cat` — a category tag. */
+@Composable
+fun CategoryChip(
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = CircleShape,
+        color = LilacMist,
+        contentColor = Plum,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+        )
     }
 }
 

@@ -219,6 +219,10 @@ private fun MainExperience(
                 // timeline that Care was previously alone in loading. Without it
                 // the week strip renders empty on a user who has logged all week.
                 viewModel.loadTimeline(context)
+                // And the catalog, for the week's video card. loadVideos caches,
+                // so arriving here does not cost a second fetch when the user
+                // then opens Videos.
+                viewModel.loadVideos(context)
             }
             MainDestination.Aira -> viewModel.loadChatHistory(context)
             MainDestination.Journey -> viewModel.loadJourney(context)
@@ -372,6 +376,9 @@ private fun MainExperience(
                             viewModel.selectDestination(MainDestination.Journey)
                         },
                         timeline = state.timeline,
+                        care = state.careData,
+                        onOpenCare = { viewModel.selectDestination(MainDestination.Care) },
+                        weekVideo = state.weekVideo,
                         onLogMood = { mood ->
                             haptics.confirm()
                             // Sleep and note belong to the full check-in tool,

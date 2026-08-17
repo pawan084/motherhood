@@ -53,6 +53,9 @@ import com.aira.companion.model.toolKeyToTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.MetricPill
 import com.aira.companion.ui.components.MoodCheckInCard
+import com.aira.companion.ui.components.TodayCareCard
+import com.aira.companion.ui.components.WatchThisWeekCard
+import com.aira.companion.ui.components.careProgress
 import com.aira.companion.ui.components.MoodWeek
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
@@ -102,6 +105,11 @@ fun TodayScreen(
     /** Check-ins and symptom logs, newest first — the source for the mood week. */
     timeline: List<com.aira.companion.data.CareItem> = emptyList(),
     onLogMood: (String) -> Unit = {},
+    /** Reminders and medicines, for the "N of M complete" summary. */
+    care: com.aira.companion.data.CareData? = null,
+    onOpenCare: () -> Unit = {},
+    /** The week's topic, from GET /v1/videos. */
+    weekVideo: com.aira.companion.model.VideoTopic? = null,
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -294,6 +302,15 @@ fun TodayScreen(
         }
 
         Spacer(modifier = Modifier.height(18.dp))
+        // Today's care sits above the mood row, matching the reference's own
+        // note that the card belongs above the fold rather than behind the nav.
+        TodayCareCard(
+            progress = careProgress(care),
+            loaded = care != null,
+            onViewAll = onOpenCare,
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
         // The mood check-in, above the fold rather than at the bottom of the
         // page. It is the one thing on Today the user is asked to give rather
         // than read, and it was previously not on this screen at all.
@@ -306,6 +323,32 @@ fun TodayScreen(
             dayLabels = moodLabels,
             onSelect = onLogMood,
         )
+
+        // The week's topic. Only shown when the server has one — an empty card
+        // headed "What to watch this week" is a promise with nothing behind it.
+        if (weekVideo != null) {
+            Spacer(modifier = Modifier.height(14.dp))
+            WatchThisWeekCard(
+                categoryLabel = weekVideo.categoryLabel.ifBlank { weekVideo.category },
+                title = weekVideo.title,
+                description = weekVideo.description,
+                // A range, because that is what the catalog stores. Printing a
+                // single figure would invent a precision the data does not have.
+                duration = weekVideo.maxSeconds
+                    .takeIf { it > 0 }
+                    ?.let { max ->
+                        val min = weekVideo.minSeconds.takeIf { it > 0 }
+                        if (min != null && min != max) {
+                            "${min / 60}–${max / 60} min"
+                        } else {
+                            "${max / 60} min"
+                        }
+                    },
+                playable = weekVideo.playable,
+                onOpen = onOpenLearn,
+                onViewAll = onOpenLearn,
+            )
+        }
 
         Spacer(modifier = Modifier.height(26.dp))
         SectionLabel("Do this next")
