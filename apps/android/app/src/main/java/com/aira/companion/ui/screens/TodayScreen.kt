@@ -195,7 +195,11 @@ fun TodayScreen(
                 .background(Ivory)
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 18.dp)
-                .padding(top = 18.dp, bottom = 28.dp),
+                // The nav is a floating pill now rather than a bar the Scaffold
+                // reserves space for, so the last card scrolled under it and
+                // could not be scrolled clear. The reference reserves the same
+                // room for the same reason.
+                .padding(top = 18.dp, bottom = 108.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Surface(

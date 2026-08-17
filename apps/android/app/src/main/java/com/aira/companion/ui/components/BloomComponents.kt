@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,10 @@ import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
 import com.aira.companion.ui.theme.IvoryDeep
 import com.aira.companion.ui.theme.Lilac
+import com.aira.companion.ui.theme.NavActive
+import com.aira.companion.ui.theme.NavInk
+import com.aira.companion.ui.theme.NavInkMuted
+import com.aira.companion.ui.theme.NavPill
 import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
 import com.aira.companion.ui.theme.Paper
@@ -993,6 +998,85 @@ fun QuietDaysCard(
         }
     }
 }
+
+/**
+ * `.nav .pill` — the floating three-tab capsule.
+ *
+ * Three flat, equal tabs and no raised centre. That is not a stylistic
+ * preference: a raised centre action needs two flankers a side, so three slots
+ * plus a raised button leaves the outer two pinned to the edges with a gulf
+ * around the middle. The five-tab bar this replaces existed to give that raised
+ * button its flankers; with the button gone, the reason goes with it.
+ *
+ * The three destinations that lost a tab did not lose their route — Journey is
+ * the hero, Care is the care card's "View all", and Settings is the app bar.
+ * A tab is not the only way to reach a screen, but an unreachable screen is a
+ * deleted one, so each was given its door before this was narrowed.
+ */
+@Composable
+fun BloomNavPill(
+    tabs: List<BloomTab>,
+    selectedKey: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center,
+    ) {
+        Surface(
+            shape = CircleShape,
+            color = NavPill,
+            shadowElevation = 12.dp,
+            border = BorderStroke(1.dp, Lilac),
+        ) {
+            Row(
+                modifier = Modifier.padding(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                tabs.forEach { tab ->
+                    val selected = tab.key == selectedKey
+                    Surface(
+                        modifier = Modifier
+                            .heightIn(min = 48.dp)
+                            .widthIn(min = 86.dp)
+                            .clickable(role = Role.Tab) { onSelect(tab.key) }
+                            .semantics {
+                                contentDescription =
+                                    if (selected) "${tab.label}, selected" else tab.label
+                            },
+                        shape = CircleShape,
+                        color = if (selected) NavActive else Color.Transparent,
+                        contentColor = if (selected) NavInk else NavInkMuted,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(7.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** One tab of [BloomNavPill]. */
+data class BloomTab(
+    val key: String,
+    val label: String,
+    val icon: ImageVector,
+)
 
 /** `.emptystate` — an honest empty, with a way out of it. */
 @Composable

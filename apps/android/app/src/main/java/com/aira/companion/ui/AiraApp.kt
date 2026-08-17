@@ -21,7 +21,11 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.HealthAndSafety
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.PlayCircle
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -60,7 +64,8 @@ import com.aira.companion.model.MainDestination
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.updatesCount
 import com.aira.companion.reminders.ReminderScheduler
-import com.aira.companion.ui.components.AiraBottomNavigation
+import com.aira.companion.ui.components.BloomNavPill
+import com.aira.companion.ui.components.BloomTab
 import com.aira.companion.ui.components.animationsEnabled
 import com.aira.companion.ui.components.BrandOrb
 import com.aira.companion.ui.components.rememberAiraHaptics
@@ -85,11 +90,44 @@ import com.aira.companion.ui.theme.AmberMist
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
+import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
 import com.aira.companion.ui.theme.UrgentMist
+
+/**
+ * The reference's three tabs: Me, Chat, Videos.
+ *
+ * Keyed by string rather than by [MainDestination] so the pill stays a dumb
+ * component — it renders tabs and reports which was tapped, and the mapping to
+ * this app's six destinations lives here where the routing does.
+ */
+private val bloomTabs = listOf(
+    BloomTab("me", "Me", Icons.Outlined.Home),
+    BloomTab("chat", "Chat", Icons.Outlined.AutoAwesome),
+    BloomTab("videos", "Videos", Icons.Outlined.PlayCircle),
+)
+
+private fun bloomDestinationFor(key: String): MainDestination = when (key) {
+    "chat" -> MainDestination.Aira
+    "videos" -> MainDestination.Learn
+    else -> MainDestination.Today
+}
+
+/**
+ * Which tab to light for a destination.
+ *
+ * Journey, Care and You have no tab of their own, and they resolve to "me"
+ * rather than to nothing: an unlit pill on a screen you reached from Me reads as
+ * having fallen out of the app, and the back gesture does return you there.
+ */
+private fun bloomTabKeyFor(destination: MainDestination): String = when (destination) {
+    MainDestination.Aira -> "chat"
+    MainDestination.Learn -> "videos"
+    else -> "me"
+}
 
 @Composable
 fun AiraApp(viewModel: AiraViewModel = viewModel()) {
@@ -283,12 +321,21 @@ private fun MainExperience(
                     weeks = state.todayData?.weeks,
                     journey = state.todayData?.journey,
                     onUrgentHelp = { haptics.weighty(); viewModel.openUrgentHelp(context) },
+                    onSettings = { viewModel.selectDestination(MainDestination.You) },
                 )
             },
             bottomBar = {
-                AiraBottomNavigation(
-                    selected = state.destination,
-                    onSelect = viewModel::selectDestination,
+                // The reference's three-tab pill. Journey, Care and Settings
+                // lost their tabs but not their routes — see BloomNavPill.
+                BloomNavPill(
+                    tabs = bloomTabs,
+                    selectedKey = bloomTabKeyFor(state.destination),
+                    onSelect = { key ->
+                        val destination = bloomDestinationFor(key)
+                        if (destination != state.destination) haptics.select()
+                        viewModel.selectDestination(destination)
+                    },
+                    modifier = Modifier.padding(bottom = 14.dp),
                 )
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -676,6 +723,7 @@ private fun AiraAppHeader(
     weeks: Int?,
     journey: String?,
     onUrgentHelp: () -> Unit,
+    onSettings: () -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -709,11 +757,29 @@ private fun AiraAppHeader(
             // the same count, from the same care data, that Today already lists
             // under what needs attention. Two doors onto one thing, one of them
             // a glyph with a number on it. It became the way into You while You
-            // was off the tab bar; You is a tab again, so keeping the avatar
-            // would repeat the bell's mistake with a different glyph.
+            // was off the tab bar; You became a tab again, so keeping the avatar
+            // would have repeated the bell's mistake with a different glyph.
             //
-            // The header is left with the one control that has to be reachable
-            // from every screen and cannot wait for a tab press.
+            // You is now off the tab bar a second time — the reference's nav is
+            // three tabs, Me, Chat and Videos — so the door has to come back.
+            // This is a gear rather than an avatar: it opens settings, and the
+            // avatar's problem was that it looked like an account and behaved
+            // like a menu.
+            Surface(
+                color = LilacMist,
+                contentColor = Plum,
+                shape = CircleShape,
+                onClick = onSettings,
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier
+                        .padding(10.dp)
+                        .size(20.dp),
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
 
             // The urgent control carries its own name.
             //
