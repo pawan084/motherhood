@@ -595,6 +595,14 @@ private fun MainExperience(
                         // this is unreachable today — but it is wired, so the
                         // Watch button can never be the inert control that
                         // appears the moment a topic is marked ready.
+                        language = state.language,
+                        onOpenSettings = { viewModel.selectDestination(MainDestination.You) },
+                        onAskAira = { question ->
+                            // The search text becomes the question, so nobody
+                            // retypes what they already typed once.
+                            viewModel.selectDestination(MainDestination.Aira)
+                            viewModel.updateDraft(question)
+                        },
                         onWatch = { video ->
                             video.mediaUrl?.takeIf { it.isNotBlank() }?.let { url ->
                                 runCatching {

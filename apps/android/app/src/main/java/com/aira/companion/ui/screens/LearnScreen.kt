@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -27,6 +29,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.aira.companion.model.VideoCategory
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import com.aira.companion.ui.components.EmptyState
+import com.aira.companion.ui.components.SecondaryButton
 import com.aira.companion.model.VideoTopic
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.PrimaryButton
@@ -68,12 +77,40 @@ fun LearnScreen(
     onUrgentHelp: () -> Unit = {},
     /** Opens a produced video. Never called while the catalogue has no media. */
     onWatch: (VideoTopic) -> Unit = {},
+    /** The language chosen in onboarding, for the availability notice. */
+    language: String = "English",
+    /** Takes an unanswered search into Chat, where a person can ask it. */
+    onAskAira: (String) -> Unit = {},
+    onOpenSettings: () -> Unit = {},
 ) {
     // Load on first entry, matching how the other tabs fetch when opened.
     LaunchedEffect(Unit) { onLoad() }
 
     var category by remember { mutableStateOf("all") }
-    val shown = videos.filter { category == "all" || it.category == category }
+    var query by remember { mutableStateOf("") }
+    val trimmedQuery = query.trim()
+
+    val byCategory = videos.filter { category == "all" || it.category == category }
+    val shown = if (trimmedQuery.isBlank()) {
+        byCategory
+    } else {
+        byCategory.filter { video ->
+            // Title, summary and category all searched: someone typing
+            // "postpartum" is naming a category, and someone typing "sleep" is
+            // naming a subject. Matching only titles would miss both.
+            listOf(video.title, video.description, video.categoryLabel)
+                .any { it.contains(trimmedQuery, ignoreCase = true) }
+        }
+    }
+
+    // Whether anything in the current view exists in the chosen language.
+    // Distinct from "no results": the topics are there, they are just not in
+    // the language onboarding promised, and saying "nothing found" would hide
+    // that difference behind an unrelated answer.
+    val languageGap = trimmedQuery.isBlank() &&
+        byCategory.isNotEmpty() &&
+        !language.equals("English", ignoreCase = true) &&
+        byCategory.none { it.languages.any { l -> l.equals(language, ignoreCase = true) } }
 
     Column(
         modifier =
@@ -164,6 +201,36 @@ fun LearnScreen(
             }
         }
 
+        Spacer(Modifier.height(16.dp))
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("Search videos…", color = InkMuted) },
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = null,
+                    tint = InkMuted,
+                )
+            },
+            trailingIcon = if (query.isNotEmpty()) {
+                {
+                    IconButton(onClick = { query = "" }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = "Clear search",
+                            tint = InkMuted,
+                        )
+                    }
+                }
+            } else {
+                null
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(16.dp),
+        )
+
         if (categories.isNotEmpty()) {
             Spacer(Modifier.height(18.dp))
             Row(
@@ -185,18 +252,74 @@ fun LearnScreen(
             SkeletonRows(count = 3, label = "Videos")
         }
 
-        shown.forEachIndexed { index, video ->
-            if (index > 0) Spacer(Modifier.height(12.dp))
-            VideoCard(
-                video = video,
-                saved = savedIds.contains(video.id),
-                onToggleSave = onToggleSave,
-                onUrgentHelp = onUrgentHelp,
-                onWatch = onWatch,
+        // The language gap is checked before the empty state, because the two
+        // answer different questions and the wrong one is actively misleading:
+        // "nothing found" about a catalogue that is full, only in English.
+        if (languageGap) {
+            EmptyState(
+                icon = Icons.Outlined.Language,
+                title = "Not available in $language yet",
+                body = "These topics aren't dubbed into $language yet — the English " +
+                    "videos carry $language subtitles in the meantime. We're adding " +
+                    "more each month.",
             )
+            SecondaryButton(
+                label = "Change language in Settings",
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            shown.forEachIndexed { index, video ->
+                if (index > 0) Spacer(Modifier.height(12.dp))
+                VideoCard(
+                    video = video,
+                    saved = savedIds.contains(video.id),
+                    onToggleSave = onToggleSave,
+                    onUrgentHelp = onUrgentHelp,
+                    onWatch = onWatch,
+                )
+            }
         }
-        if (!loading && shown.isEmpty()) {
-            Text("No topics yet.", style = MaterialTheme.typography.bodyMedium, color = InkMuted)
+
+        if (!loading && !languageGap && shown.isEmpty()) {
+            // A dead-end list with no way out reads as a bug. The query is
+            // quoted back so it is obvious what was searched — a filter left on
+            // from earlier is the usual reason a search "fails" — and the way
+            // out is the one place that can answer anything.
+            if (trimmedQuery.isNotBlank()) {
+                EmptyState(
+                    icon = Icons.Outlined.Search,
+                    title = "No videos match yet",
+                    body = "Nothing for “$trimmedQuery” so far. Asking Aira in Chat " +
+                        "works for anything the catalogue doesn't cover yet — and it " +
+                        "tells us what to make next.",
+                )
+                PrimaryButton(
+                    label = "Ask Aira instead",
+                    onClick = { onAskAira(trimmedQuery) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (category != "all") {
+                    Spacer(Modifier.height(10.dp))
+                    SecondaryButton(
+                        label = "Search all categories",
+                        onClick = { category = "all" },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                EmptyState(
+                    icon = Icons.Outlined.Search,
+                    title = "Nothing in this category yet",
+                    body = "This shelf is still being filled. The other categories " +
+                        "have topics ready now.",
+                )
+                SecondaryButton(
+                    label = "Show all videos",
+                    onClick = { category = "all" },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
 
         Spacer(Modifier.height(22.dp))
