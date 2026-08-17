@@ -139,4 +139,25 @@ object AppPrefs {
         remindersSnoozedOn(ctx) == today
 
     private const val KEY_SNOOZED_ON = "reminders_snoozed_on"
+
+    /**
+     * The user has said they are happy for reminders to live inside Aira only.
+     *
+     * Android gives one shot at the permission dialog and then goes silent, so
+     * without this the app has two options after a refusal: nag on every visit,
+     * or say nothing and let reminders quietly never arrive. This is the third —
+     * explain once, offer Settings, and then stop asking because they answered.
+     *
+     * Not cleared by sign-out. It is a decision about this phone's notifications,
+     * and re-asking someone who already said no is the behaviour it exists to
+     * prevent.
+     */
+    fun notificationsDeclined(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_NOTIFICATIONS_DECLINED, false)
+
+    fun setNotificationsDeclined(ctx: Context, declined: Boolean) {
+        prefs(ctx).edit().putBoolean(KEY_NOTIFICATIONS_DECLINED, declined).apply()
+    }
+
+    private const val KEY_NOTIFICATIONS_DECLINED = "notifications_declined"
 }

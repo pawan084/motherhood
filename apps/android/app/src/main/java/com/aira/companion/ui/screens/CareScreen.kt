@@ -72,6 +72,34 @@ import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
 import com.aira.companion.ui.theme.Urgent
 
+/** The two ways out of the notifications-off notice, stacked. */
+@Composable
+private fun PrimaryButtonRow(
+    onOpenSettings: () -> Unit,
+    onDecline: () -> Unit,
+) {
+    Column {
+        com.aira.companion.ui.components.PrimaryButton(
+            label = "Open Android Settings",
+            onClick = onOpenSettings,
+            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = null,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        SecondaryButton(
+            label = "Keep reminders in Aira only",
+            onClick = onDecline,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Aira won't ask again unless you choose to turn them on.",
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+        )
+    }
+}
+
 /**
  * Everything the user has recorded, in one shape.
  *
@@ -135,6 +163,12 @@ fun CareScreen(
     onOpenBatterySettings: () -> Unit = {},
     /** Opens the vault as a full screen. */
     onOpenVault: () -> Unit = {},
+    /** False when POST_NOTIFICATIONS is denied, so reminders cannot leave the app. */
+    canNotify: Boolean = true,
+    /** True once the user has said in-app reminders are enough. */
+    notificationsDeclined: Boolean = false,
+    onOpenNotificationSettings: () -> Unit = {},
+    onKeepRemindersInApp: () -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -288,6 +322,46 @@ fun CareScreen(
         // saving; somebody who set a reminder last week and has been quietly
         // missing it needs to find the reason where the reminders are. Only
         // shown when there is something to be delayed.
+        // Reminders exist but cannot leave the app.
+        //
+        // Android gives one permission dialog and then stays silent, so a
+        // refusal used to mean reminders simply never arrived — the list still
+        // showed times, the times still passed, and nothing happened. This says
+        // what is true, offers the one place it can be changed, and takes
+        // "keep them in Aira" as a real answer rather than asking again.
+        if (reminders.isNotEmpty() && !canNotify && !notificationsDeclined) {
+            Spacer(modifier = Modifier.height(14.dp))
+            AiraCard(containerColor = AmberMist) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.NotificationsOff,
+                        contentDescription = null,
+                        tint = Amber,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Notifications are off",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = Ink,
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Your reminders still appear here in Aira, and the times " +
+                        "below are still kept. To be told outside the app, allow " +
+                        "notifications in Android Settings.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = InkMuted,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                PrimaryButtonRow(
+                    onOpenSettings = onOpenNotificationSettings,
+                    onDecline = onKeepRemindersInApp,
+                )
+            }
+        }
+
         // Snooze, offered where the reminders are rather than buried in
         // Settings: the moment someone wants this is the moment they are looking
         // at the list that is nagging them.

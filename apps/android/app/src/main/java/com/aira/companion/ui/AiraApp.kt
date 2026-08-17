@@ -260,6 +260,10 @@ private fun MainExperience(
     /** The stage picker, from the link under the week hero. */
     var stagePickerOpen by remember { mutableStateOf(false) }
 
+    var notificationsDeclined by remember {
+        mutableStateOf(AppPrefs.notificationsDeclined(context))
+    }
+
     var snoozedToday by remember {
         mutableStateOf(
             AppPrefs.remindersSnoozedToday(context, java.time.LocalDate.now().toEpochDay()),
@@ -760,6 +764,41 @@ private fun MainExperience(
                             viewModel.notify("Reminders are back on.")
                         },
                         onOpenVault = { vaultOpen = true },
+                        canNotify = ReminderScheduler.canNotify(context),
+                        notificationsDeclined = notificationsDeclined,
+                        onOpenNotificationSettings = {
+                            // Straight to this app's notification page, not the
+                            // top of Settings: "allow notifications in Settings"
+                            // is only useful advice if it lands somewhere the
+                            // switch actually is.
+                            runCatching {
+                                context.startActivity(
+                                    Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                        .putExtra(
+                                            android.provider.Settings.EXTRA_APP_PACKAGE,
+                                            context.packageName,
+                                        ),
+                                )
+                            }.onFailure {
+                                // A few ROMs do not expose that screen. Falling
+                                // back to app details is better than a crash on
+                                // a button whose whole job is being helpful.
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(
+                                            android.provider.Settings
+                                                .ACTION_APPLICATION_DETAILS_SETTINGS,
+                                            android.net.Uri.parse("package:${context.packageName}"),
+                                        ),
+                                    )
+                                }
+                            }
+                        },
+                        onKeepRemindersInApp = {
+                            AppPrefs.setNotificationsDeclined(context, true)
+                            notificationsDeclined = true
+                            viewModel.notify("Reminders will stay inside Aira.")
+                        },
                         onOpenBatterySettings = {
                             // Best-effort: a few ROMs do not expose this screen,
                             // and crashing on a settings shortcut would be a
