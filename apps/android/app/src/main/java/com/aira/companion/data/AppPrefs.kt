@@ -110,4 +110,33 @@ object AppPrefs {
     }
 
     private const val KEY_QUIET_DISMISSED = "quiet_card_dismissed_on"
+
+    /**
+     * The day routine reminders were snoozed, as an epoch day.
+     *
+     * Snoozing mutes the alerts and nothing else — the tasks stay on the list,
+     * still tickable, and the snooze expires by itself at midnight. That
+     * combination is deliberate: the alternative people reach for on a bad day
+     * is turning reminders off entirely, and an off switch has no end date. A
+     * rough Tuesday should not quietly cost somebody their medicine schedule for
+     * the rest of the pregnancy.
+     *
+     * Device-local, like the cadence: it decides when this phone buzzes.
+     */
+    fun remindersSnoozedOn(ctx: Context): Long =
+        prefs(ctx).getLong(KEY_SNOOZED_ON, Long.MIN_VALUE)
+
+    fun setRemindersSnoozedOn(ctx: Context, epochDay: Long) {
+        prefs(ctx).edit().putLong(KEY_SNOOZED_ON, epochDay).apply()
+    }
+
+    fun clearRemindersSnooze(ctx: Context) {
+        prefs(ctx).edit().remove(KEY_SNOOZED_ON).apply()
+    }
+
+    /** True only for today — yesterday's snooze is not today's. */
+    fun remindersSnoozedToday(ctx: Context, today: Long): Boolean =
+        remindersSnoozedOn(ctx) == today
+
+    private const val KEY_SNOOZED_ON = "reminders_snoozed_on"
 }

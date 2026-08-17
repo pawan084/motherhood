@@ -118,7 +118,19 @@ object ReminderScheduler {
         val wm = WorkManager.getInstance(context)
         wm.cancelAllWorkByTag(WORK_PREFIX)
         if (!canNotify(context)) return
-        reminders.filterNot { it.done }.forEach { schedule(context, it) }
+
+        // "Snooze all today" mutes the routine nudges — water, vitamins — and
+        // nothing else. Appointments are still scheduled through it on purpose:
+        // a scan is rebooked weeks out, and someone having a bad enough day to
+        // silence their reminders is exactly who should still be told about
+        // tomorrow's visit. Snoozing a rough Tuesday must not cost them that.
+        val snoozed = com.aira.companion.data.AppPrefs.remindersSnoozedToday(
+            context,
+            java.time.LocalDate.now().toEpochDay(),
+        )
+        if (!snoozed) {
+            reminders.filterNot { it.done }.forEach { schedule(context, it) }
+        }
         appointments.forEach { scheduleAppointment(context, it) }
     }
 

@@ -246,6 +246,12 @@ private fun MainExperience(
         }
     }
 
+    var snoozedToday by remember {
+        mutableStateOf(
+            AppPrefs.remindersSnoozedToday(context, java.time.LocalDate.now().toEpochDay()),
+        )
+    }
+
     // Whether "Not now" has already been tapped on the quiet-days card today.
     // Read once from prefs and then held here, so dismissing it takes effect
     // immediately rather than only after the next read of disk.
@@ -648,6 +654,35 @@ private fun MainExperience(
                         onRetry = { viewModel.retryLoad(context) },
                         remindersMayBeDelayed =
                             ReminderScheduler.remindersMayBeDelayed(context),
+                        snoozedToday = snoozedToday,
+                        onSnoozeAll = {
+                            haptics.confirm()
+                            AppPrefs.setRemindersSnoozedOn(
+                                context,
+                                java.time.LocalDate.now().toEpochDay(),
+                            )
+                            snoozedToday = true
+                            // Re-synced immediately rather than at the next
+                            // load: the alarms for the rest of today are already
+                            // queued, and a snooze that only takes effect
+                            // tomorrow is not a snooze.
+                            ReminderScheduler.syncAll(
+                                context,
+                                state.careData?.reminders.orEmpty(),
+                                state.careData?.appointments.orEmpty(),
+                            )
+                            viewModel.notify("Reminders snoozed until tomorrow.")
+                        },
+                        onUnsnooze = {
+                            AppPrefs.clearRemindersSnooze(context)
+                            snoozedToday = false
+                            ReminderScheduler.syncAll(
+                                context,
+                                state.careData?.reminders.orEmpty(),
+                                state.careData?.appointments.orEmpty(),
+                            )
+                            viewModel.notify("Reminders are back on.")
+                        },
                         onOpenBatterySettings = {
                             // Best-effort: a few ROMs do not expose this screen,
                             // and crashing on a settings shortcut would be a

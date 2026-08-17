@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import com.aira.companion.data.CareData
 import com.aira.companion.data.CareItem
 import com.aira.companion.model.AiraTool
+import androidx.compose.material.icons.outlined.NotificationsOff
+import com.aira.companion.ui.components.SecondaryButton
+import com.aira.companion.ui.components.TextCta
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.EditableRow
 import com.aira.companion.ui.components.dayLabel
@@ -124,6 +128,10 @@ fun CareScreen(
     /** The OS may defer background work on this phone, so a reminder can
      *  arrive after its time. See ReminderScheduler.remindersMayBeDelayed. */
     remindersMayBeDelayed: Boolean = false,
+    /** True while today's routine reminders are muted — see AppPrefs. */
+    snoozedToday: Boolean = false,
+    onSnoozeAll: () -> Unit = {},
+    onUnsnooze: () -> Unit = {},
     onOpenBatterySettings: () -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
@@ -278,6 +286,56 @@ fun CareScreen(
         // saving; somebody who set a reminder last week and has been quietly
         // missing it needs to find the reason where the reminders are. Only
         // shown when there is something to be delayed.
+        // Snooze, offered where the reminders are rather than buried in
+        // Settings: the moment someone wants this is the moment they are looking
+        // at the list that is nagging them.
+        if (reminders.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(14.dp))
+            if (snoozedToday) {
+                AiraCard(containerColor = LilacMist) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Outlined.NotificationsOff,
+                            contentDescription = null,
+                            tint = Plum,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Reminders snoozed until tomorrow",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = Ink,
+                            )
+                            Text(
+                                text = "Your tasks are still here and still tickable. " +
+                                    "Appointment reminders are unaffected.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = InkMuted,
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    // Reversible in one tap. A mute you cannot lift without
+                    // remembering where you set it is an off switch wearing a
+                    // different word.
+                    SecondaryButton(
+                        label = "Turn reminders back on",
+                        onClick = onUnsnooze,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextCta(label = "Snooze all today", onClick = onSnoozeAll)
+                }
+            }
+        }
+
         if (reminders.isNotEmpty() && remindersMayBeDelayed) {
             Spacer(modifier = Modifier.height(14.dp))
             AiraCard(containerColor = AmberMist) {
