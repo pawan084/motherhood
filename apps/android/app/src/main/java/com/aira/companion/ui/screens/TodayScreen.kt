@@ -52,6 +52,8 @@ import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.toolKeyToTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.MetricPill
+import com.aira.companion.ui.components.MoodCheckInCard
+import com.aira.companion.ui.components.MoodWeek
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
 import com.aira.companion.ui.components.WeekHero
@@ -97,6 +99,9 @@ fun TodayScreen(
     onOpenLearn: () -> Unit = {},
     /** Opens the journey page: the path, the reading and the videos. */
     onOpenJourney: () -> Unit = {},
+    /** Check-ins and symptom logs, newest first — the source for the mood week. */
+    timeline: List<com.aira.companion.data.CareItem> = emptyList(),
+    onLogMood: (String) -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -287,6 +292,20 @@ fun TodayScreen(
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(18.dp))
+        // The mood check-in, above the fold rather than at the bottom of the
+        // page. It is the one thing on Today the user is asked to give rather
+        // than read, and it was previously not on this screen at all.
+        val moodToday = remember(timeline) { MoodWeek.today(timeline, java.time.LocalDate.now()) }
+        val moodWeek = remember(timeline) { MoodWeek.lastDays(timeline, java.time.LocalDate.now()) }
+        val moodLabels = remember { MoodWeek.dayInitials(java.time.LocalDate.now()) }
+        MoodCheckInCard(
+            selectedKey = moodToday,
+            recent = moodWeek,
+            dayLabels = moodLabels,
+            onSelect = onLogMood,
+        )
 
         Spacer(modifier = Modifier.height(26.dp))
         SectionLabel("Do this next")

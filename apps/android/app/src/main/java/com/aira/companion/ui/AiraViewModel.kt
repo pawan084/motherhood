@@ -842,6 +842,16 @@ class AiraViewModel(
         context: Context?,
         sent: String,
         queued: String,
+        /**
+         * Whether this write lands in the timeline rather than in Care.
+         *
+         * Check-ins and symptoms are timeline rows, and this reloaded only Care,
+         * so writing one refreshed every list except the one it appears in. It
+         * went unnoticed while the timeline was a screen you navigated to — it
+         * reloaded on arrival — and became visible the moment Today grew a mood
+         * strip that is on screen when you tap it.
+         */
+        refreshesTimeline: Boolean = false,
         block: suspend (Context) -> AiraApi.CreateOutcome,
     ) {
         if (context == null) {
@@ -854,7 +864,12 @@ class AiraViewModel(
                 notify(if (outcome == AiraApi.CreateOutcome.SENT) sent else queued)
                 // Queued items are shown from the queue itself, so the list is
                 // right either way.
-                if (outcome == AiraApi.CreateOutcome.SENT) loadCare(context) else mergePending(context)
+                if (outcome == AiraApi.CreateOutcome.SENT) {
+                    loadCare(context)
+                    if (refreshesTimeline) loadTimeline(context)
+                } else {
+                    mergePending(context)
+                }
             } catch (e: Exception) {
                 notify(saveFailureMessage(e))
             }
@@ -1476,12 +1491,14 @@ class AiraViewModel(
         writeCreate(
             context, "Check-in saved.",
             "Saved on this phone. Aira will send it once you're back online.",
+            refreshesTimeline = true,
         ) { AiraApi.addCheckIn(it, feeling, sleepHours, note) }
 
     fun saveSymptom(context: Context?, what: String, severity: String, started: String) =
         writeCreate(
             context, "Added to your timeline.",
             "Saved on this phone. Aira will send it once you're back online.",
+            refreshesTimeline = true,
         ) { AiraApi.addSymptom(it, what, severity, started) }
 
     /**

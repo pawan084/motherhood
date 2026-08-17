@@ -49,6 +49,7 @@ import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
+import com.aira.companion.ui.theme.IvoryDeep
 import com.aira.companion.ui.theme.Lilac
 import com.aira.companion.ui.theme.LilacMist
 import com.aira.companion.ui.theme.OutlineSoft
@@ -138,11 +139,11 @@ fun ChoicePill(
             .heightIn(min = 48.dp)
             .clickable(role = Role.RadioButton, onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        color = if (selected) Color(0xFFF0E3FF) else Paper,
-        contentColor = if (selected) Color(0xFF4E167D) else Ink,
+        color = if (selected) LilacMist else Paper,
+        contentColor = if (selected) PlumDeep else Ink,
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,
-            color = if (selected) Color(0xFF8738FF) else OutlineSoft,
+            color = if (selected) Plum else OutlineSoft,
         ),
         shadowElevation = if (selected) 4.dp else 0.dp,
     ) {
@@ -195,7 +196,7 @@ fun SegmentedControl(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color(0xFFF4EDFA), RoundedCornerShape(16.dp))
+            .background(LilacMist, RoundedCornerShape(16.dp))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -243,11 +244,11 @@ fun ValueCard(
             .fillMaxWidth()
             .let { if (onClick != null) it.clickable(role = Role.RadioButton, onClick = onClick) else it },
         shape = RoundedCornerShape(20.dp),
-        color = if (selected) Color(0xFFF8F1FF) else Paper,
+        color = if (selected) LilacMist else Paper,
         contentColor = Ink,
         border = BorderStroke(
             width = if (selected) 2.dp else 1.dp,
-            color = if (selected) Color(0xFF7D2CF6) else OutlineSoft,
+            color = if (selected) Plum else OutlineSoft,
         ),
         shadowElevation = if (selected) 6.dp else 1.dp,
     ) {
@@ -258,13 +259,13 @@ fun ValueCard(
             Box(
                 modifier = Modifier
                     .size(38.dp)
-                    .background(Color(0xFFF1E5FF), CircleShape),
+                    .background(LilacMist, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFF7423F2),
+                    tint = Plum,
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -300,7 +301,7 @@ fun StatusNote(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF5B3975),
+                tint = PlumDeep,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(modifier = Modifier.width(9.dp))
@@ -308,7 +309,7 @@ fun StatusNote(
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp),
-            color = Color(0xFF5B3975),
+            color = PlumDeep,
         )
     }
 }
@@ -647,6 +648,113 @@ fun WeekHero(
     }
 }
 
+/**
+ * `.moodrow` — the six-mood check-in, plus the week behind it.
+ *
+ * [recent] is the last seven days' check-ins, oldest first, with null for a day
+ * that has none. A gap is drawn as a gap rather than skipped: a row of seven
+ * dots that silently omits the days you missed would show an unbroken week to
+ * someone who logged twice.
+ *
+ * Colour is never the only signal here — see MoodStyle. Each tile carries its
+ * own icon and its label, and the selected tile fills and switches to white
+ * rather than relying on a hue two of which fall below the non-text floor.
+ */
+@Composable
+fun MoodCheckInCard(
+    selectedKey: String?,
+    recent: List<String?>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    dayLabels: List<String> = emptyList(),
+    onHistory: (() -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = Paper,
+        border = BorderStroke(1.dp, OutlineSoft),
+        shadowElevation = 1.dp,
+    ) {
+        Column(modifier = Modifier.padding(19.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Eyebrow(text = "How are you today?")
+                Spacer(modifier = Modifier.weight(1f))
+                if (onHistory != null) {
+                    TextCta(label = "History", onClick = onHistory)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                moodStyles.forEach { mood ->
+                    val selected = mood.key == selectedKey
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable(role = Role.RadioButton) { onSelect(mood.key) }
+                            .semantics {
+                                contentDescription =
+                                    if (selected) "${mood.label}, selected" else mood.label
+                            },
+                        shape = RoundedCornerShape(18.dp),
+                        color = if (selected) mood.color else LilacMist,
+                        shadowElevation = if (selected) 6.dp else 0.dp,
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 12.dp, horizontal = 2.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Icon(
+                                imageVector = mood.icon,
+                                contentDescription = null,
+                                tint = if (selected) Paper else mood.color,
+                                modifier = Modifier.size(22.dp),
+                            )
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = mood.label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = if (selected) Paper else InkMuted,
+                                textAlign = TextAlign.Center,
+                            )
+                        }
+                    }
+                }
+            }
+            if (recent.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    recent.forEachIndexed { index, key ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .background(
+                                        // An unlogged day is an outline, not a
+                                        // colour — absence has to look like
+                                        // absence, not like a seventh mood.
+                                        color = key?.let { moodStyle(it).color }
+                                            ?: OutlineSoft,
+                                        shape = CircleShape,
+                                    ),
+                            )
+                            Spacer(modifier = Modifier.height(5.dp))
+                            Text(
+                                text = dayLabels.getOrElse(index) { "" },
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = InkMuted,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** `.emptystate` — an honest empty, with a way out of it. */
 @Composable
 fun EmptyState(
@@ -696,7 +804,7 @@ fun SecondaryButton(
             .heightIn(min = 52.dp)
             .clickable(role = Role.Button, onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        color = Color(0xFFFBF8FF),
+        color = IvoryDeep,
         contentColor = Plum,
         border = BorderStroke(1.5.dp, Lilac),
     ) {

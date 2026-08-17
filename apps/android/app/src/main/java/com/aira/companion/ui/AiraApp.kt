@@ -215,6 +215,10 @@ private fun MainExperience(
                 viewModel.loadToday(context)
                 viewModel.loadCare(context)
                 viewModel.loadJourney(context)
+                // The mood card shows this week's check-ins, so Today needs the
+                // timeline that Care was previously alone in loading. Without it
+                // the week strip renders empty on a user who has logged all week.
+                viewModel.loadTimeline(context)
             }
             MainDestination.Aira -> viewModel.loadChatHistory(context)
             MainDestination.Journey -> viewModel.loadJourney(context)
@@ -366,6 +370,14 @@ private fun MainExperience(
                         },
                         onOpenJourney = {
                             viewModel.selectDestination(MainDestination.Journey)
+                        },
+                        timeline = state.timeline,
+                        onLogMood = { mood ->
+                            haptics.confirm()
+                            // Sleep and note belong to the full check-in tool,
+                            // not to this card. A one-tap mood must not invent a
+                            // sleep figure just to fill the column.
+                            viewModel.saveCheckIn(context, mood, 0.0, "")
                         },
                     )
                 MainDestination.Aira ->
