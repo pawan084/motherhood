@@ -51,10 +51,10 @@ import com.aira.companion.model.TodayData
 import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.toolKeyToTool
 import com.aira.companion.ui.components.AiraCard
-import com.aira.companion.ui.components.GradientHeroSurface
 import com.aira.companion.ui.components.MetricPill
 import com.aira.companion.ui.components.PrimaryButton
 import com.aira.companion.ui.components.SectionLabel
+import com.aira.companion.ui.components.WeekHero
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -64,6 +64,21 @@ import com.aira.companion.ui.theme.Paper
 import com.aira.companion.ui.theme.Plum
 import com.aira.companion.ui.theme.SageDeep
 import com.aira.companion.ui.theme.SageMist
+
+/**
+ * "Good morning" / "Good afternoon" / "Good evening", from the clock.
+ *
+ * The greeting was fixed at "Good morning" regardless of the hour, which the
+ * reference's own mock shows as "Good afternoon" at 15:53. A wellness app that
+ * says good morning at midnight is a small thing, but this app is used at 3am
+ * more than most and the wrong greeting is the first thing on the page.
+ */
+private fun greetingForNow(): String =
+    when (java.time.LocalTime.now().hour) {
+        in 0..11 -> "Good morning"
+        in 12..17 -> "Good afternoon"
+        else -> "Good evening"
+    }
 
 @Composable
 fun TodayScreen(
@@ -130,6 +145,29 @@ fun TodayScreen(
         ?: today?.contextLine?.ifBlank { null }
         ?: "What's worth knowing right now"
     val plumRing = Plum
+
+    // "Day 5" in the reference's hero. Derived from the due date or not shown:
+    // a pregnancy is dated from 40 weeks before the due date, so the day within
+    // the current week is real arithmetic when dueDate is present and pure
+    // invention otherwise. The week itself can arrive without one — a reported
+    // week carried forward — and in that case the number stands on its own.
+    val dayInWeek = remember(today?.dueDate) {
+        today?.dueDate?.let { iso ->
+            runCatching {
+                val due = java.time.LocalDate.parse(iso)
+                val conception = due.minusWeeks(40)
+                val elapsed = java.time.temporal.ChronoUnit.DAYS
+                    .between(conception, java.time.LocalDate.now())
+                if (elapsed < 0) null else (elapsed % 7).toInt() + 1
+            }.getOrNull()
+        }
+    }
+    // Only a pregnancy has a fixed length to be a fraction of. Every other
+    // journey would need an arc that lies in order to have one.
+    val heroProgress = weeks
+        ?.takeIf { today?.journey.equals("pregnant", ignoreCase = true) }
+        ?.let { (it / 40f).coerceIn(0f, 1f) }
+    val weekRail = weeks?.let { w -> ((w - 3)..(w + 3)).filter { it in 1..42 } }.orEmpty()
     Column(
         modifier =
             modifier
@@ -202,7 +240,22 @@ fun TodayScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        GradientHeroSurface(
+        // The reference's week hero: the week as the largest thing on the page,
+        // with the day inside it, a sentence about what it means, and the
+        // fraction of the pregnancy elapsed. It replaces the "Where you are"
+        // ring card, which drew a circle around a number that was not a
+        // proportion of anything until the arc was added underneath it.
+        WeekHero(
+            greeting = listOfNotNull(
+                greetingForNow(),
+                name,
+            ).joinToString(", "),
+            week = if (afterLoss) null else weeks,
+            dayInWeek = if (afterLoss) null else dayInWeek,
+            subtitle = if (loaded) heroSubtitle else "Not loaded yet.",
+            progress = if (afterLoss) null else heroProgress,
+            weekRail = if (afterLoss) emptyList() else weekRail,
+            onSelectWeek = { onOpenJourney() },
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(
@@ -210,125 +263,27 @@ fun TodayScreen(
                     onClickLabel = "See where this sits in your pregnancy",
                     onClick = onOpenJourney,
                 ),
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    SectionLabel("Where you are")
-                    Spacer(modifier = Modifier.weight(1f))
-                    Icon(
-                        imageVector = Icons.Outlined.ChevronRight,
-                        contentDescription = null,
-                        tint = Plum,
+        )
+
+        // The "6h sleep / Steady mood / None new concern" pills that used to sit
+        // here were invented readings — nothing in the app had measured any of
+        // them. They come back when check-ins are aggregated server-side; until
+        // then the user's own priorities are real and worth showing.
+        if (priorities.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "You asked Aira to focus on",
+                style = MaterialTheme.typography.bodySmall,
+                color = InkMuted,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                priorities.take(3).forEach { priority ->
+                    MetricPill(
+                        value = priority,
+                        label = "",
+                        modifier = Modifier.weight(1f),
                     )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(72.dp)
-                                .background(
-                                    brush = Brush.radialGradient(listOf(Lilac, Paper)),
-                                    shape = CircleShape,
-                                )
-                                // The ring was a circle with a number inside it —
-                                // shaped like a progress indicator, showing no
-                                // progress. For a pregnancy it now draws the
-                                // fraction of ~40 weeks elapsed, so the shape
-                                // means what its shape implies. Nothing is drawn
-                                // for other journeys, which have no fixed length
-                                // and would need an arc that lies to have one.
-                                .drawBehind {
-                                    val fraction = weeks?.let { (it / 40f).coerceIn(0f, 1f) }
-                                        ?: return@drawBehind
-                                    val stroke = 5.dp.toPx()
-                                    drawArc(
-                                        color = plumRing,
-                                        startAngle = -90f,
-                                        sweepAngle = 360f * fraction,
-                                        useCenter = false,
-                                        topLeft = Offset(stroke / 2, stroke / 2),
-                                        size = Size(
-                                            this.size.width - stroke,
-                                            this.size.height - stroke,
-                                        ),
-                                        style = Stroke(width = stroke, cap = StrokeCap.Round),
-                                    )
-                                },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            if (!afterLoss) {
-                                Text(
-                                    text = weeks?.toString()
-                                        ?: journeyLabel(today?.journey).take(1),
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = Plum,
-                                )
-                                Text(
-                                    text = if (weeks != null) "weeks" else "stage",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = InkMuted,
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        // The stage line moved up to the headline, so this card
-                        // stops repeating it. It says where the tap goes
-                        // instead, which is the one thing the row wasn't saying.
-                        // The card names where you are; tapping it shows
-                        // where that sits. It carried a chevron into the old
-                        // Journey tab, lost it when the tab was folded in, and
-                        // now has a destination worth having again.
-                        //
-                        // It was "Your journey" with a chevron into the Journey
-                        // tab — a doorway to where you already are, now that the
-                        // tab is this page. Replacing it with the week's own
-                        // headline just repeated the h1 four lines above it.
-                        // What this card adds is the ring and the detail, so
-                        // that is all it carries.
-                        Text(
-                            text = if (loaded) {
-                                heroSubtitle
-                            } else {
-                                "Not loaded yet."
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = InkMuted,
-                        )
-                    }
-                }
-                // The "6h sleep / Steady mood / None new concern" pills that used
-                // to sit here were invented readings — nothing in the app had
-                // measured any of them. They come back when check-ins are
-                // aggregated server-side; until then the user's own priorities
-                // are real and worth showing.
-                if (priorities.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    // One heading for the group, rather than the word "focus"
-                    // stamped under every chip. Repeating a label under each
-                    // item says nothing the group heading didn't, and "focus"
-                    // on its own reads as an instruction rather than a caption.
-                    Text(
-                        text = "You asked Aira to focus on",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = InkMuted,
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        priorities.take(3).forEach { priority ->
-                            MetricPill(
-                                value = priority,
-                                label = "",
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
                 }
             }
         }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -40,6 +41,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.aira.companion.ui.theme.EyebrowInk
+import com.aira.companion.ui.theme.HeroAccent
+import com.aira.companion.ui.theme.HeroBottom
+import com.aira.companion.ui.theme.HeroInk
+import com.aira.companion.ui.theme.HeroInkMuted
+import com.aira.companion.ui.theme.HeroTop
 import com.aira.companion.ui.theme.Ink
 import com.aira.companion.ui.theme.InkMuted
 import com.aira.companion.ui.theme.Ivory
@@ -496,6 +502,185 @@ fun BackButton(
                 modifier = Modifier.size(20.dp),
             )
         }
+    }
+}
+
+/**
+ * `.hero` — the week panel that opens Me.
+ *
+ * Bloom 2.0 inverted this: it was light ink on a deep aubergine panel and is now
+ * near-black ink on a pale violet wash, which is why the hero tokens carry their
+ * own ink pair rather than borrowing the page's.
+ *
+ * [dayInWeek] is the reference's "Day 5". It is only ever passed when it can be
+ * derived from a real due date — the number is a claim about someone's
+ * pregnancy, and a decorative one would be a confident lie on the largest text
+ * on the screen. When it is unknown the week stands alone.
+ */
+@Composable
+fun WeekHero(
+    greeting: String,
+    week: Int?,
+    dayInWeek: Int?,
+    subtitle: String?,
+    progress: Float?,
+    modifier: Modifier = Modifier,
+    weekRail: List<Int> = emptyList(),
+    onSelectWeek: ((Int) -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, HeroTop),
+    ) {
+        Column(
+            modifier = Modifier
+                .background(Brush.linearGradient(listOf(HeroTop, HeroBottom)))
+                .padding(horizontal = 22.dp, vertical = 20.dp),
+        ) {
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = HeroInk,
+            )
+            if (week != null) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = week.toString(),
+                        style = MaterialTheme.typography.displayMedium.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.SansSerif,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 58.sp,
+                        ),
+                        color = HeroAccent,
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column(modifier = Modifier.padding(bottom = 8.dp)) {
+                        Eyebrow(text = "Week", color = HeroAccent)
+                        if (dayInWeek != null) {
+                            Text(
+                                text = "Day $dayInWeek",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = HeroInk,
+                            )
+                        }
+                    }
+                }
+            }
+            if (subtitle != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = HeroInkMuted,
+                )
+            }
+            if (progress != null) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .background(Paper, CircleShape),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .background(
+                                Brush.horizontalGradient(listOf(Plum, HeroAccent)),
+                                CircleShape,
+                            ),
+                    )
+                }
+            }
+            if (weekRail.isNotEmpty() && week != null) {
+                Spacer(modifier = Modifier.height(14.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Paper.copy(alpha = 0.85f), RoundedCornerShape(22.dp))
+                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    weekRail.forEach { w ->
+                        val current = w == week
+                        Box(
+                            modifier = Modifier
+                                .size(if (current) 46.dp else 34.dp)
+                                .background(
+                                    if (current) {
+                                        Brush.linearGradient(listOf(Plum, HeroAccent))
+                                    } else {
+                                        Brush.linearGradient(listOf(Color.Transparent, Color.Transparent))
+                                    },
+                                    CircleShape,
+                                )
+                                .let {
+                                    if (onSelectWeek != null) {
+                                        it.clickable(role = Role.Button) { onSelectWeek(w) }
+                                    } else {
+                                        it
+                                    }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = w.toString(),
+                                style = if (current) {
+                                    MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                } else {
+                                    MaterialTheme.typography.bodySmall
+                                },
+                                color = if (current) Paper else HeroInkMuted,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** `.emptystate` — an honest empty, with a way out of it. */
+@Composable
+fun EmptyState(
+    icon: ImageVector,
+    title: String,
+    body: String,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 36.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(44.dp),
+            tint = InkMuted.copy(alpha = 0.55f),
+        )
+        Spacer(modifier = Modifier.height(14.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineSmall,
+            color = Ink,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = body,
+            style = MaterialTheme.typography.bodySmall,
+            color = InkMuted,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 
