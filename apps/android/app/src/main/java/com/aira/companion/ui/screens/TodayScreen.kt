@@ -52,7 +52,9 @@ import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.toolKeyToTool
 import com.aira.companion.ui.components.AiraCard
 import com.aira.companion.ui.components.MetricPill
+import com.aira.companion.ui.components.EmptyState
 import com.aira.companion.ui.components.MoodCheckInCard
+import com.aira.companion.ui.components.QuietDaysCard
 import com.aira.companion.ui.components.TodayCareCard
 import com.aira.companion.ui.components.WatchThisWeekCard
 import com.aira.companion.ui.components.careProgress
@@ -110,6 +112,11 @@ fun TodayScreen(
     onOpenCare: () -> Unit = {},
     /** The week's topic, from GET /v1/videos. */
     weekVideo: com.aira.companion.model.VideoTopic? = null,
+    /** True once "Not now" has been tapped today — see AppPrefs. */
+    quietCardDismissed: Boolean = false,
+    onDismissQuietCard: () -> Unit = {},
+    onOpenCheckIn: () -> Unit = {},
+    onPauseReminders: () -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -301,6 +308,22 @@ fun TodayScreen(
             }
         }
 
+        // Someone returning after a lapse sees this before anything else on the
+        // page. Three days is the reference's own threshold, and the gap is
+        // measured from the timeline rather than assumed — a user who has never
+        // checked in gets nothing, because they are new rather than returning.
+        val quietDays = remember(timeline) {
+            MoodWeek.daysSinceLastCheckIn(timeline, java.time.LocalDate.now())
+        }
+        if (quietDays != null && quietDays >= 3 && !quietCardDismissed) {
+            Spacer(modifier = Modifier.height(18.dp))
+            QuietDaysCard(
+                onCheckIn = onOpenCheckIn,
+                onDismiss = onDismissQuietCard,
+                onPauseReminders = onPauseReminders,
+            )
+        }
+
         Spacer(modifier = Modifier.height(18.dp))
         // Today's care sits above the mood row, matching the reference's own
         // note that the card belongs above the fold rather than behind the nav.
@@ -351,6 +374,28 @@ fun TodayScreen(
         }
 
         Spacer(modifier = Modifier.height(26.dp))
+        // A day with nothing scheduled and nothing suggested gets its own
+        // design rather than an empty "Do this next" heading over a card with no
+        // content. The reference calls this out specifically: a first session,
+        // or simply a quiet Tuesday, is a real state and not a missing one.
+        val nothingToDo = loaded && actionTitle == null && careProgress(care).isEmpty
+        if (nothingToDo) {
+            AiraCard {
+                EmptyState(
+                    icon = Icons.Outlined.WbSunny,
+                    title = "Nothing scheduled yet today",
+                    body = "Your care list fills in each morning. Check back after " +
+                        "breakfast, or open Chat if something's on your mind right now.",
+                )
+                PrimaryButton(
+                    label = "Open Chat",
+                    onClick = { onDestination(MainDestination.Aira) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            return@Column
+        }
+
         SectionLabel("Do this next")
         Spacer(modifier = Modifier.height(10.dp))
 

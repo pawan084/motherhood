@@ -61,6 +61,38 @@ object MoodWeek {
     ): String? = lastDays(timeline, today, days = 1, zone = zone).firstOrNull()
 
     /**
+     * Whole days since the last check-in, or null if there has never been one.
+     *
+     * Null and "a long time" are deliberately different answers. Someone who has
+     * never checked in is not returning after a gap — they are new, and greeting
+     * them with "it's been a few quiet days" would be the app inventing a
+     * history they do not have. The re-engagement card is for people who had a
+     * rhythm and lost it.
+     *
+     * Counts calendar days rather than 24-hour periods: a check-in last night
+     * and one this morning is "yesterday", not "0 days", which is how a person
+     * describes it.
+     */
+    fun daysSinceLastCheckIn(
+        timeline: List<CareItem>,
+        today: LocalDate,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Long? {
+        val last = timeline
+            .mapNotNull { item ->
+                item.moodKey() ?: return@mapNotNull null
+                val created = item.created ?: return@mapNotNull null
+                Instant.ofEpochSecond(created.toLong()).atZone(zone).toLocalDate()
+            }
+            // A future-dated row from clock skew must not read as "0 days ago"
+            // and suppress a card the user should be seeing.
+            .filter { it <= today }
+            .maxOrNull()
+            ?: return null
+        return java.time.temporal.ChronoUnit.DAYS.between(last, today)
+    }
+
+    /**
      * Weekday initials aligned to [today], oldest-first, so the strip's labels
      * match the dots above them. Hardcoding "M T W T F S S" would only be right
      * on a Sunday.

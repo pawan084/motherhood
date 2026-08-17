@@ -41,7 +41,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.aira.companion.BuildConfig
+import com.aira.companion.data.AppPrefs
 import com.aira.companion.model.AiraTool
 import com.aira.companion.model.AppStage
 import com.aira.companion.model.AuthMode
@@ -177,6 +180,15 @@ private fun MainExperience(
 ) {
     val context = LocalContext.current
     val haptics = rememberAiraHaptics()
+
+    // Whether "Not now" has already been tapped on the quiet-days card today.
+    // Read once from prefs and then held here, so dismissing it takes effect
+    // immediately rather than only after the next read of disk.
+    var quietCardDismissedToday by remember {
+        mutableStateOf(
+            AppPrefs.quietCardDismissedOn(context) == java.time.LocalDate.now().toEpochDay(),
+        )
+    }
 
     // Back returns to Today rather than leaving the app.
     //
@@ -379,6 +391,18 @@ private fun MainExperience(
                         care = state.careData,
                         onOpenCare = { viewModel.selectDestination(MainDestination.Care) },
                         weekVideo = state.weekVideo,
+                        quietCardDismissed = quietCardDismissedToday,
+                        onDismissQuietCard = {
+                            AppPrefs.setQuietCardDismissedOn(
+                                context,
+                                java.time.LocalDate.now().toEpochDay(),
+                            )
+                            quietCardDismissedToday = true
+                        },
+                        onOpenCheckIn = { viewModel.openTool(AiraTool.CheckIn) },
+                        onPauseReminders = {
+                            viewModel.selectDestination(MainDestination.You)
+                        },
                         onLogMood = { mood ->
                             haptics.confirm()
                             // Sleep and note belong to the full check-in tool,

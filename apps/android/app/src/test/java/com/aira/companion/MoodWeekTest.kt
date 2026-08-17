@@ -121,6 +121,48 @@ class MoodWeekTest {
     }
 
     @Test
+    fun someoneWhoHasNeverCheckedInHasNoGap() {
+        // Null, not a large number. A new user is not returning after a lapse,
+        // and "it's been a few quiet days" would be the app inventing a history
+        // they never had.
+        assertNull(MoodWeek.daysSinceLastCheckIn(emptyList(), today, zone))
+    }
+
+    @Test
+    fun theGapIsCountedInCalendarDays() {
+        val timeline = listOf(checkIn("great", today.minusDays(3), LocalTime.of(23, 0)))
+        assertEquals(3L, MoodWeek.daysSinceLastCheckIn(timeline, today, zone))
+    }
+
+    @Test
+    fun aCheckInTodayIsAZeroGap() {
+        val timeline = listOf(checkIn("okay", today, LocalTime.of(6, 0)))
+        assertEquals(0L, MoodWeek.daysSinceLastCheckIn(timeline, today, zone))
+    }
+
+    @Test
+    fun theGapUsesTheMostRecentCheckInNotTheFirstInTheList() {
+        // The list is newest-first by contract, but nothing enforces it across a
+        // cache merge, so the calculation takes the maximum rather than the head.
+        val timeline = listOf(
+            checkIn("low", today.minusDays(9)),
+            checkIn("great", today.minusDays(2)),
+        )
+        assertEquals(2L, MoodWeek.daysSinceLastCheckIn(timeline, today, zone))
+    }
+
+    @Test
+    fun aFutureDatedRowDoesNotSuppressTheCard() {
+        // Clock skew dating a row tomorrow would otherwise read as "0 days ago"
+        // and hide a re-engagement card the user should be seeing.
+        val timeline = listOf(
+            checkIn("great", today.plusDays(1)),
+            checkIn("low", today.minusDays(5)),
+        )
+        assertEquals(5L, MoodWeek.daysSinceLastCheckIn(timeline, today, zone))
+    }
+
+    @Test
     fun dayInitialsAlignWithTheDots() {
         // Hardcoding "M T W T F S S" is only right on a Sunday. 2026-08-17 is a
         // Monday, so a week ending today starts on the previous Tuesday.

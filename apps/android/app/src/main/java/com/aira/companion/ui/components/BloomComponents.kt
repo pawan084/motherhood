@@ -915,6 +915,85 @@ fun CategoryChip(
     }
 }
 
+/**
+ * The re-engagement card, for someone coming back after a gap.
+ *
+ * The reference is explicit that this copy carries real tone risk and must not
+ * default to streak-loss language. Nothing here counts what was missed, offers
+ * to "catch up", or implies a broken run: the days are described as quiet, the
+ * ask is ten seconds about today only, and the third option is to pause
+ * reminders rather than to try harder.
+ *
+ * "Not now" is a real dismissal, not a delay disguised as one — a card that
+ * reappears on the next open would be nagging somebody who already answered.
+ */
+@Composable
+fun QuietDaysCard(
+    onCheckIn: () -> Unit,
+    onDismiss: () -> Unit,
+    onPauseReminders: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = LilacMist,
+    ) {
+        Column(modifier = Modifier.padding(19.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .background(
+                            Brush.radialGradient(listOf(Lilac, LilacMist)),
+                            CircleShape,
+                        ),
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "It's been a few quiet days",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Ink,
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "No pressure — pregnancy has days like that.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = InkMuted,
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Whenever you're ready, a 10-second check-in helps Aira keep your " +
+                    "week accurate. Nothing to catch up on — just today.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Ink,
+            )
+            Spacer(modifier = Modifier.height(14.dp))
+            PrimaryButton(
+                label = "How am I feeling today?",
+                onClick = onCheckIn,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                TextCta(label = "Not now", onClick = onDismiss, color = InkMuted)
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            SecondaryButton(
+                label = "Pause reminders for a few days",
+                onClick = onPauseReminders,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
 /** `.emptystate` — an honest empty, with a way out of it. */
 @Composable
 fun EmptyState(

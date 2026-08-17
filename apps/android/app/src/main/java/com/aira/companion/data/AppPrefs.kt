@@ -93,4 +93,21 @@ object AppPrefs {
 
     const val DEFAULT_REMINDER_CADENCE = 2
     private const val KEY_REMINDER_CADENCE = "reminder_cadence"
+
+    /**
+     * The day the "quiet days" card was last dismissed, as an epoch day.
+     *
+     * Dismissal is honoured for the rest of that day and no longer. Making it
+     * permanent would silence the one prompt that helps somebody restart; making
+     * it last only until the next screen open would be nagging a person who has
+     * already answered. A day is the unit the card itself talks in.
+     */
+    fun quietCardDismissedOn(ctx: Context): Long =
+        prefs(ctx).getLong(KEY_QUIET_DISMISSED, Long.MIN_VALUE)
+
+    fun setQuietCardDismissedOn(ctx: Context, epochDay: Long) {
+        prefs(ctx).edit().putLong(KEY_QUIET_DISMISSED, epochDay).apply()
+    }
+
+    private const val KEY_QUIET_DISMISSED = "quiet_card_dismissed_on"
 }
