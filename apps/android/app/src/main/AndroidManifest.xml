@@ -7,6 +7,24 @@
          device has been off — the stored delay counted down while it slept. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
+    <!--
+      Voice input. Requested at the moment the mic is first tapped rather than
+      up front: a maternal-health app asking for the microphone on launch, before
+      it has shown what it wants it for, is a reasonable thing to refuse.
+
+      Audio never leaves the device as audio. Android's recogniser turns it into
+      text, the text is shown for review, and only the text is sent.
+    -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- Lets the app see whether a speech recogniser exists before offering the
+         mic at all, rather than opening a listening screen that cannot listen. -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

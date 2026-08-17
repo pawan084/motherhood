@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
@@ -79,6 +80,8 @@ fun AiraChatScreen(
     onCallCareTeam: () -> Unit = {},
     /** Opens the emergency profile, where the number is entered. */
     onAddCareTeam: () -> Unit = {},
+    /** Null on a device with no speech recogniser, which hides the mic. */
+    onOpenVoice: (() -> Unit)? = null,
 ) {
     Column(
         modifier =
@@ -290,6 +293,17 @@ fun AiraChatScreen(
                         contentDescription = "Open Aira tools",
                         tint = Plum,
                     )
+                }
+                // Offered only where a recogniser exists. A microphone that
+                // opens a screen which cannot listen is worse than no mic.
+                if (onOpenVoice != null) {
+                    IconButton(onClick = onOpenVoice) {
+                        Icon(
+                            imageVector = Icons.Outlined.Mic,
+                            contentDescription = "Speak to Aira",
+                            tint = Plum,
+                        )
+                    }
                 }
                 OutlinedTextField(
                     value = state.chatDraft,

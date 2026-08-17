@@ -65,6 +65,8 @@ import com.aira.companion.model.journeyLabel
 import com.aira.companion.model.updatesCount
 import com.aira.companion.reminders.ReminderScheduler
 import com.aira.companion.ui.components.BloomNavPill
+import com.aira.companion.ui.components.rememberVoiceInput
+import com.aira.companion.ui.components.voiceInputAvailable
 import com.aira.companion.ui.components.BloomTab
 import com.aira.companion.ui.components.animationsEnabled
 import com.aira.companion.ui.components.BrandOrb
@@ -82,6 +84,7 @@ import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
 import com.aira.companion.ui.screens.ToolTraySheet
 import com.aira.companion.ui.screens.TutorialScreen
+import com.aira.companion.ui.screens.VoiceModeScreen
 import com.aira.companion.ui.screens.UrgentHelpDialog
 import com.aira.companion.ui.screens.WelcomeScreen
 import com.aira.companion.ui.screens.YouScreen
@@ -219,6 +222,30 @@ private fun MainExperience(
     val context = LocalContext.current
     val haptics = rememberAiraHaptics()
 
+    // Voice mode. Held here rather than in the ViewModel: it is a property of
+    // this screen being open, not of the conversation, and it must not survive
+    // into a restored session with the microphone implied.
+    var voiceOpen by remember { mutableStateOf(false) }
+    var micGranted by remember {
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.RECORD_AUDIO,
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED,
+        )
+    }
+    val micPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        micGranted = granted
+        // Only opens on a yes. A refused permission returns the user to typing
+        // rather than to a listening screen that cannot listen.
+        voiceOpen = granted
+        if (!granted) {
+            viewModel.notify("Voice needs microphone access. You can still type.")
+        }
+    }
+
     // Whether "Not now" has already been tapped on the quiet-days card today.
     // Read once from prefs and then held here, so dismissing it takes effect
     // immediately rather than only after the next read of disk.
@@ -347,6 +374,32 @@ private fun MainExperience(
             },
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { padding ->
+            if (voiceOpen) {
+                val voice = rememberVoiceInput()
+                // Back leaves voice for typing rather than leaving the app.
+                BackHandler(enabled = true) {
+                    voice.stopListening()
+                    voiceOpen = false
+                }
+                VoiceModeScreen(
+                    voice = voice,
+                    onSend = { text ->
+                        voice.stopListening()
+                        voiceOpen = false
+                        haptics.confirm()
+                        // Through the same path as a typed message: a spoken
+                        // question is not a different kind of turn and must not
+                        // skip the safety gate.
+                        viewModel.quickMessage(text, context)
+                    },
+                    onSwitchToTyping = {
+                        voice.stopListening()
+                        voiceOpen = false
+                    },
+                    modifier = Modifier.padding(padding),
+                )
+                return@Scaffold
+            }
             // Offline.
             //
             // Every screen loader used to swallow its exception, so a user with
@@ -495,6 +548,20 @@ private fun MainExperience(
                             }
                         },
                         onAddCareTeam = { viewModel.openTool(AiraTool.Privacy) },
+                        onOpenVoice = if (voiceInputAvailable(context)) {
+                            {
+                                // Asked at the moment the mic is tapped, not on
+                                // launch: the request is answerable only once
+                                // the user can see what it is for.
+                                if (micGranted) {
+                                    voiceOpen = true
+                                } else {
+                                    micPermission.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            }
+                        } else {
+                            null
+                        },
                     )
                 MainDestination.Journey ->
                     JourneyScreen(
