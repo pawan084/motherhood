@@ -163,6 +163,51 @@ class MoodWeekTest {
     }
 
     @Test
+    fun theBreakdownCountsDaysNotCheckIns() {
+        // Three logs on one restless day is one day. Counting entries would let
+        // a single bad Tuesday outweigh a fortnight of calm ones.
+        val timeline = listOf(
+            checkIn("low", today, LocalTime.of(21, 0)),
+            checkIn("low", today, LocalTime.of(14, 0)),
+            checkIn("low", today, LocalTime.of(8, 0)),
+            checkIn("great", today.minusDays(1)),
+        )
+        val breakdown = MoodWeek.breakdown(timeline, today, days = 30, zone = zone)
+        assertEquals(2, breakdown.size)
+        assertEquals(1, breakdown.first { it.key == "low" }.count)
+        assertEquals(1, breakdown.first { it.key == "great" }.count)
+    }
+
+    @Test
+    fun moodsWithNoDaysAreOmittedRatherThanZeroed() {
+        // "Unwell 0" invites reading a zero as information about the person,
+        // when it is only the absence of a log.
+        val timeline = listOf(checkIn("great", today))
+        val breakdown = MoodWeek.breakdown(timeline, today, days = 30, zone = zone)
+        assertEquals(1, breakdown.size)
+        assertEquals("great", breakdown.single().key)
+    }
+
+    @Test
+    fun theBreakdownIsOrderedCommonestFirst() {
+        val timeline = listOf(
+            checkIn("okay", today),
+            checkIn("great", today.minusDays(1)),
+            checkIn("great", today.minusDays(2)),
+            checkIn("great", today.minusDays(3)),
+        )
+        val breakdown = MoodWeek.breakdown(timeline, today, days = 30, zone = zone)
+        assertEquals("great", breakdown.first().key)
+        assertEquals(3, breakdown.first().count)
+    }
+
+    @Test
+    fun loggedDaysNeverExceedTheWindow() {
+        val timeline = (0..40).map { checkIn("okay", today.minusDays(it.toLong())) }
+        assertEquals(30, MoodWeek.loggedDayCount(timeline, today, days = 30, zone = zone))
+    }
+
+    @Test
     fun dayInitialsAlignWithTheDots() {
         // Hardcoding "M T W T F S S" is only right on a Sunday. 2026-08-17 is a
         // Monday, so a week ending today starts on the previous Tuesday.

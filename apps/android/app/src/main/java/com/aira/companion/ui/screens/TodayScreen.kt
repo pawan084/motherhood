@@ -117,6 +117,8 @@ fun TodayScreen(
     onDismissQuietCard: () -> Unit = {},
     onOpenCheckIn: () -> Unit = {},
     onPauseReminders: () -> Unit = {},
+    /** Opens the moods detail from the card's History link. */
+    onOpenMoods: () -> Unit = {},
 ) {
     // Every field here comes from /v1/today or is omitted. The fallbacks that
     // used to sit on these lines were caught on a real device with an expired
@@ -349,6 +351,7 @@ fun TodayScreen(
             recent = moodWeek,
             dayLabels = moodLabels,
             onSelect = onLogMood,
+            onHistory = onOpenMoods,
         )
 
         // The week's topic. Only shown when the server has one — an empty card

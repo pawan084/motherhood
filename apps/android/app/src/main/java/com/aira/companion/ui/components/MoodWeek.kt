@@ -92,6 +92,44 @@ object MoodWeek {
         return java.time.temporal.ChronoUnit.DAYS.between(last, today)
     }
 
+    /** One mood's share of a period. */
+    data class MoodCount(val key: String, val label: String, val count: Int)
+
+    /**
+     * How the last [days] break down by mood, commonest first.
+     *
+     * Counts DAYS, not check-ins: someone who logs three times on Tuesday has
+     * had one Tuesday, and counting each entry would let a single restless day
+     * dominate a month. One day, one mood — the latest one that day, matching
+     * what the week strip shows.
+     *
+     * Moods with no days are omitted rather than listed as zero. A row reading
+     * "Unwell 0" invites reading a zero as information about the person when it
+     * is only the absence of a log.
+     */
+    fun breakdown(
+        timeline: List<CareItem>,
+        today: LocalDate,
+        days: Int = 30,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): List<MoodCount> {
+        val logged = lastDays(timeline, today, days = days, zone = zone).filterNotNull()
+        val counts = logged.groupingBy { it }.eachCount()
+        return moodStyles
+            .mapNotNull { style ->
+                counts[style.key]?.let { MoodCount(style.key, style.label, it) }
+            }
+            .sortedByDescending { it.count }
+    }
+
+    /** Days in the window that carry a check-in. Never more than [days]. */
+    fun loggedDayCount(
+        timeline: List<CareItem>,
+        today: LocalDate,
+        days: Int = 30,
+        zone: ZoneId = ZoneId.systemDefault(),
+    ): Int = lastDays(timeline, today, days = days, zone = zone).count { it != null }
+
     /**
      * Weekday initials aligned to [today], oldest-first, so the strip's labels
      * match the dots above them. Hardcoding "M T W T F S S" would only be right

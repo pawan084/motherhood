@@ -79,6 +79,7 @@ import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
 import com.aira.companion.ui.screens.JourneySectionSheet
 import com.aira.companion.ui.screens.LearnScreen
+import com.aira.companion.ui.screens.MoodsDetailScreen
 import com.aira.companion.ui.screens.OnboardingScreen
 import com.aira.companion.ui.screens.TodayScreen
 import com.aira.companion.ui.screens.ToolActions
@@ -246,6 +247,11 @@ private fun MainExperience(
         }
     }
 
+    // Moods detail. A sub-screen of Me rather than a destination: it is reached
+    // from one link, returns to where it was opened from, and giving it a tab
+    // would put a chart of someone's feelings in the app's permanent furniture.
+    var moodsOpen by remember { mutableStateOf(false) }
+
     var snoozedToday by remember {
         mutableStateOf(
             AppPrefs.remindersSnoozedToday(context, java.time.LocalDate.now().toEpochDay()),
@@ -406,6 +412,20 @@ private fun MainExperience(
                 )
                 return@Scaffold
             }
+
+            if (moodsOpen) {
+                BackHandler(enabled = true) { moodsOpen = false }
+                MoodsDetailScreen(
+                    timeline = state.timeline,
+                    onBack = { moodsOpen = false },
+                    onLogToday = {
+                        moodsOpen = false
+                        viewModel.openTool(AiraTool.CheckIn)
+                    },
+                    modifier = Modifier.padding(padding),
+                )
+                return@Scaffold
+            }
             // Offline.
             //
             // Every screen loader used to swallow its exception, so a user with
@@ -503,6 +523,7 @@ private fun MainExperience(
                         timeline = state.timeline,
                         care = state.careData,
                         onOpenCare = { viewModel.selectDestination(MainDestination.Care) },
+                        onOpenMoods = { moodsOpen = true },
                         weekVideo = state.weekVideo,
                         quietCardDismissed = quietCardDismissedToday,
                         onDismissQuietCard = {
