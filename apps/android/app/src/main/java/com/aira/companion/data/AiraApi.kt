@@ -1344,6 +1344,9 @@ data class CareItem(
     val created: Double? = null,
     /** Documents: what to hand a viewer when opening the file. */
     val contentType: String? = null,
+    /** Documents: bytes stored. The server has always sent this and nothing
+     *  read it, so the vault could not say how large a file was. */
+    val sizeBytes: Long? = null,
     /** Written with no signal and not yet sent. Shown on the row, because a
      *  list that mixes saved and unsent items without saying which is which
      *  invites someone to believe their care team can already see it. */
@@ -1516,6 +1519,7 @@ internal fun JSONArray?.toCareItems(): List<CareItem> {
                 time = o.optStringOrNull("time"),
                 repeat = o.optStringOrNull("repeat"),
                 contentType = o.optStringOrNull("content_type"),
+                sizeBytes = o.optLong("size", -1L).takeIf { it >= 0L },
             ),
         )
     }

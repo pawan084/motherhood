@@ -74,6 +74,7 @@ import com.aira.companion.ui.components.rememberAiraHaptics
 import com.aira.companion.ui.screens.AiraChatScreen
 import com.aira.companion.ui.screens.AuthScreen
 import com.aira.companion.ui.screens.CareScreen
+import com.aira.companion.ui.screens.CareVaultScreen
 import com.aira.companion.ui.screens.DocumentViewer
 import com.aira.companion.ui.screens.DynamicToolSheet
 import com.aira.companion.ui.screens.JourneyScreen
@@ -252,6 +253,9 @@ private fun MainExperience(
     // would put a chart of someone's feelings in the app's permanent furniture.
     var moodsOpen by remember { mutableStateOf(false) }
 
+    /** The vault as a screen, reached from Care's documents section. */
+    var vaultOpen by remember { mutableStateOf(false) }
+
     var snoozedToday by remember {
         mutableStateOf(
             AppPrefs.remindersSnoozedToday(context, java.time.LocalDate.now().toEpochDay()),
@@ -413,6 +417,25 @@ private fun MainExperience(
                 return@Scaffold
             }
 
+            if (vaultOpen) {
+                BackHandler(enabled = true) { vaultOpen = false }
+                CareVaultScreen(
+                    documents = state.documents,
+                    failed = state.documentsFailed,
+                    onBack = { vaultOpen = false },
+                    onOpen = { viewModel.openDocument(context, it) },
+                    onUpload = {
+                        // The existing picker, unchanged: it already handles the
+                        // kind, the multipart upload and the offline queue.
+                        vaultOpen = false
+                        viewModel.openTool(AiraTool.CareVault)
+                    },
+                    onRetry = { viewModel.loadDocuments(context) },
+                    modifier = Modifier.padding(padding),
+                )
+                return@Scaffold
+            }
+
             if (moodsOpen) {
                 BackHandler(enabled = true) { moodsOpen = false }
                 MoodsDetailScreen(
@@ -540,9 +563,10 @@ private fun MainExperience(
                         onLogMood = { mood ->
                             haptics.confirm()
                             // Sleep and note belong to the full check-in tool,
-                            // not to this card. A one-tap mood must not invent a
-                            // sleep figure just to fill the column.
-                            viewModel.saveCheckIn(context, mood, 0.0, "")
+                            // not to this card. Null rather than 0.0: a zero is
+                            // a measurement, and the timeline rendered it as
+                            // "0h sleep" against every mood logged this way.
+                            viewModel.saveCheckIn(context, mood, null, "")
                         },
                     )
                 MainDestination.Aira ->
@@ -704,6 +728,7 @@ private fun MainExperience(
                             )
                             viewModel.notify("Reminders are back on.")
                         },
+                        onOpenVault = { vaultOpen = true },
                         onOpenBatterySettings = {
                             // Best-effort: a few ROMs do not expose this screen,
                             // and crashing on a settings shortcut would be a

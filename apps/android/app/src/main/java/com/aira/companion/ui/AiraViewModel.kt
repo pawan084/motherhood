@@ -1487,7 +1487,15 @@ class AiraViewModel(
         AiraApi.addAppointment(it, doctor, place.ifBlank { null }, whenText.ifBlank { null }, at)
     }
 
-    fun saveCheckIn(context: Context?, feeling: String, sleepHours: Double, note: String) =
+    /**
+     * [sleepHours] is nullable because "not asked" and "zero" are different
+     * answers. The one-tap mood row on Today records a feeling and nothing else;
+     * sending 0.0 for it stored a real zero, and the timeline duly rendered
+     * "0h sleep" against every mood — the app telling somebody it had measured
+     * that they slept no hours, on a screen they read to find out how their week
+     * had gone.
+     */
+    fun saveCheckIn(context: Context?, feeling: String, sleepHours: Double?, note: String) =
         writeCreate(
             context, "Check-in saved.",
             "Saved on this phone. Aira will send it once you're back online.",

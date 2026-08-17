@@ -133,6 +133,8 @@ fun CareScreen(
     onSnoozeAll: () -> Unit = {},
     onUnsnooze: () -> Unit = {},
     onOpenBatterySettings: () -> Unit = {},
+    /** Opens the vault as a full screen. */
+    onOpenVault: () -> Unit = {},
 ) {
     // Upcoming and past, split on a real date rather than guessed from free
     // text. Before appointments carried one, "Friday" was all the app had and
@@ -470,6 +472,18 @@ fun CareScreen(
             onRetry = onRetry,
             footnote = "A document is only used in an answer after you approve it.",
         ) {
+            // The vault as its own screen, for when the list is long enough that
+            // a section on a shared page stops being a place you can find
+            // something in. Offered only once there is enough to warrant it.
+            if (documents.size > 2) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Spacer(modifier = Modifier.weight(1f))
+                    TextCta(label = "Open Care vault", onClick = onOpenVault)
+                }
+            }
             documents.forEach { doc ->
                 CareRow(
                     item = doc,
