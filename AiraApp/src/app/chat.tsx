@@ -4,6 +4,7 @@ import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandOrb } from '@/components/brand-orb';
+import { AiFeedbackSheet } from '@/components/ai-feedback-sheet';
 import { ChatToolsSheet } from '@/components/chat-tools-sheet';
 import { Icon } from '@/components/icon';
 import { BottomNav } from '@/components/today/parts';
@@ -94,7 +95,7 @@ function EscalationNudge() {
   );
 }
 
-function SafetyOfflineFallback() {
+function SafetyOfflineFallback({ onFeedback }: { onFeedback: () => void }) {
   return (
     <>
       <View className="self-end rounded-[12px] bg-brand px-5 py-3">
@@ -126,11 +127,17 @@ function SafetyOfflineFallback() {
             <Text className="font-rubik-semibold text-base text-brand">Try again</Text>
           </View>
         </Pressable>
+        <Pressable
+          onPress={onFeedback}
+          accessibilityRole="button"
+          className="mt-3 items-center py-1 active:opacity-70">
+          <Text className="font-rubik-semibold text-xs text-brand">This didn&apos;t help</Text>
+        </Pressable>
       </View>
 
       <View className="flex-row gap-2">
         <Pressable
-          onPress={() => router.push('/urgent')}
+          onPress={() => router.push('/emergency-profile')}
           accessibilityRole="button"
           className="flex-1 active:opacity-80">
           <View className="items-center rounded-full border border-border bg-card px-3 py-3">
@@ -226,6 +233,7 @@ function NormalChatPreview() {
 
 export default function ChatScreen() {
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [safetyMode] = useState<SafetyMode>('offline');
   const inputPaused = safetyMode === 'offline';
 
@@ -286,7 +294,9 @@ export default function ChatScreen() {
 
         {safetyMode === 'normal' && <NormalChatPreview />}
         {safetyMode === 'escalation' && <EscalationNudge />}
-        {safetyMode === 'offline' && <SafetyOfflineFallback />}
+        {safetyMode === 'offline' && (
+          <SafetyOfflineFallback onFeedback={() => setFeedbackOpen(true)} />
+        )}
 
         <View className="flex-row items-start gap-3 rounded-lg bg-notice px-3.5 py-3">
           <Icon name="bell" size={22} className="mt-0.5 text-foreground" />
@@ -351,6 +361,7 @@ export default function ChatScreen() {
       </View>
 
       <ChatToolsSheet visible={toolsOpen} onClose={() => setToolsOpen(false)} />
+      <AiFeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       <BottomNav active="chat" />
     </SafeAreaView>
   );

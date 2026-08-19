@@ -114,7 +114,11 @@ export default function VoiceScreen() {
             </View>
           </Pressable>
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Stop listening" className="active:opacity-90">
+          <Pressable
+            onPress={() => router.push('/voice-review')}
+            accessibilityRole="button"
+            accessibilityLabel="Stop listening and review transcript"
+            className="active:opacity-90">
             <View className="h-[54px] w-[54px] items-center justify-center rounded-full bg-brand">
               <View className="h-3 w-3 rounded-[2px] bg-brand-foreground" />
             </View>

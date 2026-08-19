@@ -1,10 +1,13 @@
 import { router } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Modal, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
 
 export default function UrgentScreen() {
+  const [confirmClose, setConfirmClose] = useState(false);
+
   return (
     <SafeAreaView className="flex-1 bg-[#FFF0F1]" edges={['top', 'bottom']}>
       <View className="flex-1 px-8 pb-10 pt-16">
@@ -36,7 +39,10 @@ export default function UrgentScreen() {
           </View>
         </Pressable>
 
-        <Pressable accessibilityRole="button" className="mt-3 active:opacity-80">
+        <Pressable
+          onPress={() => router.push('/emergency-profile')}
+          accessibilityRole="button"
+          className="mt-3 active:opacity-80">
           <View className="flex-row items-center justify-center gap-2 rounded-[16px] border border-[#E56E76] bg-white px-5 py-4">
             <Icon name="phone" size={20} className="text-[#D23542]" />
             <Text className="font-rubik-semibold text-base text-[#D23542]">
@@ -46,7 +52,7 @@ export default function UrgentScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => setConfirmClose(true)}
           accessibilityRole="button"
           className="mt-7 items-center py-2 active:opacity-70">
           <Text className="font-rubik-semibold text-sm text-[#7A2024]">
@@ -54,6 +60,54 @@ export default function UrgentScreen() {
           </Text>
         </Pressable>
       </View>
+
+      <Modal
+        visible={confirmClose}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmClose(false)}>
+        <View className="flex-1 justify-center px-8">
+          <View className="absolute inset-0 bg-foreground opacity-35" />
+
+          <View className="rounded-[24px] bg-card px-5 py-6">
+            <Icon name="shield" size={24} className="text-[#D23542]" />
+
+            <Text className="mt-5 font-serif text-[27px] leading-9 text-foreground">
+              Before you close this
+            </Text>
+
+            <Text className="mt-2 font-rubik text-sm leading-relaxed text-muted-foreground">
+              Aira cannot confirm that you are medically safe. If symptoms continue or
+              worsen, contact emergency services or your care team now.
+            </Text>
+
+            <Pressable accessibilityRole="button" className="mt-5 active:opacity-90">
+              <View className="flex-row items-center justify-center gap-2 rounded-[16px] bg-[#D23542] px-5 py-4">
+                <Icon name="phone" size={20} className="text-white" />
+                <Text className="font-rubik-semibold text-base text-white">Call care team</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => setConfirmClose(false)}
+              accessibilityRole="button"
+              className="mt-3 active:opacity-80">
+              <View className="items-center rounded-[16px] border border-border bg-card px-5 py-4">
+                <Text className="font-rubik-semibold text-base text-brand">
+                  Return to urgent help
+                </Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              onPress={() => router.back()}
+              accessibilityRole="button"
+              className="mt-4 items-center py-1 active:opacity-70">
+              <Text className="font-rubik-semibold text-sm text-brand">Close for now</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

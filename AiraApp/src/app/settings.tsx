@@ -276,7 +276,7 @@ export default function SettingsScreen() {
         <Section title="Experience & Support">
           <Row label="Language" note="English" />
           <Divider />
-          <Row label="Accessibility" />
+          <Row label="Accessibility" onPress={() => router.push('/accessibility')} />
           <Divider />
           <Row label="Security and signed-in devices" />
           <Divider />

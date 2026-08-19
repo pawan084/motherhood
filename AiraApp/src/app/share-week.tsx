@@ -134,6 +134,7 @@ export default function ShareWeekScreen() {
         </Text>
 
         <Pressable
+          onPress={() => router.push('/share-confirm')}
           accessibilityRole="button"
           className="overflow-hidden rounded-[16px] active:opacity-90"
           style={{

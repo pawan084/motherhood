@@ -141,7 +141,10 @@ export default function TodayScreen() {
         )}
 
         {/* ── hero ── */}
-        <View className="overflow-hidden rounded-lg bg-secondary p-5">
+        <Pressable
+          onPress={() => router.push('/journey')}
+          accessibilityRole="button"
+          className="overflow-hidden rounded-lg bg-secondary p-5 active:opacity-90">
           <View className="flex-row items-start justify-between gap-3">
             <View className="flex-1">
               <Text className="font-rubik-medium text-base text-foreground">
@@ -185,7 +188,10 @@ export default function TodayScreen() {
                 />
               </View>
 
-              <Pressable accessibilityRole="button" className="mt-4 self-start active:opacity-80">
+              <Pressable
+                onPress={() => router.push('/journey')}
+                accessibilityRole="button"
+                className="mt-4 self-start active:opacity-80">
                 <View className="flex-row items-center gap-2 rounded-full bg-card px-4 py-3">
                   <Text className="font-rubik-medium text-sm text-foreground">
                     {today.nextMilestone}
@@ -195,7 +201,7 @@ export default function TodayScreen() {
               </Pressable>
             </>
           )}
-        </View>
+        </Pressable>
 
         {/* Everything else waits. The ask is a ten-second check-in; putting a
             full care screen under it would bury that ask beneath exactly the
