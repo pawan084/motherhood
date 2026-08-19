@@ -7,7 +7,7 @@ only thing standing between the public API and a scripted flood. These tests
 drive `_rate_allowed` and the middleware's open-path rules directly, so they
 neither depend on nor disturb the suite-wide setting.
 """
-import security
+from app.core import security
 
 
 def _reset():

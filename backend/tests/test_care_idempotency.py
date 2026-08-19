@@ -10,7 +10,7 @@ list is a second dose on the screen someone checks before taking one.
 """
 import concurrent.futures
 
-import care
+from app.domains import care
 
 
 def _post(client, headers, path, body, key):

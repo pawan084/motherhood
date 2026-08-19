@@ -21,8 +21,8 @@ are the same list, and adding to it without adding vocabulary fails here.
 """
 import pytest
 
-import accounts
-import safety
+from app.domains import accounts
+from app import safety
 
 
 RED_BY_LANGUAGE = {

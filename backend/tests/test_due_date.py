@@ -16,7 +16,7 @@ if the advance guessed correctly.
 """
 import datetime
 
-import care
+from app.domains import care
 
 
 def _due_in(weeks_pregnant: int) -> str:

@@ -6,7 +6,8 @@ verbatim. These pin the corrected behaviour.
 """
 import time
 
-import safety
+from app import safety
+from app.safety import flags
 from conftest import admin_login
 
 
@@ -49,12 +50,12 @@ def test_recent_flags_can_withhold_the_message(client, user):
 
 def test_purge_expired_drops_old_flags_only(client, user):
     client.post("/v1/chat/turn", json={"message": "chest pain"}, headers=user["headers"])
-    safety.init()
-    safety._conn.execute(
+    flags.init()
+    flags._conn.execute(
         "INSERT INTO safety_flags (ts, user_id, level, categories, message, degraded) "
         "VALUES (?,?,?,?,?,?)",
         (time.time() - 200 * 86400, "usr_ancient", "red", "[]", "old and expired", 0))
-    safety._conn.commit()
+    flags._conn.commit()
 
     assert any(f["user_id"] == "usr_ancient" for f in safety.recent_flags(limit=500))
     removed = safety.purge_expired(90)
@@ -155,7 +156,7 @@ def test_delete_erases_everything_and_kills_the_token(client, user):
 
     # And nothing of theirs is left behind.
     assert not any(f["user_id"] == uid for f in safety.recent_flags(limit=500))
-    import chat, memory, care, consent, feedback
+    from app.domains import care, chat, consent, feedback, memory
     assert chat.export_user(uid) == []
     assert memory.export_user(uid) == []
     assert feedback.export_user(uid) == []

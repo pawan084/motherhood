@@ -10,8 +10,8 @@ pregnant, and nothing that asks about trying again. Absences are exactly what
 regresses silently when somebody later adds a cheerful default, so they are
 asserted rather than assumed.
 """
-import content
-import videos
+from app.domains import content
+from app.domains import videos
 
 
 def _as_loss(client, headers):

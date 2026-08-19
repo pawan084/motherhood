@@ -8,7 +8,7 @@ was no way for the user to find out otherwise until they went looking for it.
 import io
 import os
 
-import care
+from app.domains import care
 
 
 def _register(client):

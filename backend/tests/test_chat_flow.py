@@ -46,6 +46,6 @@ def test_amber_turn_flags_disclaimer(client, user):
 def test_safety_flag_recorded_for_red(client, user):
     client.post("/v1/chat/turn", json={"message": "chest pain right now"},
                 headers=user["headers"])
-    import safety
+    from app import safety
     flags = safety.recent_flags(limit=10, level="red")
     assert any(f["user_id"] == user["id"] for f in flags)

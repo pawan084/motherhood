@@ -1,6 +1,6 @@
 """The safety gate is the product's safety-critical core, so it gets the most
 tests. These assert the deterministic keyword floor (no LLM needed)."""
-import safety
+from app import safety
 
 
 def test_red_phrases():
@@ -50,7 +50,7 @@ def test_red_beats_llm_absence():
 
 import pytest
 
-import safety
+from app import safety
 
 
 @pytest.mark.parametrize("message", [

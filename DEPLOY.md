@@ -80,38 +80,35 @@ backend origin, and add that admin URL to the backend's `ADMIN_ORIGINS`.
 > add the deployed web URL to `WEB_ORIGINS` (separate from `ADMIN_ORIGINS`). The
 > defaults cover local dev (`http://localhost:5173`).
 
-## Android
+## Mobile (React Native)
 
-Build a release with the production backend URL **and the app token**:
-```bash
-cd apps/android
-./gradlew assembleRelease \
-  -PairaApiBase=https://api.aira.app \
-  -PairaAppToken="$APP_SHARED_SECRET"      # must match the backend's value
-```
-`-PairaAppToken` is not optional against a production backend: `app.py` refuses
-to boot without `APP_SHARED_SECRET`, and every route — including
-`/device/register` — 401s before identity is checked when `X-App-Token` is
-missing. A build without it fails at first launch, not at build time.
+The Kotlin and SwiftUI clients were removed; one React Native app replaces both.
+Two things decide whether it can talk to a deployed backend at all.
+
+**The app token is not optional.** `app.py` refuses to boot without
+`APP_SHARED_SECRET`, and every route — including `/device/register` — 401s
+before identity is checked when `X-App-Token` is missing. A build without it
+fails at first launch, not at build time, which is how the deleted iOS client
+shipped without ever sending the header.
+
+**HTTPS only.** Both mobile platforms block cleartext by default (Android since
+targetSdk 28, iOS via ATS), so the production URL must be `https://`. Keep any
+loopback exception in a debug-only config that cannot merge into a release
+build.
 
 Configure `GOOGLE_CLIENT_ID` on the backend for Google Sign-In — one client id,
-which is the only accepted `aud`. Android must send a token minted for that same
-(web) client id, which Google's guidance calls the server client id; a token
-minted for an Android-type client will be rejected. The web app needs the same
-value as `VITE_GOOGLE_CLIENT_ID`, or its Sign in dialog says it isn't
+which is the only accepted `aud`. The mobile client must send a token minted for
+that same (web) client id, which Google's guidance calls the server client id; a
+token minted for a platform-specific client will be rejected. The web app needs
+the same value as `VITE_GOOGLE_CLIENT_ID`, or its Sign in dialog says it isn't
 configured rather than offering a button that can only 503.
 
-Note the app uses `ACTION_DIAL` (no `CALL_PHONE` permission needed).
-
-> **Cleartext:** release builds block plain HTTP entirely (Android's default
-> since targetSdk 28), so the production URL must be `https://`. Debug builds
-> allow cleartext to loopback hosts only, via
-> `app/src/debug/res/xml/network_security_config.xml` — a debug-source-set file
-> that is never merged into a release APK.
-
+For the urgent handoff, dial via the platform's *dialer intent* rather than
+placing a call directly — it needs no call permission and leaves the person in
+control of the last tap.
 ## Pre-launch checklist
 
-- [ ] Clinician review of `aira.safety_classifier` prompt + `safety.py` keyword lists
+- [ ] Clinician review of `aira.safety_classifier` prompt + `app/safety/gate.py` keyword lists
 - [x] Retention/redaction for `safety_flags.message` — green turns are never
       stored, amber/red expire after `SAFETY_FLAG_RETENTION_DAYS` (default 90,
       purged at startup), and the text is withheld from `viewer` admins.

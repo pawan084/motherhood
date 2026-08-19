@@ -6,9 +6,9 @@ read the in-code seed while the console wrote to a table nobody queried.
 """
 import pytest
 
-import consent
-import content
-import memory
+from app.domains import consent
+from app.domains import content
+from app.domains import memory
 from conftest import admin_login
 
 

@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply font-sans;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     Aira's theme. Every colour in the app resolves from here.
+
+     Values are HSL triplets without the `hsl()` wrapper, because
+     tailwind.config.js wraps them — `hsl(var(--brand))` — which is what lets a
+     utility take an opacity modifier (`bg-brand/20`) and still work.
+
+     NativeWind reads `:root` custom properties on native as well as web, so
+     these are genuinely one source of truth for both. (Its one gap is bare
+     selectors: the `* { @apply font-sans }` above is honoured on web and
+     dropped on native, which is why the type scale also names Rubik directly
+     in themed-text.tsx.)
+     ───────────────────────────────────────────────────────────────────────── */
+  :root {
+    /* Grounds and ink — a violet-biased near-white rather than pure grey, so
+       the neutrals read as chosen alongside the brand rather than inherited. */
+    --background: 260 100% 99.4%;      /* #FDFCFF */
+    --foreground: 270 21% 11.4%;       /* #1D1723 */
+    --card: 0 0% 100%;                 /* #FFFFFF — lifts off the tinted page */
+    --card-foreground: 270 21% 11.4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 21% 11.4%;
+
+    --primary: 263 91% 55.7%;          /* #7527F5 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 288 52% 94.3%;
+    --secondary-foreground: 270 21% 11.4%;
+    --muted: 268 55% 93.9%;
+    --muted-foreground: 261 9% 43.1%;  /* #6B6478 */
+    --accent: 319 73% 95.7%;
+    --accent-foreground: 318 43% 46.5%;
+
+    --destructive: 357 62% 50%;        /* #C93842 — the urgent red */
+    --border: 268 55% 93.9%;           /* #EFE7F8 */
+    --input: 268 55% 93.9%;
+    --ring: 263 91% 55.7%;
+    --radius: 0.875rem;
+
+    /* Aira brand.
+       `--brand` was the shadcn placeholder orange (16 100% 50%); Aira's mark is
+       violet, and the welcome CTA reads from this. */
+    --brand: 263 91% 55.7%;            /* #7527F5 */
+    --brand-deep: 262 84% 45.5%;       /* #5A12D6 — the CTA's second stop */
+    --brand-foreground: 0 0% 100%;
+
+    /* The orb's halo rings. Two stops, outermost first. */
+    --halo-soft: 288 52% 94.3%;        /* #F5E9F8 */
+    --halo: 281 57% 88.2%;             /* #E7D0F2 */
+
+    /* The rose pair from the reference prototype: tinted icon tiles and the
+       "Private by design" pill. */
+    --tile: 319 73% 95.7%;             /* #FCECF7 */
+    --tile-foreground: 318 43% 46.5%;  /* #A9448B */
+
+    /* Status. Reserved for "nothing is wrong" — never for the safety gate,
+       which speaks in green/amber/red of its own. */
+    --ok: 141 36% 32.4%;               /* #35704A */
+
+    /* An informational notice — a hint worth reading, not a warning. The
+       reference's amber pair. Deliberately NOT the safety gate's amber: that
+       one means "raise this with your care team", and a colour that means two
+       different things is a colour that means neither. */
+    --notice: 42 100% 93.3%;           /* #FFF5DD */
+    --notice-foreground: 35 77% 37.1%; /* #A76A16 */
+
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark:root {
+    --background: 267 22% 8%;          /* #141019 */
+    --foreground: 267 41% 94.7%;       /* #F1ECF7 */
+    --card: 263 22% 11.6%;             /* #1C1724 */
+    --card-foreground: 267 41% 94.7%;
+    --popover: 263 22% 11.6%;
+    --popover-foreground: 267 41% 94.7%;
+
+    --primary: 263 100% 77.5%;         /* #B98CFF — lifted to hold on a dark ground */
+    --primary-foreground: 267 22% 8%;
+    --secondary: 264 32% 15.5%;
+    --secondary-foreground: 267 41% 94.7%;
+    --muted: 262 25% 21%;
+    --muted-foreground: 261 15% 67.1%; /* #A79EB8 */
+    --accent: 300 26% 15.9%;
+    --accent-foreground: 323 62% 75.5%;
+
+    --destructive: 356 79% 73%;        /* #F0868F */
+    --border: 262 25% 21%;             /* #322843 */
+    --input: 262 25% 21%;
+    --ring: 263 100% 77.5%;
+
+    --brand: 263 100% 77.5%;           /* #B98CFF */
+    --brand-deep: 261 100% 65.1%;      /* #8B4DFF */
+    --brand-foreground: 0 0% 100%;
+
+    --halo-soft: 264 32% 15.5%;        /* #251B34 */
+    --halo: 266 34% 23.7%;             /* #3A2851 */
+
+    --tile: 300 26% 15.9%;             /* #331E33 */
+    --tile-foreground: 323 62% 75.5%;  /* #E79AC9 */
+
+    --ok: 142 39% 63.9%;               /* #7FC79A */
+
+    --notice: 37 62% 12.4%;            /* #33240C */
+    --notice-foreground: 37 68% 62%;   /* #E0AE5C */
+
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}

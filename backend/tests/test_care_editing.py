@@ -97,7 +97,7 @@ def test_a_cancelled_appointment_can_be_removed(client, user):
 
 def test_deleting_really_deletes(client, user):
     """A hidden flag would keep health data someone asked to remove."""
-    import care
+    from app.domains import care
     h = user["headers"]
     iid = _add(client, h, "/v1/care/reminders", {"title": "Gone"})
     client.delete(f"/v1/care/items/{iid}", headers=h)
@@ -303,7 +303,7 @@ def test_aMedicineNeverTakenIsDueAndHasNoHistory(client, user):
 def test_yesterdaysDoseDoesNotCountAsToday(client, user):
     """Local midnight, not a rolling 24 hours: someone taking a tablet at 8am
     wants a fresh prompt the next morning, not one sliding an hour later daily."""
-    import care as care_module
+    from app.domains import care as care_module
 
     yesterday = {"taken": [__import__("time").time() - 26 * 3600]}
     assert care_module._taken_today(yesterday) is False
@@ -324,7 +324,7 @@ def test_the_week_advances_with_time(client, user):
     verbatim for ever, so someone who said "24" was shown week-24 content in
     month nine, after the birth, and a year later. It is the one number in this
     app that changes without anyone touching it."""
-    import care
+    from app.domains import care
 
     now = 1_800_000_000.0
     assert care.current_weeks(24, now, now) == 24
@@ -336,7 +336,7 @@ def test_a_week_past_term_stops_being_asserted(client, user):
     """Rather than counting into fiction. Past 42 the pregnancy has almost
     certainly ended and nobody told us; saying nothing is honest, "week 61" is
     not."""
-    import care
+    from app.domains import care
 
     now = 1_800_000_000.0
     assert care.current_weeks(24, now - 30 * 7 * 86400, now) is None

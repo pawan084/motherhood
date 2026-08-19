@@ -155,7 +155,7 @@ The femtech incumbents that failed publicly failed on **data-sharing/consent**; 
 - `video_topics` table seeded from the catalog (all schema fields + produced asset URLs, captions, and translations once made).
 - `GET /v1/videos?journey=&week=&category=` (published only) · `GET /v1/videos/{id}` · `POST /v1/videos/{id}/save` · `GET /v1/videos/saved`. The Today/Journey builders select the timely video.
 - **Journey-stage mapping:** catalog `trying_to_conceive | pregnancy | postpartum` → Aira `trying | pregnant | postpartum`; `exploring` users see the on-demand library only.
-- i18n by user language (en/hi today); Android/web cache video *metadata*, stream media, and store saved ids offline.
+- i18n by user language (en/hi today); clients cache video *metadata*, stream media, and store saved ids offline.
 
 ---
 

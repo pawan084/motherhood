@@ -6,7 +6,7 @@ console read its role out of localStorage, could not open a user, and could not
 add a second admin without a redeploy. Now that pages call them, these pin the
 behaviour those pages rely on.
 """
-import prompts
+from app import prompts
 from conftest import admin_login
 
 

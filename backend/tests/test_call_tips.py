@@ -12,7 +12,7 @@ the wording, and none of them can be held by review alone.
      payload has to say so until somebody publishes.
   3. Publishing it is an act, not a default — so the tips seed as drafts.
 """
-import content
+from app.domains import content
 
 
 def test_a_pregnant_user_with_a_known_week_gets_a_tip(client, user):

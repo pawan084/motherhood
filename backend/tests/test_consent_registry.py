@@ -10,7 +10,7 @@ on today's behaviour. Every entry in `consent.FEATURES` must declare how its
 consent is honoured, so a future feature cannot reach the privacy centre without
 someone deciding that. The rest pin the runtime consequences of that rule.
 """
-import consent
+from app.domains import consent
 import pytest
 
 
@@ -37,17 +37,27 @@ def test_consent_is_not_decorative():
             assert len(meta["enforced_by"]) > 3
 
 
-def test_every_enforced_feature_names_a_real_module():
+def test_every_enforced_feature_names_a_real_callable():
     """`enforced_by` points at code that exists, so the claim stays true when
-    a module is renamed or deleted."""
+    a module is renamed, moved, or deleted.
+
+    The attribute is resolved, not just the module. "consent is enforced in
+    memory.context_summary" is a claim about a FUNCTION, and a module-only check
+    would keep passing after that function was renamed or inlined away — which
+    is precisely when the registry starts lying about where the gate is.
+    """
     import importlib
     for key, meta in consent.FEATURES.items():
         for site in (meta.get("enforced_by") or "").split(","):
             site = site.strip()
             if not site:
                 continue
-            module = site.split(".")[0]
-            importlib.import_module(module)          # raises if it's gone
+            module_path, _, attr = site.rpartition(".")
+            module = importlib.import_module(module_path)   # raises if it's gone
+            assert hasattr(module, attr), (
+                f"consent {key!r} claims it is enforced by {site}, "
+                f"but {module_path} has no {attr!r}"
+            )
 
 
 # ── the runtime consequences ────────────────────────────────────────────────

@@ -14,7 +14,7 @@ So the endpoint counts and times. The pattern it reports is the thing a midwife
 asks for on the phone — how long, how far apart, for how long now — and having
 it written down is the entire contribution.
 """
-import care
+from app.domains import care
 
 
 def _log(client, headers, seconds, gap=None):

@@ -33,8 +33,8 @@ def test_generated_client_lists_are_up_to_date():
 def test_every_exported_phrase_actually_screens_red():
     """A phrase that doesn't reach RED on the server has no business being in a
     client's urgent list."""
-    import safety
+    from app.safety import gate
 
-    for phrase in safety.RED_PHRASES:
-        level, _ = safety._keyword_level(phrase)
-        assert level == safety.RED, f"{phrase!r} does not screen red on the server"
+    for phrase in gate.RED_PHRASES:
+        level, _ = gate._keyword_level(phrase)
+        assert level == gate.RED, f"{phrase!r} does not screen red on the server"

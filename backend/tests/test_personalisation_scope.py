@@ -22,8 +22,8 @@ If that ever changes, the tests below fail and the copy has to change with them.
 """
 import pytest
 
-import prompts
-import services
+from app import prompts
+from app.core import llm
 
 
 @pytest.fixture()
@@ -36,8 +36,8 @@ def prompt_capture(monkeypatch):
         seen["user"] = user
         return {"reply": "ok", "action_card": None, "disclaimer_needed": False}
 
-    monkeypatch.setattr(services, "configured", lambda: True)
-    monkeypatch.setattr(services, "gemini_json", fake_gemini_json)
+    monkeypatch.setattr(llm, "configured", lambda: True)
+    monkeypatch.setattr(llm, "gemini_json", fake_gemini_json)
     seen["all"] = lambda: seen.get("system", "") + "\n" + seen.get("user", "")
     return seen
 

@@ -17,8 +17,8 @@ scan is not a row.
 """
 import os
 
-import db
-import privacy
+from app.core import db
+from app import privacy
 
 
 def _tables(conn):
@@ -116,7 +116,7 @@ def test_deleting_an_account_leaves_nothing_in_any_table(client, user):
 def test_analytics_events_are_deleted_too(client, user):
     """Written directly: no route records events today, but the table exists and
     privacy._SOURCES claims it, so the claim is worth holding to."""
-    import analytics_store
+    from app import analytics_store
     uid, headers = user["id"], user["headers"]
     analytics_store.record_event(uid, "screen_view", {"screen": "today"})
     assert _rows_mentioning(db.connect(), uid).get("events") == 1

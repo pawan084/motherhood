@@ -14,8 +14,8 @@ import json
 
 import pytest
 
-import chat
-import services
+from app.domains import chat
+from app.core import llm
 
 
 def _events(client, headers, message, history=None):
@@ -77,8 +77,8 @@ def test_prose_streams_before_the_structured_tail(client, user, monkeypatch):
         yield '{"action_card": {"tool": "appointment", "title": "Prepare",'
         yield ' "detail": "Bring your notes"}, "disclaimer_needed": true}'
 
-    monkeypatch.setattr(services, "configured", lambda: True)
-    monkeypatch.setattr(services, "gemini_stream", fake_stream)
+    monkeypatch.setattr(llm, "configured", lambda: True)
+    monkeypatch.setattr(llm, "gemini_stream", fake_stream)
 
     events = _events(client, user["headers"], "what should I ask?")
     text = "".join(e["text"] for e in events if e["type"] == "chunk")
@@ -100,8 +100,8 @@ def test_a_broken_tail_costs_the_card_not_the_answer(client, user, monkeypatch):
         yield "\n---AIRA---\n"
         yield "{not json at all"
 
-    monkeypatch.setattr(services, "configured", lambda: True)
-    monkeypatch.setattr(services, "gemini_stream", fake_stream)
+    monkeypatch.setattr(llm, "configured", lambda: True)
+    monkeypatch.setattr(llm, "gemini_stream", fake_stream)
 
     events = _events(client, user["headers"], "I am tired")
     text = "".join(e["text"] for e in events if e["type"] == "chunk")
@@ -116,8 +116,8 @@ def test_a_model_that_dies_mid_sentence_still_closes_the_turn(client, user, monk
         yield "That can happen when"
         raise RuntimeError("connection reset")
 
-    monkeypatch.setattr(services, "configured", lambda: True)
-    monkeypatch.setattr(services, "gemini_stream", fake_stream)
+    monkeypatch.setattr(llm, "configured", lambda: True)
+    monkeypatch.setattr(llm, "gemini_stream", fake_stream)
 
     events = _events(client, user["headers"], "why am I dizzy sometimes?")
     assert events[-1]["type"] == "done"

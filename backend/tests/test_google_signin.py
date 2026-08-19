@@ -18,7 +18,7 @@ import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 
-import accounts
+from app.domains import accounts
 
 CLIENT_ID = "aira-test-client.apps.googleusercontent.com"
 GOOGLE_ISS = "https://accounts.google.com"

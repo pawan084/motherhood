@@ -1,4 +1,4 @@
-# Continuous integration for all four codebases.
+# Continuous integration for every codebase in the repo.
 #
 # This exists because backend/tests/test_client_contract.py opened with "This
 # runs in CI" while the repository had no CI at all. That file is the one that
@@ -8,6 +8,12 @@
 #
 # Every job here was run locally and seen green before being added. A red job
 # nobody trusts is worse than no job.
+#
+# The two Android jobs (unit tests, and an emulator run asserting a rendered
+# chat bubble) went with the native clients. The React Native app needs both
+# back: a unit lane, and a component-render lane. The render lane is not
+# optional politeness — `trust_label` passed every grep-level check in this repo
+# while no bubble drew it, and only a rendered-tree assertion caught that.
 name: CI
 
 on:
@@ -22,7 +28,7 @@ concurrency:
 
 jobs:
   backend:
-    name: backend (315 tests)
+    name: backend (322 tests)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,50 +46,6 @@ jobs:
           # keyword-only screening, no classifier. Tests that need an LLM
           # response construct it rather than calling out.
           GEMINI_API_KEY: ""
-
-  android-unit:
-    name: android unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
-      - name: assemble + unit tests
-        working-directory: apps/android
-        run: ./gradlew assembleDebug testDebugUnitTest --no-daemon
-
-  android-instrumented:
-    name: android instrumentation (rendered tree)
-    runs-on: ubuntu-latest
-    # ChatBubbleRenderTest asserts that disclaimer_needed, trust_label and
-    # action_card reach the SCREEN. The contract test cannot see that storey —
-    # trust_label reached the ViewModel and no bubble drew it, and no grep
-    # could tell. It needs a real emulator, so it is slower than the rest and
-    # worth every second.
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          disable-animations: true
-          working-directory: apps/android
-          script: ./gradlew connectedDebugAndroidTest --no-daemon
 
   web:
     name: web
@@ -106,8 +68,8 @@ jobs:
       - working-directory: apps/web
         run: npm ci
       # `npm test` builds first and then runs the node:test suite — including
-      # the check that the tutorial says the same thing on Android and on web,
-      # which is a cross-client claim no single codebase can verify alone.
+      # the check that the first-run tutorial's medical-boundary and privacy
+      # promises are still worded the way the product claims.
       - working-directory: apps/web
         run: npm test
 

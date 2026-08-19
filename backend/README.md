@@ -1,7 +1,7 @@
 # Aira Backend
 
 FastAPI service for Aira — the maternal-wellness companion. It owns the one thing
-the web and Android prototypes each half-implemented: **the safety gate**. Every
+the web and native prototypes each half-implemented: **the safety gate**. Every
 inbound message is screened before Aira replies; a red result routes the user to
 their care team instead of an AI answer.
 
@@ -21,7 +21,7 @@ cd backend
 python -m venv .venv && source .venv/bin/activate   # or .venv\Scripts\activate on Windows
 pip install -r requirements.txt
 cp .env.example .env        # optional; runs with zero config in dev
-uvicorn app:app --reload    # http://127.0.0.1:8000  (docs at /docs)
+uvicorn app.main:app --reload    # http://127.0.0.1:8000  (docs at /docs)
 ```
 
 Without `GEMINI_API_KEY` the server still runs: the safety gate falls back to its
@@ -31,26 +31,49 @@ to enable the classifier and real replies.
 ## Test
 
 ```bash
-pytest -q          # 39 tests, fully offline (no API key needed)
+pytest -q          # 322 tests, fully offline (no API key needed)
 ```
 
-## Architecture
+## Layout
+
+```
+backend/
+├── app/                   the package — `uvicorn app.main:app`
+│   ├── main.py            routers, CORS, middleware, fail-closed boot
+│   ├── config.py          every env read, once
+│   ├── core/              infrastructure, no domain knowledge
+│   ├── safety/            the gate: gate.py (decision) + flags.py (record)
+│   ├── domains/           one module per domain, each owning its own tables
+│   ├── admin.py  privacy.py  prompts.py  analytics_store.py  legal.py
+├── data/                  video catalogue
+├── tools/                 code generators (client offline keyword list)
+└── tests/                 322 tests, fully offline
+```
+
+Arranged by **domain, not by layer**. Each module in `domains/` owns its router,
+its tables, its SQL, and its `export_user`/`delete_user` pair, so a new table is
+covered where it is defined and `privacy.py` erases an account by walking modules
+rather than a hand-kept list of tables.
 
 | Module | Responsibility |
 |---|---|
-| `app.py` | Entry: routers, CORS, rate-limit middleware, fail-closed prod checks |
-| `security.py` | App-token gate, per-IP rate limit, upload cap, history sanitization |
-| `db.py` | Portable connection helper (SQLite ⟷ Postgres) |
-| `services.py` | Gemini access (`gemini_json`/`gemini_text` + health probe) |
-| `safety.py` | **The safety gate** — keyword floor ⊕ LLM classifier → green/amber/red, flags for review |
+| `main.py` | Entry: routers, CORS, rate-limit middleware, fail-closed prod checks |
+| `config.py` | Every environment variable + `insecure_production_config()` |
+| `core/security.py` | App-token gate, per-IP rate limit, upload cap, history sanitization |
+| `core/db.py` | Portable connection helper (SQLite ⟷ Postgres) |
+| `core/passwords.py` | PBKDF2 hashing, timing dummy, account-keyed login throttle |
+| `core/llm.py` | Gemini access (`gemini_json`/`gemini_stream` + health probe) |
+| `safety/gate.py` | **The decision** — keyword floor ⊕ LLM classifier → green/amber/red. No database |
+| `safety/flags.py` | **The record** — amber/red persistence, retention, admin review |
 | `prompts.py` | Admin-editable prompt registry (system + safety classifier), in-code defaults |
-| `accounts.py` | Device tokens, Google Sign-In, app sessions, `current_user` |
-| `care.py` | Onboarding, journey-aware Today/Journey/Care, tools, emergency profile |
-| `content.py` | Journey content with version + review metadata; published rows override the in-code seed |
-| `memory.py` | Reviewable care memory; gated by the `personalization` consent **and** per-item approval |
-| `consent.py` | Append-only consent ledger + the `require_consent` dependency |
-| `chat.py` | The safety-gated turn + `/safety/screen` + history |
-| `feedback.py` | Feedback + "report an AI answer" (clinical/safety) |
+| `domains/accounts.py` | Device tokens, Google Sign-In, app sessions, `current_user` |
+| `domains/care.py` | Onboarding, journey-aware Today/Journey/Care, tools, emergency profile |
+| `domains/content.py` | Journey content with version + review metadata; published rows override the in-code seed |
+| `domains/memory.py` | Reviewable care memory; gated by the `personalization` consent **and** per-item approval |
+| `domains/consent.py` | Append-only consent ledger + the `require_consent` dependency |
+| `domains/chat.py` | The safety-gated turn + `/safety/screen` + history |
+| `domains/feedback.py` | Feedback + "report an AI answer" (clinical/safety) |
+| `domains/videos.py` · `prefs.py` · `partner.py` | Video library, voice prefs, partner invites |
 | `privacy.py` | Data export + account deletion, fanned out over each module's `export_user`/`delete_user` |
 | `analytics_store.py` | Events + dashboard rollups |
 | `legal.py` | Public privacy/terms/faq pages |

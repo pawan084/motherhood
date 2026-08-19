@@ -9,8 +9,8 @@ As with Google, the rejections carry the weight: a duplicate email, a weak
 password, an unknown address and a wrong password all have to behave, and the
 last two must be indistinguishable from outside.
 """
-import accounts
-import passwords
+from app.domains import accounts
+from app.core import passwords
 
 
 def _register(client):

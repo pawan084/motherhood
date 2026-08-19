@@ -1,29 +1,30 @@
-// The two clients must introduce Aira with the same words.
+// The first-run tutorial makes three promises. This pins the two that are
+// claims about what Aira IS, rather than copy.
 //
 // The third card is the one that matters: "Aira doesn't diagnose, prescribe, or
-// replace your care team." If that sentence is softened on one platform and not
-// the other, the app makes two different promises about what it is, and the
-// weaker one is the one someone will rely on. The first two cards are privacy
-// claims, which is the same problem one step down.
+// replace your care team." The second is a privacy claim, which is the same
+// problem one step down: "your health data is never used for advertising" is
+// either true of the product or it is a lie printed on the first screen.
 //
-// Nothing generates these — the Kotlin is a Compose list and the TypeScript is
-// a React one — so this compares the strings directly and fails naming the card
-// that drifted. Cheap insurance for text that is only ever read by a person on
-// their first run, where nobody would notice it had changed on one side.
+// This used to compare web against the Android client's Compose list, so a
+// sentence softened on one platform and not the other failed the build. The
+// native clients are gone; the promises are not. So the sentences are pinned
+// HERE, verbatim, and the check survives having one client — or three.
+//
+// When the React Native client lands, the honest shape is to export these three
+// cards from a single shared module both clients import, and reduce this file to
+// asserting the module's content. Two hand-kept copies is what this test was
+// written to police, and it can only police copies it can see.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 
-const KT = new URL(
-  "../../android/app/src/main/java/com/aira/companion/ui/screens/TutorialScreen.kt",
-  import.meta.url,
-);
 const TSX = new URL("../app/ui/tutorial.tsx", import.meta.url);
 
 const STR = String.raw`"(?:[^"\\]|\\.)*"`;
 
-/** Kotlin and TS both write long copy as adjacent quoted strings joined by `+`. */
+/** Long copy is written as adjacent quoted strings joined by `+`. */
 function joined(block, field) {
   const m = new RegExp(`${field}\\s*[:=]\\s*\\n?\\s*((?:${STR}\\s*\\+?\\s*)+)`).exec(block);
   if (!m) return null;
@@ -32,40 +33,42 @@ function joined(block, field) {
     .join("");
 }
 
-function androidCards() {
-  const src = readFileSync(KT, "utf8");
-  return [...src.matchAll(/TutorialCard\(([\s\S]*?)\n {4}\),/g)].map((m) => m[1]);
-}
-
 function webCards() {
   const src = readFileSync(TSX, "utf8");
   return [...src.matchAll(/\{\s*\n\s*eyebrow:([\s\S]*?)\n {2}\},/g)].map((m) => m[1]);
 }
 
-test("both clients define the same three cards", () => {
-  // Asserted before anything is compared: if a refactor breaks either parser it
+test("the tutorial still defines three cards", () => {
+  // Asserted before anything is compared: if a refactor breaks the parser it
   // finds zero cards, and a loop over zero cards passes every comparison below
   // while checking nothing at all.
-  assert.equal(androidCards().length, 3, "could not parse the Android cards");
   assert.equal(webCards().length, 3, "could not parse the web cards");
 });
 
-test("the tutorial says the same thing on Android and on the web", () => {
-  const kt = androidCards();
-  const web = webCards();
+// Exact sentences, not keywords. A keyword check passes on "Aira doesn't
+// usually diagnose", which is the specific way this copy would decay.
+const PROMISES = {
+  2: "Aira remembers only what helps, you can read or delete any of it, and you " +
+     "can export everything at any time. Your health data is never used for " +
+     "advertising — that one isn't a setting you have to find.",
+  3: "Aira doesn't diagnose, prescribe, or replace your care team. Every message " +
+     "is screened first, and anything urgent goes straight to your care team " +
+     "rather than to another AI answer.",
+};
 
-  for (let i = 0; i < 3; i++) {
-    for (const field of ["title", "body"]) {
-      const a = joined(kt[i], field);
-      const w = joined(web[i], field);
-      assert.ok(a, `card ${i + 1}: no ${field} found in TutorialScreen.kt`);
-      assert.ok(w, `card ${i + 1}: no ${field} found in tutorial.tsx`);
-      assert.equal(
-        w, a,
-        `card ${i + 1} ${field} differs between the clients.\n` +
-        `  android: ${a}\n      web: ${w}\n` +
-        `Change both, or neither.`,
-      );
-    }
+test("the tutorial's promises are not softened", () => {
+  const cards = webCards();
+
+  for (const [n, expected] of Object.entries(PROMISES)) {
+    const body = joined(cards[Number(n) - 1], "body");
+    assert.ok(body, `card ${n}: no body found in tutorial.tsx`);
+    assert.equal(
+      body, expected,
+      `card ${n}'s promise changed.\n` +
+      `  expected: ${expected}\n` +
+      `    actual: ${body}\n` +
+      "This is a claim about what Aira is, not copy. If the product changed, " +
+      "change this test deliberately; if it didn't, put the sentence back.",
+    );
   }
 });

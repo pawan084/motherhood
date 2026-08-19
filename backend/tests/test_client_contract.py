@@ -4,27 +4,26 @@ Five bugs in two review passes had one shape: the backend computed something,
 put it on the wire, and a client dropped it between the network layer and the
 screen.
 
-    disclaimer_needed   parsed by Android, read by nothing — an amber turn was
-                        presented exactly like an ordinary one
-    action_card         parsed by Android, read by nothing — "you could log this"
-                        arrived as a sentence instead of a button
-    trust_label         parsed by Android, read by nothing — an answer carrying a
-                        caution looked like one that did not
+    disclaimer_needed   parsed by the native client, read by nothing — an amber
+                        turn was presented exactly like an ordinary one
+    action_card         parsed, read by nothing — "you could log this" arrived as
+                        a sentence instead of a button
+    trust_label         parsed, read by nothing — an answer carrying a caution
+                        looked like one that did not
     playable            parsed by both, read by neither — web drew a play glyph
-                        on unfilmed topics, Android drew none and would have kept
-                        drawing none once they were filmed
-    media_url           added to Android and to the payload, never given to web,
-                        which then said "Ready to watch" with nothing to open
+                        on unfilmed topics, the native app drew none and would
+                        have kept drawing none once they were filmed
+    media_url           added to the native client and to the payload, never
+                        given to web, which then said "Ready to watch" with
+                        nothing to open
 
 None of these were caught by review, because each was invisible in the file it
 was missing from. They were caught by driving a phone and a browser, one screen
 at a time, which does not scale and cannot run in CI.
 
-This runs in CI. Parsing a field is not consuming it, so proving
-`disclaimerNeeded` appears in AiraApi.kt would have passed while the bug was
-live; what is checked is that the name appears OUTSIDE the networking layer,
-with bare property declarations stripped so carrying a value into a data class
-and forgetting it does not count either.
+This runs in CI. Parsing a field is not consuming it, so proving the name
+appears in the networking module would have passed while the bug was live; what
+is checked is that the name appears OUTSIDE the networking layer.
 
 The field list comes from real responses rather than a hand-maintained list, so a
 new field is covered the day it ships and nobody has to remember this file.
@@ -36,19 +35,21 @@ reaches a screen.
 
 Measured, not assumed: of the five bugs above, reintroducing `disclaimer_needed`
 and `action_card` makes this fail, and reintroducing `trust_label` does not.
-`trustLabel` was assigned in AiraViewModel while no bubble rendered it — it left
-the network layer and died one storey later, where this check cannot see.
+`trust_label` was assigned in the view model while no bubble rendered it — it
+left the network layer and died one storey later, where this check cannot see.
 
 So this closes the hole the bugs actually came through and leaves a smaller one
-behind it. Catching the rest means asserting against a rendered tree, which is
-an instrumentation test, not a grep.
+behind it. Catching the rest means asserting against a RENDERED TREE, which is
+a component test, not a grep.
 
-That test now exists: apps/android/app/src/androidTest/.../ChatBubbleRenderTest.kt
-covers the three fields that were real bugs, and was confirmed to fail when
-they are reintroduced. The two files answer different questions and neither
-replaces the other — this one asks whether a field escapes the network layer,
-that one asks whether it reaches a person's eyes. `trust_label` passed the
-first and failed the second, which is the whole reason both exist.
+The deleted Android app had one (ChatBubbleRenderTest), covering the three
+fields that were real bugs, and it was confirmed to fail when they were
+reintroduced. The RN client needs its equivalent — a render test over the chat
+bubble asserting trust_label, disclaimer_needed and action_card reach the
+screen. The two kinds of test answer different questions and neither replaces
+the other: this one asks whether a field escapes the network layer, that one
+asks whether it reaches a person's eyes. `trust_label` passed the first and
+failed the second, which is the whole reason both exist.
 
 ── The field list is only as good as the fixture ──
 
@@ -85,10 +86,22 @@ import pytest
 
 APPS = pathlib.Path(__file__).resolve().parents[2] / "apps"
 
-ANDROID_ROOT = APPS / "android/app/src/main/java/com/aira/companion"
-ANDROID_API = ANDROID_ROOT / "data/AiraApi.kt"
 WEB_ROOT = APPS / "web/app"
 WEB_API = WEB_ROOT / "aira-api.ts"
+
+# ── the second client ────────────────────────────────────────────────────────
+#
+# Android and iOS were deleted; a React Native client replaces both. Its lane
+# goes here, and the honest reason to add it on day one is in this file's own
+# history: EVERY defect listed in the docstring above was a field the SECOND
+# client dropped. A single-client version of this file cannot catch the class of
+# bug it was written for — it can only prove web is consistent with itself.
+#
+# What the RN lane needs, and nothing more:
+#   RN_ROOT / RN_API paths, a `rn_rest` entry in `sources`, an EXEMPT["rn"] and
+#   UNUSED_ENDPOINTS["rn"], and a test_rn_consumes_every_field mirroring the web
+#   one. RN is TypeScript, so `_web_consumes` is the right checker — the
+#   camelCase variant that Kotlin needed is gone with Kotlin.
 
 
 def _read(path: pathlib.Path) -> str:
@@ -99,60 +112,15 @@ def _joined(paths) -> str:
     return "\n".join(_read(p) for p in paths)
 
 
-# `val name: Type` / `var name: Type,` with no assignment — a declaration.
-_KOTLIN_DECL = re.compile(r"^\s*(?:val|var)\s+\w+\s*:\s*[^=]+,?\s*$")
-
-
-def _strip_declarations(src: str) -> str:
-    """Drop Kotlin property declarations, keeping everything that reads them."""
-    return "\n".join(line for line in src.splitlines() if not _KOTLIN_DECL.match(line))
-
-
 @pytest.fixture(scope="module")
 def sources():
-    if not ANDROID_API.exists() or not WEB_API.exists():
+    if not WEB_API.exists():
         pytest.skip("client sources not present in this checkout")
-    android_all = list(ANDROID_ROOT.rglob("*.kt"))
     web_ui = list((WEB_ROOT / "ui").rglob("*.ts*"))
     return {
-        "android_api": _read(ANDROID_API),
-        # Everything except the networking layer, with bare property
-        # declarations stripped.
-        #
-        # Without the stripping this check has a hole big enough to drive the
-        # original bugs through: `val startWeek: Int?` in AiraModels.kt is a
-        # declaration, not a use, and counting it would pass a field that is
-        # carried all the way to a data class and then read by nobody — which
-        # is a description of every dropped field in the docstring above.
-        "android_rest": _strip_declarations(
-            _joined([p for p in android_all if p != ANDROID_API])),
         "web_api": _read(WEB_API),
         "web_rest": _joined(web_ui),
     }
-
-
-def _camel(field: str) -> str:
-    head, *tail = field.split("_")
-    return head + "".join(w.capitalize() for w in tail)
-
-
-def _android_consumes(field: str, src) -> bool:
-    """True when the field reaches Kotlin outside AiraApi.kt, by its own name.
-
-    Only the camelCase of the JSON key counts, which is the convention this
-    client follows without exception: `disclaimer_needed` -> `disclaimerNeeded`,
-    `action_card` -> `actionCard`, `next_action` -> `nextAction`.
-
-    An earlier version also accepted whatever local the parser assigned the key
-    to. That was strictly worse, and provably so: `action_card` is read into a
-    local named `card`, and `card` appears in a hundred unrelated places, so the
-    check passed while the field was being dropped. Verified by reintroducing
-    the original bug — see the simulation test below, which failed to fail.
-
-    A heuristic that can be satisfied by an unrelated identifier is not a check;
-    it is a decoration that reports success.
-    """
-    return re.search(r"\b" + re.escape(_camel(field)) + r"\b", src["android_rest"]) is not None
 
 
 def _web_consumes(field: str, src) -> bool:
@@ -178,35 +146,6 @@ def _web_consumes(field: str, src) -> bool:
 # An entry here is a decision, not a shrug: it says somebody looked and decided
 # this client has no use for this value. Anything not listed must be consumed.
 EXEMPT = {
-    "android": {
-        "since_previous_seconds": "the gap before ONE contraction. Android sends it "
-                                  "and reads back the summary instead — no screen "
-                                  "lists contractions individually, and typical_gap "
-                                  "is the number a midwife asks for",
-        "last_taken": "when a dose was last taken; no screen shows a 'last taken at' "
-                      "line, and takenToday answers the question the list actually asks",
-        "content_format": "catalogue metadata (explainer / demonstration) that no screen distinguishes",
-        "specialties": "which clinical specialties must review a topic — admin console material, not a user's",
-        "required": "whether a topic needs clinical review; the same admin-only moderation detail",
-        "degraded_llm": "duplicates safety.degraded, which both clients DO read to show the screening pill",
-        "clinical_review": "Android reads its nested `status` as reviewStatus, never the object itself",
-        # Consumed, but under names the camelCase rule cannot derive: the nested
-        # care_plan object is flattened into planTotal / planOnTrack at the parse
-        # site. Listed here so a reader does not conclude it is unused — the plan
-        # sheet reads both and renders "N of M on track".
-        "care_plan": "flattened at parse into planTotal/planOnTrack, both read by the care-plan sheet",
-        "total": "part of care_plan; read as planTotal",
-        "on_track": "part of care_plan; read as planOnTrack",
-        "slug": "a human-readable alias for id; every lookup here goes through id",
-        "status": "production state, but `playable` is the question a screen asks and it subsumes this",
-        "start_week": "the server picks the week's video; showing raw band bounds would be noise",
-        "end_week": "the server picks the week's video; showing raw band bounds would be noise",
-        # Both of these are things web does and Android does not. Neither is a
-        # dropped field in the dangerous sense — nothing is claimed and then not
-        # delivered — but they are recorded here rather than waved past.
-        "languages": "web lists a topic's languages in its detail sheet; Android has no detail sheet yet",
-        "in_app_actions": "web offers 'Ask Aira about this' from a video; Android does not surface it",
-    },
     "web": {
         "last_taken": "same as Android — nothing renders a 'last taken at' line",
         "taken_today": "web renders medicines_due, which the SERVER has already "
@@ -335,7 +274,6 @@ def _payloads(client, user):
 # where a client that reads an endpoint and drops a field is the bug this file
 # was written for. Recording it makes a deliberate asymmetry stay deliberate.
 UNUSED_ENDPOINTS = {
-    "android": {},
     "web": {
         "/v1/care/movements":
             "counting movements is a lying-still-with-a-phone task; a desktop "
@@ -346,23 +284,6 @@ UNUSED_ENDPOINTS = {
             "not at a laptop",
     },
 }
-
-
-def test_android_consumes_every_field(client, user, sources):
-    missing = []
-    for path, payload in _payloads(client, user).items():
-        if path in UNUSED_ENDPOINTS["android"]:
-            continue
-        for field in sorted(_fields_of(payload)):
-            if field in EXEMPT["android"]:
-                continue
-            if not _android_consumes(field, sources):
-                missing.append(f"{path}: {field}")
-    assert not missing, (
-        "Android receives these and never reads them outside AiraApi.kt — "
-        "either use them, or add them to EXEMPT['android'] with a reason:\n  "
-        + "\n  ".join(missing)
-    )
 
 
 def test_web_consumes_every_field(client, user, sources):
@@ -385,52 +306,20 @@ def test_web_consumes_every_field(client, user, sources):
 def test_the_check_would_have_caught_the_bugs_it_was_written_for():
     """A guard against the guard.
 
-    If `_android_consumes` ever returns True for something only mentioned in the
+    If `_web_consumes` ever returns True for something only mentioned in the
     networking layer, this test stops protecting anything — and it would do so
-    silently, which is the failure mode of every check nobody verifies. The five
-    real fields are asserted as consumed; a made-up one must not be.
+    silently, which is the failure mode of every check nobody verifies. The real
+    field is asserted as consumed only once something reads it.
     """
     fake = {
-        "android_api": 'disclaimerNeeded = o.optBoolean("disclaimer_needed", false),',
-        "android_rest": "// nothing reads it",
         "web_api": "disclaimer_needed?: boolean;",
         "web_rest": "// nothing reads it",
     }
 
-    assert _android_consumes("disclaimer_needed", fake) is False
     assert _web_consumes("disclaimer_needed", fake) is False
 
-    fake["android_rest"] = "val x = message.disclaimerNeeded"
     fake["web_rest"] = "{m.disclaimer_needed && <small/>}"
-    assert _android_consumes("disclaimer_needed", fake) is True
     assert _web_consumes("disclaimer_needed", fake) is True
-
-
-def test_a_declaration_alone_is_not_consumption():
-    """Carrying a field into a data class and reading it nowhere is the bug, not
-    the fix — so the declaration must not satisfy the check."""
-    declared_only = {
-        "android_api": 'playable = o.optBoolean("playable", false),',
-        "android_rest": _strip_declarations("    val playable: Boolean,\n    val saved: Boolean,"),
-    }
-
-    assert _android_consumes("playable", declared_only) is False
-
-
-def test_an_unrelated_identifier_does_not_satisfy_the_check():
-    """The regression that made this test useless once.
-
-    `action_card` is parsed into a local called `card`, and an earlier version
-    accepted that local as the identifier to search for. `card` appears in a
-    hundred unrelated places, so the check passed while the field was dropped.
-    Only the camelCase of the key counts now.
-    """
-    unrelated = {
-        "android_api": 'val card = o.optJSONObject("action_card")',
-        "android_rest": "val card = somethingCompletelyElse()",
-    }
-
-    assert _android_consumes("action_card", unrelated) is False
 
 
 def test_a_type_declaration_does_not_satisfy_the_web_check():
@@ -485,14 +374,6 @@ def test_a_skipped_endpoint_really_is_skipped():
 # elsewhere in both clients, so a name search cannot distinguish "the model has
 # this field" from "the word appears somewhere".
 
-def _kotlin_user_fields() -> set[str]:
-    """Property names declared on Android's UserProfile data class."""
-    src = ANDROID_API.read_text(encoding="utf-8")
-    body = re.search(r"data class UserProfile\((.*?)\n\)", src, re.S)
-    assert body, "UserProfile data class not found — did it move or get renamed?"
-    return set(re.findall(r"^\s*val\s+(\w+)\s*:", body.group(1), re.M))
-
-
 def _typescript_user_fields() -> set[str]:
     """Keys declared on web's User type."""
     src = WEB_API.read_text(encoding="utf-8")
@@ -501,52 +382,34 @@ def _typescript_user_fields() -> set[str]:
     return set(re.findall(r"(\w+)\s*[?]?\s*:", body.group(1)))
 
 
-def test_the_user_object_is_modelled_by_both_clients():
-    """Every key public_user() sends must exist on both client models.
+def test_the_user_object_is_modelled_by_the_client():
+    """Every key public_user() sends must exist on the client's user model.
 
-    The bug: /account/me returns `kind`, Android's UserProfile did not have it,
-    and `signedIn` was therefore set only by the act of signing in — never
-    restored. One restart later the You screen told an account holder "You're
-    using Aira without an account" and removed the Sign out button. The account
-    was fine; the app had simply thrown away the only durable answer.
+    The bug this pins: /account/me returns `kind`, the client model did not have
+    it, and signed-in state was therefore set only by the act of signing in —
+    never restored. One restart later the You screen told an account holder
+    "You're using Aira without an account" and removed the Sign out button. The
+    account was fine; the app had simply thrown away the only durable answer.
 
     `email` went the same way, which is why the screen could not name the
     account even when it knew there was one.
+
+    Two rules the RN client inherits, both learned the hard way:
+      - hold `kind`, and
+      - derive signed-in state FROM it, rather than asserting it at sign-in.
+    The second half is what actually made the screen lie, and no field check can
+    see it — pin it against the RN source when that source exists.
     """
-    import accounts
+    from app.domains import accounts
 
     sent = set(accounts.public_user({
         "id": "usr_x", "kind": "account", "email": "a@b.com", "name": "Ava",
         "journey": "pregnant", "language": "English", "onboarded": 1,
     }))
 
-    assert not sent - _kotlin_user_fields(), (
-        "Android's UserProfile is missing fields the server sends: "
-        f"{sorted(sent - _kotlin_user_fields())}"
-    )
     assert not sent - _typescript_user_fields(), (
         "web's User type is missing fields the server sends: "
         f"{sorted(sent - _typescript_user_fields())}"
-    )
-
-
-def test_signed_in_state_is_derived_from_kind_not_from_having_just_signed_in():
-    """The other half of the same bug, and the half a field check cannot see.
-
-    Holding `kind` is necessary but not sufficient: what made the screen lie was
-    computing signed-in state from the auth call rather than from the payload.
-    A literal `signedIn = true` is that mistake written down, so it is refused
-    here — the value has to come from what the server said.
-    """
-    vm = (ANDROID_ROOT / "ui/AiraViewModel.kt").read_text(encoding="utf-8")
-
-    assert "signedIn = true" not in vm, (
-        "signedIn is being asserted rather than derived. It must come from "
-        'user.kind == "account", or a relaunch will disagree with the sign-in.'
-    )
-    assert vm.count('signedIn = user.kind == "account"') >= 2, (
-        "both the authenticate() and restoreSession() paths must set signedIn "
-        "from the payload, or the two disagree after a restart"
     )
 
 
@@ -610,83 +473,45 @@ def test_the_fixture_is_not_thin(client, user):
     )
 
 
-def test_restored_history_maps_the_safety_level_to_a_label():
-    """A field can arrive intact and still be wrong by the time it is drawn.
-
-    /v1/chat/history carries `safety_level` — "green" / "amber" / "red" — while
-    ChatBubble speaks "wellness" / "watchful". The restore assigned one straight
-    to the other, and the bubble reads anything that is not "watchful" as
-    wellness. So an amber turn came back from history captioned "Wellness
-    guidance", and so did a red one: not a missing chip, an incorrect
-    reassurance on precisely the turns that were flagged.
-
-    Nothing else could catch it. This file's field check asks whether
-    `safety_level` escapes the network layer, and it did. ChatBubbleRenderTest
-    asks whether ChatBubble renders a trustLabel correctly, and it does. The
-    defect lived between them, in a caller translating two vocabularies without
-    either end knowing there were two — so the caller is what is asserted here.
-    """
-    vm = (ANDROID_ROOT / "ui/AiraViewModel.kt").read_text(encoding="utf-8")
-
-    assert "trustLabel = t.safetyLevel" not in vm, (
-        'the raw safety level is being used as a trust label again. ChatBubble '
-        'draws anything that is not "watchful" as "Wellness guidance", so this '
-        "mislabels amber and red turns as reassuring. Use trustLabelFor()."
-    )
-    assert "trustLabelFor(t.safetyLevel)" in vm, (
-        "history restore must map the level through trustLabelFor()"
-    )
-
-
 # ── shared vocabularies ──────────────────────────────────────────────────────
 #
 # The trust_label defect was not a dropped field. `safety_level` arrived intact
 # and was handed to a component that speaks a different set of words, and both
 # ends were individually correct. That failure mode is invisible to every check
 # above it, so the vocabularies themselves are pinned here.
+#
+# Worth knowing before writing the RN chat screen: /v1/chat/history carries
+# `safety_level` ("green"/"amber"/"red") while the chip speaks "wellness" /
+# "watchful". Assigning one straight to the other is a real bug this repo
+# shipped once — a component that draws anything not "watchful" as wellness
+# turns a restored AMBER or RED turn into a reassuring caption, on exactly the
+# turns that were flagged. Convert through one named mapper and pin it here.
 
-def test_every_journey_the_server_accepts_is_known_to_both_clients():
+def test_every_journey_the_server_accepts_is_known_to_the_client():
     """A journey the client cannot name falls back to whatever was already
     selected, silently — so somebody who chose "After a loss" would keep being
     shown the previous journey's content, which for this particular value is
     the cruellest possible failure."""
-    import accounts
-
-    kotlin = (ANDROID_ROOT / "model/AiraModels.kt").read_text(encoding="utf-8")
-    enum_body = re.search(r"enum class JourneyType\b.*?\n\}", kotlin, re.S)
-    assert enum_body, "JourneyType not found — renamed or moved?"
-    android = {m.lower() for m in re.findall(r"^\s{4}(\w+)\(", enum_body.group(0), re.M)}
+    from app.domains import accounts
 
     ts = WEB_API.read_text(encoding="utf-8")
     web_union = re.search(r"export type Journey\s*=\s*([^;]+);", ts)
     assert web_union, "web Journey union not found — renamed or moved?"
     web = set(re.findall(r'"(\w+)"', web_union.group(1)))
 
-    assert accounts.VALID_JOURNEYS <= android, (
-        f"Android cannot name: {sorted(accounts.VALID_JOURNEYS - android)}")
     assert accounts.VALID_JOURNEYS <= web, (
         f"web cannot name: {sorted(accounts.VALID_JOURNEYS - web)}")
 
 
-def test_both_clients_map_a_stored_safety_level_the_same_way():
+def test_the_client_maps_a_stored_safety_level_the_same_way_the_server_does():
     """History stores the LEVEL; the chip is a LABEL. Each client converts, and
     a client that converts differently shows a different chip for the same turn.
-
-    Android got this wrong by not converting at all — an amber turn came back
-    from history captioned "Wellness guidance". Web had it right. Pinning both
-    against chat._TRUST_LABEL keeps the three in step.
+    Pinning against chat._TRUST_LABEL keeps them in step.
     """
-    import chat
+    from app.domains import chat
 
     assert chat._TRUST_LABEL == {"green": "wellness", "amber": "watchful"}, (
-        "the server's mapping changed; both clients below need to change with it")
-
-    kotlin = (ANDROID_ROOT / "model/AiraModels.kt").read_text(encoding="utf-8")
-    mapper = re.search(r"fun trustLabelFor\(.*?\n\}", kotlin, re.S)
-    assert mapper, "trustLabelFor not found — the mapping must live in one place"
-    for level, label in chat._TRUST_LABEL.items():
-        assert re.search(rf'"{level}"\s*->\s*"{label}"', mapper.group(0)), (
-            f"Android does not map {level!r} to {label!r}")
+        "the server's mapping changed; every client below needs to change with it")
 
     # Web maps inline in the history loader rather than in a named function.
     web_chat = (WEB_ROOT / "ui/chat.tsx").read_text(encoding="utf-8")

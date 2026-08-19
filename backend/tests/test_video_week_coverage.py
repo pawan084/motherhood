@@ -12,7 +12,7 @@ that adding a topic for one of them fails here and makes somebody delete the
 line — rather than the gap quietly closing and nobody noticing the copy is now
 unreachable.
 """
-import videos
+from app.domains import videos
 
 
 def _covered_weeks() -> set[int]:

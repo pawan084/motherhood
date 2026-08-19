@@ -2,7 +2,7 @@
   "name": "aira",
   "version": "0.1.0",
   "private": true,
-  "description": "Aira — AI maternal-wellness companion. Monorepo: web + admin + android + backend.",
+  "description": "Aira — AI maternal-wellness companion. Monorepo: web + admin + backend.",
   "comment": [
     "Deliberately NOT an npm workspace, and this package has no dependencies of",
     "its own — it is a task runner.",

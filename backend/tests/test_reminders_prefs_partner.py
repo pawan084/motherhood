@@ -306,8 +306,8 @@ def test_export_includes_prefs_and_partner(client, user):
 
 
 def test_delete_removes_prefs_and_revokes_issued_invites(client):
-    import partner as partner_mod
-    import prefs as prefs_mod
+    from app.domains import partner as partner_mod
+    from app.domains import prefs as prefs_mod
 
     owner_reg = client.post("/device/register").json()
     owner = {"Authorization": f"Bearer {owner_reg['token']}"}

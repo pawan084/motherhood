@@ -14,7 +14,7 @@ field means first.
 Three conditions now, all necessary: produced, cleared by a clinician, and
 actually somewhere.
 """
-import videos
+from app.domains import videos
 
 
 def _topic(**over):

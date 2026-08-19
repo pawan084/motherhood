@@ -5,7 +5,10 @@ Gemini key — which is exactly the fail-safe behaviour we want to pin down.
 import os
 import tempfile
 
-# Must be set BEFORE app/db import (they read these at import time).
+# Must be set before the first `aira` import: `aira.config` snapshots the
+# environment once, at import, and every module reads its settings from there.
+# One module to be ahead of now, rather than ten — but still ahead of it, so
+# nothing here may move below the imports.
 _TMP = tempfile.mkdtemp(prefix="aira-test-")
 os.environ["SQLITE_PATH"] = os.path.join(_TMP, "aira-test.db")
 os.environ.pop("DATABASE_URL", None)
@@ -31,8 +34,8 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(scope="session")
 def client():
-    import app
-    with TestClient(app.app) as c:   # context manager runs startup (init tables)
+    from app import main
+    with TestClient(main.app) as c:   # context manager runs startup (init tables)
         yield c
 
 

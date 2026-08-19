@@ -1,8 +1,0 @@
-# The Xcode project is generated from project.yml by XcodeGen — never committed.
-Aira.xcodeproj/
-*.xcworkspace/
-xcuserdata/
-DerivedData/
-build/
-.DS_Store
-*.xcuserstate
