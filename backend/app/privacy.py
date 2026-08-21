@@ -38,10 +38,13 @@ from app.domains import chat
 from app.domains import consent
 from app.domains import feedback
 from app.domains import memory
+from app.domains import notifications
 from app.domains import partner
 from app.domains import prefs
 from app import safety
 from app.core import security
+from app.domains import visit
+from app.domains import voice
 from app.domains import videos
 from app.domains.accounts import current_user
 
@@ -54,12 +57,15 @@ _SOURCES = (
     ("care", care),
     ("chat", chat),
     ("memory", memory),
+    ("notifications", notifications),
     ("consent", consent),
     ("feedback", feedback),
     ("prefs", prefs),
     ("partner", partner),
     ("safety", safety),
     ("videos", videos),
+    ("visit", visit),
+    ("voice", voice),
     ("events", analytics_store),
     ("account", accounts),
 )

@@ -10,6 +10,7 @@ import datetime
 import json
 import logging
 import os
+import secrets
 import shutil
 import time
 import uuid
@@ -58,6 +59,15 @@ def init() -> None:
               "ON care_items(user_id, client_id) WHERE client_id IS NOT NULL")
     c.execute("CREATE TABLE IF NOT EXISTS emergency_profiles ("
               " user_id TEXT PRIMARY KEY, data TEXT, updated REAL)")
+    c.execute("CREATE TABLE IF NOT EXISTS document_shares ("
+              " id TEXT PRIMARY KEY, user_id TEXT NOT NULL, item_id TEXT NOT NULL,"
+              " token TEXT NOT NULL UNIQUE, recipient TEXT DEFAULT '', created REAL NOT NULL,"
+              " expires REAL NOT NULL, revoked REAL)")
+    c.execute("CREATE INDEX IF NOT EXISTS document_shares_user "
+              "ON document_shares(user_id, revoked, expires)")
+    c.execute("CREATE TABLE IF NOT EXISTS care_reminder_state ("
+              " user_id TEXT PRIMARY KEY, pause_until REAL, snooze_until REAL,"
+              " reason TEXT DEFAULT '', updated REAL)")
     c.commit()
     _conn = c
 
@@ -212,13 +222,14 @@ def export_user(uid: str) -> dict:
     row = _conn.execute("SELECT data FROM emergency_profiles WHERE user_id=?", (uid,)).fetchone()
     return {"context": _context(uid),
             "items": {kind: _list_items(uid, kind) for kind in sorted(_ITEM_KINDS)},
+            "reminder_state": _reminder_state(uid),
             "emergency_profile": json.loads(row[0]) if row else {}}
 
 
 def delete_user(uid: str) -> int:
     init()
     n = 0
-    for table in ("care_items", "care_context", "emergency_profiles"):
+    for table in ("care_items", "care_context", "emergency_profiles", "care_reminder_state"):
         cur = _conn.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
         n += getattr(cur, "rowcount", 0) or 0
     _conn.commit()
@@ -390,7 +401,30 @@ def care(uid: str = Depends(current_user)):
         ],
         "documents_count": len(docs),
         "reminders": _list_items(uid, "reminder"),
+        "reminder_state": _reminder_state(uid),
         "care_plan": _care_plan(uid),
+    }
+
+
+def _reminder_state(uid: str) -> dict:
+    init()
+    row = _conn.execute(
+        "SELECT pause_until, snooze_until, reason, updated FROM care_reminder_state WHERE user_id=?",
+        (uid,)).fetchone()
+    now = time.time()
+    pause_until = float(row[0]) if row and row[0] is not None else None
+    snooze_until = float(row[1]) if row and row[1] is not None else None
+    if pause_until is not None and pause_until <= now:
+        pause_until = None
+    if snooze_until is not None and snooze_until <= now:
+        snooze_until = None
+    return {
+        "paused": pause_until is not None,
+        "pause_until": pause_until,
+        "snoozed_today": snooze_until is not None,
+        "snooze_until": snooze_until,
+        "reason": row[2] if row else "",
+        "updated": row[3] if row else None,
     }
 
 
@@ -494,6 +528,73 @@ def mark_reminder_done(item_id: str, body: ReminderDoneIn | None = None,
     if getattr(cur, "rowcount", 0) == 0:
         raise HTTPException(status_code=404, detail="not found")
     return {"ok": True, "done": done}
+
+
+class PauseRemindersIn(BaseModel):
+    preset: str | None = None  # tomorrow_morning | 3_days | 1_week
+    until: float | None = None
+    reason: str | None = None
+
+
+def _tomorrow_morning(now: float | None = None) -> float:
+    dt = datetime.datetime.fromtimestamp(now or time.time())
+    tomorrow = (dt + datetime.timedelta(days=1)).date()
+    return datetime.datetime.combine(tomorrow, datetime.time(hour=8)).timestamp()
+
+
+def _pause_until(body: PauseRemindersIn) -> float:
+    now = time.time()
+    preset = (body.preset or "tomorrow_morning").strip().lower()
+    if body.until is not None:
+        if body.until <= now:
+            raise HTTPException(status_code=400, detail="pause date must be in the future")
+        return body.until
+    if preset == "tomorrow_morning":
+        return _tomorrow_morning(now)
+    if preset == "3_days":
+        return now + 3 * 86400
+    if preset == "1_week":
+        return now + 7 * 86400
+    raise HTTPException(status_code=400, detail="unknown pause preset")
+
+
+@router.post("/care/reminders/pause")
+def pause_reminders(body: PauseRemindersIn, uid: str = Depends(current_user)):
+    until = _pause_until(body)
+    init()
+    _conn.execute("INSERT INTO care_reminder_state "
+                  "(user_id, pause_until, snooze_until, reason, updated) VALUES (?,?,?,?,?) "
+                  "ON CONFLICT(user_id) DO UPDATE SET pause_until=excluded.pause_until, "
+                  "reason=excluded.reason, updated=excluded.updated",
+                  (uid, until, None, (body.reason or "")[:160], time.time()))
+    _conn.commit()
+    return _reminder_state(uid)
+
+
+@router.post("/care/reminders/resume")
+def resume_reminders(uid: str = Depends(current_user)):
+    init()
+    _conn.execute("INSERT INTO care_reminder_state "
+                  "(user_id, pause_until, snooze_until, reason, updated) VALUES (?,NULL,NULL,'',?) "
+                  "ON CONFLICT(user_id) DO UPDATE SET pause_until=NULL, reason='', updated=excluded.updated",
+                  (uid, time.time()))
+    _conn.commit()
+    return _reminder_state(uid)
+
+
+@router.post("/care/reminders/snooze-all-today")
+def snooze_all_today(uid: str = Depends(current_user)):
+    now = time.time()
+    tomorrow = (datetime.datetime.fromtimestamp(now) + datetime.timedelta(days=1)).date()
+    until = datetime.datetime.combine(tomorrow, datetime.time.min).timestamp()
+    init()
+    _conn.execute("INSERT INTO care_reminder_state "
+                  "(user_id, pause_until, snooze_until, reason, updated) VALUES (?,NULL,?,?,?) "
+                  "ON CONFLICT(user_id) DO UPDATE SET snooze_until=excluded.snooze_until, "
+                  "updated=excluded.updated",
+                  (uid, until, "snoozed all today", now))
+    _conn.commit()
+    return _reminder_state(uid)
 
 
 class MedicineIn(_CreateIn):
@@ -612,10 +713,29 @@ async def upload_document(kind: str = Form("Other"), file: UploadFile = File(...
     item = _add_item(uid, "document", {
         "name": file.filename or "document", "type": kind,
         "size": len(data), "content_type": content_type,
+        "scan_status": "ready", "scan_progress": 100,
+        "scan_message": "Files are scanned before they enter your vault.",
         "use_in_answers": False,  # opt-in only, after approval
     })
     _store_document(uid, item["id"], data)
     return item
+
+
+@router.get("/care/documents/{item_id}/status")
+def get_document_status(item_id: str, uid: str = Depends(current_user)):
+    kind, data = _get_item(uid, item_id)
+    if kind != "document":
+        raise HTTPException(status_code=404, detail="not found")
+    status = data.get("scan_status") or "ready"
+    progress = int(data.get("scan_progress") if data.get("scan_progress") is not None else 100)
+    return {
+        "id": item_id,
+        "status": status,
+        "progress": max(0, min(progress, 100)),
+        "safe_to_leave": status in {"uploading", "scanning", "ready"},
+        "message": data.get("scan_message") or
+        "Files are scanned before they enter your vault and are not used to train AI.",
+    }
 
 
 @router.get("/care/documents/{item_id}/file")
@@ -637,6 +757,109 @@ def get_document_file(item_id: str, uid: str = Depends(current_user)):
     if not os.path.exists(path):
         # Uploaded before files were stored, or removed out of band. Say so
         # rather than serving an empty file that looks like a corrupt scan.
+        raise HTTPException(status_code=410, detail="this file is no longer stored")
+    return FileResponse(
+        path,
+        media_type=data.get("content_type") or "application/octet-stream",
+        filename=data.get("name") or "document",
+        content_disposition_type="attachment",
+    )
+
+
+class DocumentShareIn(BaseModel):
+    recipient: str | None = None
+    expires_in_hours: int = 24
+
+
+def _share_row(row) -> dict:
+    return {"id": row[0], "document_id": row[1], "recipient": row[2] or "",
+            "created": row[3], "expires": row[4], "revoked": row[5] is not None}
+
+
+@router.get("/care/documents/shares")
+def list_document_shares(uid: str = Depends(current_user)):
+    init()
+    now = time.time()
+    rows = _conn.execute(
+        "SELECT id, item_id, recipient, created, expires, revoked FROM document_shares "
+        "WHERE user_id=? AND revoked IS NULL AND expires>? ORDER BY created DESC",
+        (uid, now)).fetchall()
+    return {"items": [_share_row(r) for r in rows]}
+
+
+@router.get("/care/documents/{item_id}/share-preview")
+def document_share_preview(item_id: str, uid: str = Depends(current_user)):
+    kind, data = _get_item(uid, item_id)
+    if kind != "document":
+        raise HTTPException(status_code=404, detail="not found")
+    return {
+        "document": {
+            "id": item_id,
+            "name": data.get("name") or "document",
+            "type": data.get("content_type") or "application/octet-stream",
+            "size": data.get("size") or 0,
+        },
+        "expiry_options": [
+            {"label": "24 hours", "hours": 24},
+            {"label": "7 days", "hours": 24 * 7},
+            {"label": "30 days", "hours": 24 * 30},
+        ],
+        "privacy_note": ("You can revoke this link anytime. The recipient may still "
+                         "save a downloaded copy."),
+    }
+
+
+@router.post("/care/documents/{item_id}/share")
+def create_document_share(item_id: str, body: DocumentShareIn, uid: str = Depends(current_user)):
+    kind, data = _get_item(uid, item_id)
+    if kind != "document":
+        raise HTTPException(status_code=404, detail="not found")
+    hours = body.expires_in_hours
+    if hours not in {24, 24 * 7, 24 * 30}:
+        raise HTTPException(status_code=400, detail="expiry must be 24 hours, 7 days or 30 days")
+    init()
+    now = time.time()
+    sid = "dsh_" + uuid.uuid4().hex[:12]
+    token = secrets.token_urlsafe(32)
+    recipient = (body.recipient or "").strip()[:120]
+    _conn.execute("INSERT INTO document_shares "
+                  "(id, user_id, item_id, token, recipient, created, expires, revoked) "
+                  "VALUES (?,?,?,?,?,?,?,NULL)",
+                  (sid, uid, item_id, token, recipient, now, now + hours * 3600))
+    _conn.commit()
+    return {"id": sid, "document_id": item_id, "recipient": recipient,
+            "created": now, "expires": now + hours * 3600,
+            "token": token, "share_url": f"/v1/care/documents/shared/{token}",
+            "document": {"name": data.get("name"), "size": data.get("size")}}
+
+
+@router.post("/care/documents/shares/{share_id}/revoke")
+def revoke_document_share(share_id: str, uid: str = Depends(current_user)):
+    init()
+    cur = _conn.execute("UPDATE document_shares SET revoked=? "
+                        "WHERE id=? AND user_id=? AND revoked IS NULL",
+                        (time.time(), share_id, uid))
+    _conn.commit()
+    if getattr(cur, "rowcount", 0) == 0:
+        raise HTTPException(status_code=404, detail="not found")
+    return {"ok": True}
+
+
+@router.get("/care/documents/shared/{token}", include_in_schema=False)
+def get_shared_document(token: str):
+    init()
+    row = _conn.execute(
+        "SELECT user_id, item_id FROM document_shares "
+        "WHERE token=? AND revoked IS NULL AND expires>?",
+        (token, time.time())).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    uid, item_id = row
+    kind, data = _get_item(uid, item_id)
+    if kind != "document":
+        raise HTTPException(status_code=404, detail="not found")
+    path = _document_path(uid, item_id)
+    if not os.path.exists(path):
         raise HTTPException(status_code=410, detail="this file is no longer stored")
     return FileResponse(
         path,
@@ -783,6 +1006,9 @@ def delete_item(item_id: str, uid: str = Depends(current_user)):
     _conn.commit()
     if getattr(cur, "rowcount", 0) == 0:
         raise HTTPException(status_code=404, detail="not found")
+    _conn.execute("UPDATE document_shares SET revoked=? WHERE item_id=? AND user_id=? "
+                  "AND revoked IS NULL", (time.time(), item_id, uid))
+    _conn.commit()
     # The bytes go with the row. Removing the record and leaving the scan on
     # disk would be exactly the "hidden flag" this route exists to avoid, one
     # layer down.

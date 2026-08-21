@@ -24,6 +24,7 @@ import time
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 
 from app.domains import accounts
 from app.domains import care
@@ -171,6 +172,11 @@ def init() -> None:
     c.execute("CREATE TABLE IF NOT EXISTS video_saves ("
               " user_id TEXT, video_id TEXT, created REAL,"
               " PRIMARY KEY (user_id, video_id))")
+    c.execute("CREATE TABLE IF NOT EXISTS video_progress ("
+              " user_id TEXT, video_id TEXT, progress_seconds REAL DEFAULT 0,"
+              " duration_seconds REAL, percent REAL DEFAULT 0, completed_at REAL,"
+              " updated REAL, liked INTEGER DEFAULT 0,"
+              " PRIMARY KEY (user_id, video_id))")
     # Per-topic clinical review + publish state, overlaid on the catalog seed
     # (mirrors content.py: an admin edit overrides the in-code default). A topic
     # becomes playable only once it is published AND approved here. Keyed by
@@ -303,17 +309,60 @@ def _saved_ids(uid: str) -> list[str]:
     return [r[0] for r in rows]
 
 
+def _progress_map(uid: str) -> dict[str, dict]:
+    init()
+    rows = _conn.execute(
+        "SELECT video_id, progress_seconds, duration_seconds, percent, completed_at, updated, liked "
+        "FROM video_progress WHERE user_id=?",
+        (uid,)).fetchall()
+    return {
+        r[0]: {
+            "progress_seconds": float(r[1] or 0),
+            "duration_seconds": float(r[2]) if r[2] is not None else None,
+            "progress_percent": float(r[3] or 0),
+            "completed_at": r[4],
+            "watched": r[4] is not None,
+            "updated": r[5],
+            "liked": bool(r[6]),
+        }
+        for r in rows
+    }
+
+
+def _progress_for(uid: str, video_id: str) -> dict:
+    return _progress_map(uid).get(video_id, {
+        "progress_seconds": 0.0,
+        "duration_seconds": None,
+        "progress_percent": 0.0,
+        "completed_at": None,
+        "watched": False,
+        "updated": None,
+        "liked": False,
+    })
+
+
+def _with_user_state(t: dict, uid: str, saved_ids: set[str] | None = None,
+                     progress: dict[str, dict] | None = None) -> dict:
+    saved_ids = saved_ids if saved_ids is not None else set(_saved_ids(uid))
+    progress = progress if progress is not None else _progress_map(uid)
+    p = progress.get(t["id"]) or _progress_for(uid, t["id"])
+    return {**t, "saved": t["id"] in saved_ids, **p}
+
+
 # ── per-user data (privacy.py: export / delete) ──────────────────────────────
 
 def export_user(uid: str) -> dict:
-    return {"saved": _saved_ids(uid)}
+    return {"saved": _saved_ids(uid), "progress": _progress_map(uid)}
 
 
 def delete_user(uid: str) -> int:
     init()
     cur = _conn.execute("DELETE FROM video_saves WHERE user_id=?", (uid,))
+    n = getattr(cur, "rowcount", 0) or 0
+    cur = _conn.execute("DELETE FROM video_progress WHERE user_id=?", (uid,))
+    n += getattr(cur, "rowcount", 0) or 0
     _conn.commit()
-    return getattr(cur, "rowcount", 0) or 0
+    return n
 
 
 # ── stage resolution ─────────────────────────────────────────────────────────
@@ -406,9 +455,12 @@ def list_videos(uid: str = Depends(current_user),
 
     wv = video_for_week(j, w)
     reviews = _review_map()
+    progress = _progress_map(uid)
     return {
-        "items": [{**_resolved(t, reviews), "saved": t["id"] in saved_ids} for t in items],
-        "week_video": ({**_resolved(wv, reviews), "saved": wv["id"] in saved_ids} if wv else None),
+        "items": [_with_user_state(_resolved(t, reviews), uid, saved_ids, progress)
+                  for t in items],
+        "week_video": (_with_user_state(_resolved(wv, reviews), uid, saved_ids, progress)
+                       if wv else None),
         "categories": _CATEGORIES,
         "saved_ids": sorted(saved_ids),
     }
@@ -419,7 +471,9 @@ def saved_videos(uid: str = Depends(current_user)):
     """Saved topics, newest first. Declared before /videos/{id} so 'saved' is not
     captured as a video id."""
     reviews = _review_map()
-    return {"items": [{**_resolved(_BY_ID[i], reviews), "saved": True}
+    saved_ids = set(_saved_ids(uid))
+    progress = _progress_map(uid)
+    return {"items": [_with_user_state(_resolved(_BY_ID[i], reviews), uid, saved_ids, progress)
                       for i in _saved_ids(uid) if i in _BY_ID]}
 
 
@@ -429,7 +483,99 @@ def get_video(video_id: str, uid: str = Depends(current_user)):
     t = _BY_ID.get(video_id)
     if not t:
         raise HTTPException(status_code=404, detail="unknown video")
-    return {**_resolved(t, _review_map()), "saved": video_id in set(_saved_ids(uid))}
+    return _with_user_state(_resolved(t, _review_map()), uid)
+
+
+class ProgressIn(BaseModel):
+    progress_seconds: float
+    duration_seconds: float | None = None
+    completed: bool = False
+    liked: bool | None = None
+
+
+def _duration_from_topic(t: dict) -> float | None:
+    dur = t.get("duration") or {}
+    max_seconds = dur.get("max_seconds")
+    return float(max_seconds) if max_seconds else None
+
+
+@router.post("/videos/{video_id}/progress")
+def save_progress(video_id: str, body: ProgressIn, uid: str = Depends(current_user)):
+    init()
+    t = _BY_ID.get(video_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="unknown video")
+    if body.progress_seconds < 0 or (body.duration_seconds is not None and body.duration_seconds <= 0):
+        raise HTTPException(status_code=400, detail="progress and duration must be positive")
+    duration = body.duration_seconds or _duration_from_topic(t)
+    progress_seconds = max(0.0, float(body.progress_seconds))
+    percent = min(100.0, (progress_seconds / duration) * 100) if duration else 0.0
+    completed = bool(body.completed or percent >= 90)
+    now = time.time()
+    current = _progress_for(uid, video_id)
+    liked = current["liked"] if body.liked is None else body.liked
+    completed_at = now if completed else current["completed_at"]
+    _conn.execute(
+        "INSERT INTO video_progress "
+        "(user_id, video_id, progress_seconds, duration_seconds, percent, completed_at, updated, liked) "
+        "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id, video_id) DO UPDATE SET "
+        "progress_seconds=excluded.progress_seconds, duration_seconds=excluded.duration_seconds, "
+        "percent=excluded.percent, completed_at=COALESCE(video_progress.completed_at, excluded.completed_at), "
+        "updated=excluded.updated, liked=excluded.liked",
+        (uid, video_id, progress_seconds, duration, percent, completed_at, now,
+         1 if liked else 0))
+    _conn.commit()
+    return {"video_id": video_id, **_progress_for(uid, video_id)}
+
+
+@router.post("/videos/{video_id}/complete")
+def complete_video(video_id: str, uid: str = Depends(current_user)):
+    init()
+    t = _BY_ID.get(video_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="unknown video")
+    now = time.time()
+    duration = _progress_for(uid, video_id).get("duration_seconds") or _duration_from_topic(t)
+    _conn.execute(
+        "INSERT INTO video_progress "
+        "(user_id, video_id, progress_seconds, duration_seconds, percent, completed_at, updated, liked) "
+        "VALUES (?,?,?,?,100,?,?,?) ON CONFLICT(user_id, video_id) DO UPDATE SET "
+        "progress_seconds=excluded.progress_seconds, duration_seconds=excluded.duration_seconds, "
+        "percent=100, completed_at=COALESCE(video_progress.completed_at, excluded.completed_at), "
+        "updated=excluded.updated",
+        (uid, video_id, duration or 0, duration, now, now, 1 if _progress_for(uid, video_id)["liked"] else 0))
+    _conn.commit()
+    return {"video_id": video_id, **_progress_for(uid, video_id)}
+
+
+@router.get("/videos/{video_id}/transcript")
+def video_transcript(video_id: str, uid: str = Depends(current_user)):
+    init()
+    t = _BY_ID.get(video_id)
+    if not t:
+        raise HTTPException(status_code=404, detail="unknown video")
+    transcript = t.get("transcript") or []
+    return {"video_id": video_id, "available": bool(transcript), "items": transcript}
+
+
+@router.get("/videos/{video_id}/next")
+def next_video(video_id: str, uid: str = Depends(current_user)):
+    init()
+    current = _BY_ID.get(video_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="unknown video")
+    j = _resolve_journey(uid, None)
+    candidates = _for_journey(j)
+    same_category = [t for t in candidates
+                     if t["id"] != video_id and t["category"] == current["category"]]
+    pool = same_category or [t for t in candidates if t["id"] != video_id]
+    if not pool:
+        return {"video": None}
+    saved_ids = set(_saved_ids(uid))
+    progress = _progress_map(uid)
+    unwatched = [t for t in pool if not (progress.get(t["id"]) or {}).get("watched")]
+    chosen = (unwatched or pool)[0]
+    return {"video": _with_user_state(_resolved(chosen, _review_map()), uid, saved_ids, progress)}
 
 
 @router.post("/videos/{video_id}/save")

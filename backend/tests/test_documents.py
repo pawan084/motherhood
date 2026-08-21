@@ -102,6 +102,76 @@ def test_a_missing_file_says_so_rather_than_serving_nothing(client, user):
     assert client.get(f"/v1/care/documents/{iid}/file", headers=h).status_code == 410
 
 
+def test_uploaded_document_reports_scan_status(client, user):
+    iid = _upload(client, user["headers"]).json()["id"]
+
+    r = client.get(f"/v1/care/documents/{iid}/status", headers=user["headers"])
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["status"] == "ready"
+    assert body["progress"] == 100
+    assert body["safe_to_leave"] is True
+
+
+def test_share_preview_names_only_the_requested_document(client, user):
+    iid = _upload(client, user["headers"], name="anomaly.pdf").json()["id"]
+
+    r = client.get(f"/v1/care/documents/{iid}/share-preview", headers=user["headers"])
+
+    assert r.status_code == 200, r.text
+    assert r.json()["document"]["name"] == "anomaly.pdf"
+    assert [x["hours"] for x in r.json()["expiry_options"]] == [24, 168, 720]
+
+
+def test_document_share_link_reads_that_file_only(client, user):
+    h = user["headers"]
+    body = b"%PDF-1.4 shared"
+    iid = _upload(client, h, content=body).json()["id"]
+
+    share = client.post(f"/v1/care/documents/{iid}/share",
+                        json={"recipient": "Dr Kapoor", "expires_in_hours": 24},
+                        headers=h)
+    assert share.status_code == 200, share.text
+    token = share.json()["token"]
+
+    r = client.get(f"/v1/care/documents/shared/{token}")
+    assert r.status_code == 200, r.text
+    assert r.content == body
+
+    shares = client.get("/v1/care/documents/shares", headers=h).json()["items"]
+    assert shares[0]["recipient"] == "Dr Kapoor"
+
+
+def test_expired_and_revoked_share_links_stop_working(client, user):
+    h = user["headers"]
+    iid = _upload(client, h).json()["id"]
+    share = client.post(f"/v1/care/documents/{iid}/share",
+                        json={"expires_in_hours": 24}, headers=h).json()
+    token = share["token"]
+
+    assert client.post(f"/v1/care/documents/shares/{share['id']}/revoke",
+                       headers=h).status_code == 200
+    assert client.get(f"/v1/care/documents/shared/{token}").status_code == 404
+
+    fresh = client.post(f"/v1/care/documents/{iid}/share",
+                        json={"expires_in_hours": 24}, headers=h).json()
+    care._conn.execute("UPDATE document_shares SET expires=? WHERE id=?", (0, fresh["id"]))
+    care._conn.commit()
+    assert client.get(f"/v1/care/documents/shared/{fresh['token']}").status_code == 404
+
+
+def test_deleting_a_document_revokes_its_share(client, user):
+    h = user["headers"]
+    iid = _upload(client, h).json()["id"]
+    share = client.post(f"/v1/care/documents/{iid}/share",
+                        json={"expires_in_hours": 24}, headers=h).json()
+
+    client.delete(f"/v1/care/items/{iid}", headers=h)
+
+    assert client.get(f"/v1/care/documents/shared/{share['token']}").status_code == 404
+
+
 # ── the export that says "everything" ───────────────────────────────────────
 
 

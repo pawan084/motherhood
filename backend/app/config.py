@@ -102,6 +102,15 @@ APP_SESSION_SECRET = os.environ.get("APP_SESSION_SECRET", DEV_APP_SESSION_SECRET
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "").strip()
 
+# ── email delivery ───────────────────────────────────────────────────────────
+
+SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+SMTP_PORT = _int("SMTP_PORT", 587)
+SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "").strip()
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()
+SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").strip().lower() not in ("0", "false", "no")
+
 # ── admin console ────────────────────────────────────────────────────────────
 
 DEV_ADMIN_SECRET = "dev-admin-secret-change-me"
@@ -164,4 +173,6 @@ def insecure_production_config() -> list[str]:
     # Without this the coarse gate is a no-op and every data route is open.
     if not APP_SHARED_SECRET:
         bad.append("APP_SHARED_SECRET")
+    if not SMTP_HOST or not SMTP_FROM:
+        bad.append("SMTP_HOST/SMTP_FROM")
     return bad

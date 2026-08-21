@@ -12,11 +12,13 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
+import { Provider } from 'react-redux';
 
 import '@/global.css';
 
 import { QuickLogPopup, useMoodPrompt } from '@/components/quick-log';
 import { AiraSplash } from '@/components/splash';
+import { store } from '@/store';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -61,8 +63,9 @@ export default function TabLayout() {
   if (!fontsSettled) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      {/* A plain stack, no tab bar: there is one screen, and Aira's real
+    <Provider store={store}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        {/* A plain stack, no tab bar: there is one screen, and Aira's real
           navigation is still an open question — the reference prototype uses
           three tabs, the shipped web client uses seven flat screens. Deciding
           that by leaving the Expo starter's Home/Explore tabs in place would be
@@ -70,9 +73,10 @@ export default function TabLayout() {
 
           The screen mounts underneath immediately, so it has already laid out
           and settled by the time the splash fades off it. */}
-      <Stack screenOptions={{ headerShown: false }} />
-      <QuickLogPopup label={moodPrompt.label} onDismiss={moodPrompt.dismiss} />
-      {!splashDone && <AiraSplash onFinish={handleSplashFinish} />}
-    </ThemeProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+        <QuickLogPopup label={moodPrompt.label} onDismiss={moodPrompt.dismiss} />
+        {!splashDone && <AiraSplash onFinish={handleSplashFinish} />}
+      </ThemeProvider>
+    </Provider>
   );
 }

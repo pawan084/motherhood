@@ -19,7 +19,7 @@ from app import admin, analytics_store, config, legal, privacy, prompts, safety
 from app.core import db, llm, security
 from app.domains import (
     accounts, care, chat, consent, content, feedback,
-    memory, partner, prefs, videos,
+    memory, notifications, partner, prefs, videos, visit, voice, wellness,
 )
 
 logging.basicConfig(level=logging.INFO,
@@ -56,11 +56,15 @@ app.include_router(accounts.router)
 app.include_router(care.router)
 app.include_router(chat.router)
 app.include_router(memory.router)
+app.include_router(notifications.router)
 app.include_router(consent.router)
 app.include_router(feedback.router)
 app.include_router(prefs.router)
 app.include_router(partner.router)
 app.include_router(videos.router)
+app.include_router(visit.router)
+app.include_router(voice.router)
+app.include_router(wellness.router)
 app.include_router(privacy.router)
 app.include_router(legal.router)
 
@@ -77,6 +81,7 @@ def _startup():
     admin.init()
     content.init()
     memory.init()
+    notifications.init()
     consent.init()
     safety.init()
     feedback.init()
@@ -85,6 +90,9 @@ def _startup():
     prefs.init()
     partner.init()
     videos.init()
+    visit.init()
+    voice.init()
+    wellness.init()
     prompts.init()
     prompts.seed_defaults()
 

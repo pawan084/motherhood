@@ -21,14 +21,16 @@ import json
 import logging
 import os
 import secrets
+import shutil
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from app import config
 from app.core import db
+from app.core import mailer
 from app import safety
 from app.core import passwords
 from app.core import security
@@ -41,6 +43,9 @@ _GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 _GOOGLE_CERTS = "https://www.googleapis.com/oauth2/v3/certs"
 
 VALID_JOURNEYS = {"trying", "pregnant", "postpartum", "loss", "exploring"}
+OTP_TTL_SECONDS = 10 * 60
+OTP_RESEND_SECONDS = 30
+OTP_MAX_ATTEMPTS = 5
 
 router = APIRouter(tags=["accounts"])
 _conn = None
@@ -67,6 +72,12 @@ def init() -> None:
     # `A@b.com` and `a@b.com` cannot produce two accounts.
     c.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email "
               "ON users(LOWER(email)) WHERE email IS NOT NULL")
+    c.execute("CREATE TABLE IF NOT EXISTS account_login_codes ("
+              f" id {db.AUTOINC_PK}, email TEXT NOT NULL, code_hash TEXT NOT NULL,"
+              " purpose TEXT NOT NULL DEFAULT 'signin', attempts INTEGER DEFAULT 0,"
+              " created REAL NOT NULL, expires REAL NOT NULL, consumed REAL)")
+    c.execute("CREATE INDEX IF NOT EXISTS account_login_codes_email "
+              "ON account_login_codes(LOWER(email), created)")
     c.commit()
     _conn = c
 
@@ -379,6 +390,448 @@ def _clean_email(raw: str) -> str:
     if "@" not in email or email.startswith("@") or email.endswith("@") or len(email) > 254:
         raise HTTPException(status_code=400, detail="that doesn't look like an email address")
     return email
+
+
+def _otp_hash(email: str, code: str) -> str:
+    material = f"{email}:{code}".encode()
+    return hmac.new(APP_SESSION_SECRET.encode(), material, hashlib.sha256).hexdigest()
+
+
+def _new_otp_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _find_or_create_account_for_email(email: str, device_token: str | None) -> tuple[dict, bool]:
+    """Return the account for email, creating/promoting when it does not exist."""
+    init()
+    row = _conn.execute("SELECT id FROM users WHERE LOWER(email)=?", (email,)).fetchone()
+    if row:
+        uid = row[0]
+        _conn.execute("UPDATE users SET last_seen=? WHERE id=?", (time.time(), uid))
+        _conn.commit()
+        return get_user(uid), False
+
+    now = time.time()
+    prior = _verify_token(device_token or "") if device_token else None
+    if prior and (get_user(prior) or {}).get("kind") == "device":
+        uid = prior
+        _conn.execute("UPDATE users SET kind='account', email=?, last_seen=? WHERE id=?",
+                      (email, now, uid))
+    else:
+        uid = "usr_" + uuid.uuid4().hex
+        _conn.execute("INSERT INTO users (id, kind, email, created, last_seen) "
+                      "VALUES (?,?,?,?,?)", (uid, "account", email, now, now))
+    _conn.commit()
+    return get_user(uid), True
+
+
+def _merge_device_uid(device_token: str | None, account_uid: str) -> str | None:
+    prior = _verify_token(device_token or "") if device_token else None
+    if not prior or prior == account_uid:
+        return None
+    u = get_user(prior)
+    if not u or u.get("kind") != "device":
+        return None
+    return prior
+
+
+def _care_rows(uid: str) -> list[dict]:
+    from app.domains import care
+
+    care.init()
+    rows = care._conn.execute(
+        "SELECT id, kind, data, done, created FROM care_items WHERE user_id=?",
+        (uid,)).fetchall()
+    return [{"id": r[0], "kind": r[1], "data": json.loads(r[2] or "{}"),
+             "done": bool(r[3]), "created": float(r[4] or 0)} for r in rows]
+
+
+def _day(ts: float) -> str:
+    return time.strftime("%Y-%m-%d", time.localtime(ts or time.time()))
+
+
+def _weekday(ts: float) -> str:
+    return time.strftime("%A", time.localtime(ts or time.time()))
+
+
+def _norm(s: str | None) -> str:
+    return " ".join((s or "").strip().lower().split())
+
+
+def _choice_label(row: dict) -> str:
+    data = row["data"]
+    if row["kind"] == "checkin":
+        feeling = data.get("feeling") or "Mood"
+        return f"{feeling} · {time.strftime('%-I:%M %p', time.localtime(row['created']))}"
+    if row["kind"] == "reminder":
+        return data.get("time") or "No time"
+    return data.get("title") or data.get("name") or row["kind"].title()
+
+
+def _merge_conflicts(device_uid: str, account_uid: str) -> list[dict]:
+    device_rows = _care_rows(device_uid)
+    account_rows = _care_rows(account_uid)
+    conflicts: list[dict] = []
+
+    account_checkins: dict[str, list[dict]] = {}
+    for row in account_rows:
+        if row["kind"] == "checkin":
+            account_checkins.setdefault(_day(row["created"]), []).append(row)
+    for row in device_rows:
+        if row["kind"] != "checkin":
+            continue
+        matches = account_checkins.get(_day(row["created"])) or []
+        if not matches:
+            continue
+        other = sorted(matches, key=lambda r: abs(r["created"] - row["created"]))[0]
+        conflicts.append({
+            "id": f"care:{row['id']}:{other['id']}",
+            "kind": "checkin",
+            "title": f"Mood · {_weekday(row['created'])}",
+            "message": "Mood entries exist in both histories. Choose which version to keep.",
+            "device": {"id": row["id"], "label": _choice_label(row), "created": row["created"]},
+            "account": {"id": other["id"], "label": _choice_label(other),
+                        "created": other["created"]},
+            "default": "device" if row["created"] >= other["created"] else "account",
+        })
+
+    account_reminders: dict[str, list[dict]] = {}
+    for row in account_rows:
+        if row["kind"] == "reminder":
+            account_reminders.setdefault(_norm(row["data"].get("title")), []).append(row)
+    for row in device_rows:
+        if row["kind"] != "reminder":
+            continue
+        title = _norm(row["data"].get("title"))
+        if not title:
+            continue
+        matches = account_reminders.get(title) or []
+        if not matches:
+            continue
+        other = sorted(matches, key=lambda r: abs(r["created"] - row["created"]))[0]
+        conflicts.append({
+            "id": f"care:{row['id']}:{other['id']}",
+            "kind": "reminder",
+            "title": (row["data"].get("title") or "Reminder").upper(),
+            "message": "This reminder exists in both histories. Choose the time to keep.",
+            "device": {"id": row["id"], "label": _choice_label(row), "created": row["created"]},
+            "account": {"id": other["id"], "label": _choice_label(other),
+                        "created": other["created"]},
+            "default": "latest",
+        })
+    return conflicts
+
+
+def _has_device_history(device_uid: str) -> bool:
+    from app.domains import care, chat, memory, feedback, prefs, videos
+    from app import analytics_store
+    from app.safety import flags
+
+    for module in (care, chat, memory, feedback, prefs, videos, flags, analytics_store):
+        try:
+            module.init()
+        except Exception:
+            pass
+    checks = [
+        (care._conn, "SELECT 1 FROM care_items WHERE user_id=? LIMIT 1"),
+        (care._conn, "SELECT 1 FROM care_context WHERE user_id=? LIMIT 1"),
+        (chat._conn, "SELECT 1 FROM chat_turns WHERE user_id=? LIMIT 1"),
+        (memory._conn, "SELECT 1 FROM memory_items WHERE user_id=? LIMIT 1"),
+        (feedback._conn, "SELECT 1 FROM feedback WHERE user_id=? LIMIT 1"),
+        (prefs._conn, "SELECT 1 FROM user_prefs WHERE user_id=? LIMIT 1"),
+        (videos._conn, "SELECT 1 FROM video_saves WHERE user_id=? LIMIT 1"),
+        (flags._conn, "SELECT 1 FROM safety_flags WHERE user_id=? LIMIT 1"),
+        (analytics_store._conn, "SELECT 1 FROM events WHERE user_id=? LIMIT 1"),
+    ]
+    return any(conn and conn.execute(sql, (device_uid,)).fetchone() for conn, sql in checks)
+
+
+def _move_document_file(device_uid: str, account_uid: str, item_id: str) -> None:
+    from app.domains import care
+
+    src = care._document_path(device_uid, item_id)
+    dst = care._document_path(account_uid, item_id)
+    if not os.path.exists(src):
+        return
+    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    shutil.move(src, dst)
+
+
+def _delete_document_file_for(uid: str, item_id: str) -> None:
+    from app.domains import care
+
+    try:
+        os.remove(care._document_path(uid, item_id))
+    except FileNotFoundError:
+        pass
+
+
+def _apply_care_merge(device_uid: str, account_uid: str, choices: dict[str, str]) -> dict:
+    from app.domains import care
+
+    care.init()
+    conflicts = _merge_conflicts(device_uid, account_uid)
+    handled: set[str] = set()
+    merged = {"kept_device": 0, "kept_account": 0, "moved": 0}
+
+    for conflict in conflicts:
+        cid = conflict["id"]
+        _prefix, device_id, account_id = cid.split(":", 2)
+        keep = choices.get(cid) or conflict["default"]
+        if keep == "latest":
+            keep = ("device" if conflict["device"]["created"] >= conflict["account"]["created"]
+                    else "account")
+        handled.update({device_id, account_id})
+        if keep == "device":
+            row = care._conn.execute(
+                "SELECT kind FROM care_items WHERE id=? AND user_id=?",
+                (account_id, account_uid)).fetchone()
+            if row and row[0] == "document":
+                _delete_document_file_for(account_uid, account_id)
+            care._conn.execute("DELETE FROM care_items WHERE id=? AND user_id=?",
+                               (account_id, account_uid))
+            row = care._conn.execute(
+                "SELECT kind FROM care_items WHERE id=? AND user_id=?",
+                (device_id, device_uid)).fetchone()
+            care._conn.execute("UPDATE care_items SET user_id=? WHERE id=? AND user_id=?",
+                               (account_uid, device_id, device_uid))
+            if row and row[0] == "document":
+                _move_document_file(device_uid, account_uid, device_id)
+            merged["kept_device"] += 1
+        else:
+            row = care._conn.execute(
+                "SELECT kind FROM care_items WHERE id=? AND user_id=?",
+                (device_id, device_uid)).fetchone()
+            if row and row[0] == "document":
+                _delete_document_file_for(device_uid, device_id)
+            care._conn.execute("DELETE FROM care_items WHERE id=? AND user_id=?",
+                               (device_id, device_uid))
+            merged["kept_account"] += 1
+
+    for row in _care_rows(device_uid):
+        if row["id"] in handled:
+            continue
+        care._conn.execute("UPDATE care_items SET user_id=? WHERE id=? AND user_id=?",
+                           (account_uid, row["id"], device_uid))
+        if row["kind"] == "document":
+            _move_document_file(device_uid, account_uid, row["id"])
+        merged["moved"] += 1
+
+    # Carry care context and emergency profile only when the account has none.
+    if not care._conn.execute("SELECT 1 FROM care_context WHERE user_id=?",
+                              (account_uid,)).fetchone():
+        care._conn.execute("UPDATE care_context SET user_id=? WHERE user_id=?",
+                           (account_uid, device_uid))
+    else:
+        care._conn.execute("DELETE FROM care_context WHERE user_id=?", (device_uid,))
+    if not care._conn.execute("SELECT 1 FROM emergency_profiles WHERE user_id=?",
+                              (account_uid,)).fetchone():
+        care._conn.execute("UPDATE emergency_profiles SET user_id=? WHERE user_id=?",
+                           (account_uid, device_uid))
+    else:
+        care._conn.execute("DELETE FROM emergency_profiles WHERE user_id=?", (device_uid,))
+    care._conn.commit()
+    return merged
+
+
+def _move_simple_histories(device_uid: str, account_uid: str) -> None:
+    from app.domains import chat, memory, feedback, prefs, videos, consent
+    from app import analytics_store
+    from app.safety import flags
+
+    for module in (chat, memory, feedback, prefs, videos, consent, flags, analytics_store):
+        try:
+            module.init()
+        except Exception:
+            pass
+    for conn, table in (
+        (chat._conn, "chat_turns"),
+        (memory._conn, "memory_items"),
+        (feedback._conn, "feedback"),
+        (consent._conn, "consent_ledger"),
+        (flags._conn, "safety_flags"),
+        (analytics_store._conn, "events"),
+    ):
+        conn.execute(f"UPDATE {table} SET user_id=? WHERE user_id=?", (account_uid, device_uid))
+        conn.commit()
+
+    if not prefs._conn.execute("SELECT 1 FROM user_prefs WHERE user_id=?",
+                               (account_uid,)).fetchone():
+        prefs._conn.execute("UPDATE user_prefs SET user_id=? WHERE user_id=?",
+                            (account_uid, device_uid))
+    else:
+        prefs._conn.execute("DELETE FROM user_prefs WHERE user_id=?", (device_uid,))
+    prefs._conn.commit()
+
+    for video_id, created in videos._conn.execute(
+            "SELECT video_id, created FROM video_saves WHERE user_id=?",
+            (device_uid,)).fetchall():
+        videos._conn.execute("INSERT INTO video_saves (user_id, video_id, created) "
+                             "VALUES (?,?,?) ON CONFLICT(user_id, video_id) DO NOTHING",
+                             (account_uid, video_id, created))
+    videos._conn.execute("DELETE FROM video_saves WHERE user_id=?", (device_uid,))
+    videos._conn.commit()
+
+
+class CodeRequestIn(BaseModel):
+    email: str
+    purpose: str = "signin"
+
+
+@router.post("/account/code/request", dependencies=[Depends(security.require_app_token)])
+def account_code_request(body: CodeRequestIn):
+    """Request a six-digit passwordless sign-in code.
+
+    The project has no email provider wired yet. In development/test we return
+    the code so local clients can complete the flow; production fails closed
+    instead of claiming an email was sent when it was not.
+    """
+    email = _clean_email(body.email)
+    purpose = (body.purpose or "signin").strip().lower()
+    if purpose not in {"signin", "signup"}:
+        raise HTTPException(status_code=400, detail="invalid code purpose")
+    if config.is_production() and not mailer.configured():
+        raise HTTPException(status_code=503, detail="email delivery is not configured")
+
+    init()
+    now = time.time()
+    last = _conn.execute(
+        "SELECT created FROM account_login_codes WHERE LOWER(email)=? "
+        "ORDER BY created DESC LIMIT 1", (email,)).fetchone()
+    wait = 0
+    if last:
+        wait = max(0, int(OTP_RESEND_SECONDS - (now - float(last[0]))))
+    if wait > 0:
+        raise HTTPException(status_code=429, detail=f"please wait {wait} seconds before retrying")
+
+    code = _new_otp_code()
+    expires = now + OTP_TTL_SECONDS
+    delivery = "development"
+    if mailer.configured():
+        try:
+            mailer.send_login_code(email, code, ttl_minutes=OTP_TTL_SECONDS // 60)
+            delivery = "smtp"
+        except RuntimeError:
+            raise HTTPException(status_code=503, detail="email delivery failed")
+    _conn.execute("INSERT INTO account_login_codes "
+                  "(email, code_hash, purpose, attempts, created, expires, consumed) "
+                  "VALUES (?,?,?,?,?,?,NULL)",
+                  (email, _otp_hash(email, code), purpose, 0, now, expires))
+    _conn.commit()
+    out = {"ok": True, "expires_in": OTP_TTL_SECONDS, "resend_in": OTP_RESEND_SECONDS,
+           "delivery": delivery}
+    if delivery == "development":
+        log.info("dev email code for %s is %s", email, code)
+        out["dev_code"] = code
+    return out
+
+
+class CodeVerifyIn(BaseModel):
+    email: str
+    code: str
+    device_token: str | None = None
+
+
+@router.post("/account/code/verify", dependencies=[Depends(security.require_app_token)])
+def account_code_verify(body: CodeVerifyIn):
+    email = _clean_email(body.email)
+    code = "".join(ch for ch in str(body.code or "") if ch.isdigit())
+    if len(code) != 6:
+        raise HTTPException(status_code=400, detail="enter the 6-digit code")
+
+    init()
+    row = _conn.execute(
+        "SELECT id, code_hash, attempts, expires, consumed FROM account_login_codes "
+        "WHERE LOWER(email)=? ORDER BY created DESC LIMIT 1", (email,)).fetchone()
+    now = time.time()
+    if not row:
+        raise HTTPException(status_code=401, detail="invalid or expired code")
+
+    code_id, expected, attempts, expires, consumed = row
+    if consumed is not None or now > float(expires):
+        raise HTTPException(status_code=401, detail="invalid or expired code")
+    if int(attempts or 0) >= OTP_MAX_ATTEMPTS:
+        raise HTTPException(status_code=401, detail="invalid or expired code")
+
+    if not hmac.compare_digest(str(expected), _otp_hash(email, code)):
+        _conn.execute("UPDATE account_login_codes SET attempts=attempts + 1 WHERE id=?",
+                      (code_id,))
+        _conn.commit()
+        raise HTTPException(status_code=401, detail="invalid or expired code")
+
+    _conn.execute("UPDATE account_login_codes SET consumed=? WHERE id=?", (now, code_id))
+    _conn.commit()
+    u, created = _find_or_create_account_for_email(email, body.device_token)
+    device_uid = _merge_device_uid(body.device_token, u["id"])
+    merge_required = bool(device_uid and not created and _has_device_history(device_uid))
+    return {"user_id": u["id"], "token": mint_token(u["id"], u["token_version"]),
+            "user": public_user(u), "is_new_user": created,
+            "needs_onboarding": not bool(u["onboarded"]),
+            "merge_required": merge_required}
+
+
+@router.get("/account/merge-conflicts")
+def account_merge_conflicts(
+    device_token: str = Query(""),
+    uid: str = Depends(current_user),
+):
+    """Preview anonymous-device history before merging it into this account."""
+    account = get_user(uid)
+    if not account or account.get("kind") != "account":
+        raise HTTPException(status_code=400, detail="sign in before merging history")
+    device_uid = _merge_device_uid(device_token, uid)
+    if not device_uid:
+        return {"merge_required": False, "conflicts": [], "has_device_history": False}
+    conflicts = _merge_conflicts(device_uid, uid)
+    return {"merge_required": bool(conflicts or _has_device_history(device_uid)),
+            "has_device_history": _has_device_history(device_uid),
+            "conflicts": conflicts}
+
+
+class MergeChoiceIn(BaseModel):
+    conflict_id: str
+    keep: str = "account"  # account | device | latest
+
+
+class MergeIn(BaseModel):
+    device_token: str
+    choices: list[MergeChoiceIn] = []
+
+
+@router.post("/account/merge")
+def account_merge(body: MergeIn, uid: str = Depends(current_user)):
+    """Apply the explicit guest-history merge choices.
+
+    Conflicts default to keeping the signed-in account copy unless the client
+    sends a choice. Non-conflicting device history is carried over.
+    """
+    account = get_user(uid)
+    if not account or account.get("kind") != "account":
+        raise HTTPException(status_code=400, detail="sign in before merging history")
+    device_uid = _merge_device_uid(body.device_token, uid)
+    if not device_uid:
+        return {"ok": True, "merged": False, "conflicts": 0}
+    choices = {}
+    for choice in body.choices:
+        keep = (choice.keep or "account").strip().lower()
+        if keep not in {"account", "device", "latest"}:
+            raise HTTPException(status_code=400, detail="keep must be account, device or latest")
+        choices[choice.conflict_id] = keep
+
+    conflicts = _merge_conflicts(device_uid, uid)
+    care_result = _apply_care_merge(device_uid, uid, choices)
+    _move_simple_histories(device_uid, uid)
+    delete_user(device_uid)
+    return {"ok": True, "merged": True, "conflicts": len(conflicts), "care": care_result}
+
+
+@router.post("/account/merge/cancel")
+def account_merge_cancel(body: MergeIn, uid: str = Depends(current_user)):
+    """Decline to merge the anonymous device history into this account."""
+    account = get_user(uid)
+    if not account or account.get("kind") != "account":
+        raise HTTPException(status_code=400, detail="sign in before cancelling merge")
+    return {"ok": True, "merged": False}
 
 
 @router.post("/account/signup", dependencies=[Depends(security.require_app_token)])
