@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandOrb } from '@/components/brand-orb';
 import { Icon } from '@/components/icon';
 import { useToken } from '@/hooks/use-token';
+import { setAuthEmail, setAuthMode } from '@/store/slices/authSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 /**
  * Sign in / create account — reached from "Save your journey" or Settings.
@@ -48,9 +50,22 @@ type Mode = 'signup' | 'signin';
 
 export default function SignInScreen() {
   const params = useLocalSearchParams<{ mode?: string }>();
-  const mode: Mode = params.mode === 'signin' ? 'signin' : 'signup';
+  const dispatch = useAppDispatch();
 
-  const [email, setEmail] = useState('');
+  // The route param is the ENTRY point, the slice is the source of truth: the
+  // next screen needs the mode too, and threading it through another param
+  // means two places can disagree about which endpoint will be called.
+  const paramMode: Mode = params.mode === 'signin' ? 'signin' : 'signup';
+  useEffect(() => {
+    dispatch(setAuthMode(paramMode));
+  }, [dispatch, paramMode]);
+
+  const mode = useAppSelector((s) => s.auth.mode);
+  const email = useAppSelector((s) => s.auth.email);
+
+  // Stays local: "has the button been pressed yet" is a per-screen interaction
+  // detail, not app state. In the store it would survive leaving the screen and
+  // flash a validation error on a form nobody has touched.
   const [submitted, setSubmitted] = useState(false);
 
   const placeholder = useToken('--muted-foreground');
@@ -65,7 +80,10 @@ export default function SignInScreen() {
     // POST /account/code/request { email } — then the code screen verifies it.
     // The request is not wired because the endpoint does not exist; the hop is,
     // so the flow is walkable.
-    router.push(`/verify-code?email=${encodeURIComponent(trimmed)}&mode=${mode}`);
+    // No params: the slice already holds the email and the mode. Putting the
+    // address in the URL also wrote it into web history, which is the wrong
+    // place for it.
+    router.push('/verify-code');
   }
 
   return (
@@ -112,7 +130,7 @@ export default function SignInScreen() {
               <Text className="font-rubik-medium text-xs text-muted-foreground">Email</Text>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => dispatch(setAuthEmail(v))}
                 onSubmitEditing={submit}
                 placeholder="you@example.com"
                 placeholderTextColor={placeholder}

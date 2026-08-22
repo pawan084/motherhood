@@ -1,9 +1,14 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
+import {
+  requestCodeSucceeded,
+  setAuthCode,
+} from '@/store/slices/authSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 
 /**
  * Verify code — the second half of the passwordless email path.
@@ -28,38 +33,71 @@ const RESEND_SECONDS = 30;
 const CODE_TTL_SECONDS = 10 * 60;
 
 export default function VerifyCodeScreen() {
-  const { email, mode } = useLocalSearchParams<{ email?: string; mode?: string }>();
+  const dispatch = useAppDispatch();
+  const { email, mode, code, requestedAt, resendIn, expiresIn } = useAppSelector(
+    (s) => s.auth,
+  );
 
   const inputRef = useRef<TextInput>(null);
-  const [code, setCode] = useState('');
+
+  // Stays local: a dismissed hint is a per-screen interaction, and in the store
+  // it would stay dismissed for a code requested an hour later.
   const [showPasteHint, setShowPasteHint] = useState(true);
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
-  const [codeSecondsLeft, setCodeSecondsLeft] = useState(CODE_TTL_SECONDS);
-  const [codeExpired, setCodeExpired] = useState(false);
+
+  /**
+   * One clock, two countdowns.
+   *
+   * Both timers now derive from the single `requestedAt` the slice holds rather
+   * than from two `useState` counters. That is not tidiness: a counter held in
+   * component state RESTARTS whenever the screen remounts, so navigating away
+   * and back handed you a fresh ten minutes on a code the server had already
+   * expired. A timestamp cannot lie about how long ago the code was sent.
+   *
+   * `now` is local because it is a render concern — the passage of time is not
+   * application state.
+   */
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  /**
+   * Stands in for `POST /account/code/request`, which does not exist yet.
+   *
+   * Marks the code as sent so both countdowns have an origin. When the endpoint
+   * lands this becomes a thunk and the payload comes from the server, which is
+   * the point of putting `expiresIn` and `resendIn` on the wire rather than
+   * hardcoding them in the client.
+   */
+  useEffect(() => {
+    if (requestedAt !== null) return;
+    dispatch(
+      requestCodeSucceeded({
+        expiresIn: CODE_TTL_SECONDS,
+        resendIn: RESEND_SECONDS,
+        requestedAt: Date.now(),
+      }),
+    );
+  }, [dispatch, requestedAt]);
+
+  const elapsed = requestedAt === null ? 0 : Math.floor((now - requestedAt) / 1000);
+  const secondsLeft = Math.max(0, (resendIn ?? RESEND_SECONDS) - elapsed);
+  const codeSecondsLeft = Math.max(0, (expiresIn ?? CODE_TTL_SECONDS) - elapsed);
+  const codeExpired = requestedAt !== null && codeSecondsLeft <= 0;
 
   const complete = code.length === CODE_LENGTH;
 
+  // An expired code is cleared once, so the boxes do not keep showing digits
+  // that can no longer be submitted.
   useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const t = setTimeout(() => setSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [secondsLeft]);
-
-  useEffect(() => {
-    if (codeExpired) return;
-    if (codeSecondsLeft <= 0) {
-      setCodeExpired(true);
-      setCode('');
-      return;
-    }
-    const t = setTimeout(() => setCodeSecondsLeft((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [codeExpired, codeSecondsLeft]);
+    if (codeExpired && code) dispatch(setAuthCode(''));
+  }, [codeExpired, code, dispatch]);
 
   function onChange(next: string) {
     // Digits only, and never longer than the code. Guards paste as well as
     // typing, so pasting "  481 902 " lands as "481902".
-    setCode(next.replace(/[^0-9]/g, '').slice(0, CODE_LENGTH));
+    dispatch(setAuthCode(next.replace(/[^0-9]/g, '').slice(0, CODE_LENGTH)));
   }
 
   function submit() {
@@ -74,11 +112,15 @@ export default function VerifyCodeScreen() {
   }
 
   function resend() {
-    setSecondsLeft(RESEND_SECONDS);
-    setCodeSecondsLeft(CODE_TTL_SECONDS);
-    setCode('');
-    setCodeExpired(false);
-    // POST /account/code/request { email }
+    // POST /account/code/request { email } — a new code restarts both clocks,
+    // which is now one dispatch rather than four setStates that could drift.
+    dispatch(
+      requestCodeSucceeded({
+        expiresIn: CODE_TTL_SECONDS,
+        resendIn: RESEND_SECONDS,
+        requestedAt: Date.now(),
+      }),
+    );
   }
 
   const mmss = `0:${String(Math.max(0, secondsLeft)).padStart(2, '0')}`;

@@ -13,12 +13,14 @@ import * as ExpoSplashScreen from 'expo-splash-screen';
 import { useCallback, useEffect, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
 
 import '@/global.css';
 
 import { QuickLogPopup, useMoodPrompt } from '@/components/quick-log';
+import { SessionBootstrap } from '@/components/session-bootstrap';
 import { AiraSplash } from '@/components/splash';
-import { store } from '@/store';
+import { persistor, store } from '@/store';
 
 ExpoSplashScreen.preventAutoHideAsync();
 
@@ -64,6 +66,11 @@ export default function TabLayout() {
 
   return (
     <Provider store={store}>
+      {/* Holds render until the persisted session is back from AsyncStorage.
+          Without this the first paint runs with a null token, `ensureToken`
+          registers a fresh anonymous user, and the restored session arrives a
+          moment later pointing at a different id than the one just minted. */}
+      <PersistGate loading={null} persistor={persistor}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         {/* A plain stack, no tab bar: there is one screen, and Aira's real
           navigation is still an open question — the reference prototype uses
@@ -73,10 +80,12 @@ export default function TabLayout() {
 
           The screen mounts underneath immediately, so it has already laid out
           and settled by the time the splash fades off it. */}
+        <SessionBootstrap />
         <Stack screenOptions={{ headerShown: false }} />
         <QuickLogPopup label={moodPrompt.label} onDismiss={moodPrompt.dismiss} />
         {!splashDone && <AiraSplash onFinish={handleSplashFinish} />}
       </ThemeProvider>
+      </PersistGate>
     </Provider>
   );
 }

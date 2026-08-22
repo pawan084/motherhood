@@ -1,9 +1,19 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Icon } from '@/components/icon';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  nextOnboardingStep,
+  previousOnboardingStep,
+  setOnboardingJourney,
+  setOnboardingLanguage,
+  setOnboardingReminders,
+  setOnboardingWeeks,
+  toggleOnboardingPriority,
+} from '@/store/slices/onboardingSlice';
+import { submitOnboarding } from '@/store/thunks';
 import {
   Chip,
   ContinueButton,
@@ -53,30 +63,85 @@ type Draft = {
 };
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(1);
-  const [draft, setDraft] = useState<Draft>({ priorities: [], remindersPerDay: 2 });
+  const dispatch = useAppDispatch();
+  const answers = useAppSelector((s) => s.onboarding);
+  const step = answers.step;
+
+  /**
+   * The four step components stay PROP-DRIVEN.
+   *
+   * They receive a `draft` and a `set`, exactly as before, so none of them knows
+   * the store exists and none of their markup changed. That boundary is worth
+   * keeping rather than dissolving: they are pure presentational components,
+   * testable with a plain object, and only this screen has to know where the
+   * answers actually live.
+   *
+   * `weeks` is the one field that needs translating. The slice keeps
+   * `weeksAnswered` separate because `null` is a REAL answer — "not sure yet" —
+   * and distinct from unanswered, which a single nullable field cannot express.
+   * The components read `undefined` for unanswered, so that is what they get.
+   */
+  const draft: Draft = {
+    journey: answers.journey ?? undefined,
+    weeks: answers.weeksAnswered ? answers.weeks : undefined,
+    priorities: answers.priorities,
+    language: answers.language ?? undefined,
+    remindersPerDay: answers.remindersPerDay,
+  };
 
   function set<K extends keyof Draft>(key: K, value: Draft[K]) {
-    setDraft((d) => ({ ...d, [key]: value }));
+    switch (key) {
+      case 'journey':
+        dispatch(setOnboardingJourney(value as Journey));
+        break;
+      case 'weeks':
+        dispatch(setOnboardingWeeks((value ?? null) as number | null));
+        break;
+      case 'priorities': {
+        // The component hands back the whole next array; the slice owns the
+        // membership rule, so the difference is turned back into one toggle.
+        const nextList = (value as string[]) ?? [];
+        const changed = [
+          ...nextList.filter((x) => !answers.priorities.includes(x)),
+          ...answers.priorities.filter((x) => !nextList.includes(x)),
+        ];
+        changed.forEach((item) => dispatch(toggleOnboardingPriority(item)));
+        break;
+      }
+      case 'language':
+        dispatch(setOnboardingLanguage(value as Language));
+        break;
+      case 'remindersPerDay':
+        dispatch(
+          setOnboardingReminders({
+            perDay: value as 1 | 2 | 3,
+            times: answers.reminderTimes,
+          }),
+        );
+        break;
+    }
   }
 
   function back() {
     if (step === 1) router.back();
-    else setStep((s) => s - 1);
+    else dispatch(previousOnboardingStep());
   }
 
   function next() {
-    if (step < TOTAL_STEPS) setStep((s) => s + 1);
+    if (step < TOTAL_STEPS) dispatch(nextOnboardingStep());
     else finish();
   }
 
   function finish() {
-    // POST /v1/onboarding { journey, language, priorities, weeks }
-    //   → returns the assembled Today, and sets onboarded: true
+    // POST /v1/onboarding — the whole answer set in one call, which also sets
+    // `onboarded: true`. The thunk reads the slice, so nothing is passed here.
     //
-    // Not wired: there is no API client yet. `draft` holds exactly the shape the
-    // endpoint accepts, so this becomes one call.
-    //
+    // Deliberately not awaited: this screen has no error state, so blocking on
+    // a failed submit would trap somebody in onboarding with nothing on screen
+    // explaining why. The failure lands in `onboarding.error` for a later
+    // screen to surface — see the note in the summary.
+    void dispatch(submitOnboarding());
+
     // Then the personalisation opt-in, which must come BEFORE the first chat
     // turn — it is what decides whether saved memory shapes a reply at all.
     router.replace('/personalisation');
